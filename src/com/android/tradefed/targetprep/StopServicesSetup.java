@@ -49,16 +49,16 @@ public class StopServicesSetup implements ITargetPreparer {
     }
 
     /**
-     * Specify whether to stop the framework. Exposed for unit testing.
+     * Specify whether to stop the framework.
      */
-    void setStopFramework(boolean stopFramework) {
+    public void setStopFramework(boolean stopFramework) {
         mStopFramework = stopFramework;
     }
 
     /**
-     * Adds a service to the list of services. Exposed for unit testing.
+     * Adds a service to the list of services.
      */
-    void addService(String service) {
+    public void addService(String service) {
         mServices.add(service);
     }
 }
