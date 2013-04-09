@@ -123,8 +123,18 @@ public class EmailResultReporter extends CollectingTestListener implements
      *         report
      */
     protected String generateEmailSubject() {
-        return String.format("%s result for %s on build %s: %s", mSubjectTag,
-                getBuildInfo().getTestTag(), getBuildInfo().getBuildId(), getInvocationStatus());
+        String buildAlias = getBuildInfo().getBuildAttributes().get("build_alias");
+        if (buildAlias == null){
+            //If build alias is null, use the build id instead.
+            buildAlias = getBuildInfo().getBuildId();
+        }
+
+        //Sample email subject: Tradefed result for powerChromeFullSitesLocal
+        //on mantaray-user git_jb-mr1.1-release JDQ39: FAILED
+        return String.format("%s result for %s on %s %s %s: %s", mSubjectTag,
+                getBuildInfo().getTestTag(), getBuildInfo().getBuildFlavor(),
+                getBuildInfo().getBuildBranch(), buildAlias,
+                getInvocationStatus());
     }
 
     /**
