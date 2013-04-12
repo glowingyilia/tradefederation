@@ -41,6 +41,11 @@ public class BandwidthUtils {
     private Map<String, BandwidthStats> mIfaceSnapStats = new HashMap<String, BandwidthStats>();
     private Map<String, BandwidthStats> mIfaceDevStats = new HashMap<String, BandwidthStats>();
     private Map<String, BandwidthStats> mStatsDiff = new HashMap<String, BandwidthStats>();
+
+    public Map<String, BandwidthStats> getAccountingDifferences() {
+        return mStatsDiff;
+    }
+
     private Set<String> mIfaceKnown = new HashSet<String>();
     private Set<String> mIfaceActive = new HashSet<String>();
     ITestDevice mTestDevice = null;

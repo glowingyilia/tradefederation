@@ -83,6 +83,14 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
             description = "The timeout in msecs for a single operation to query the test server.")
     private int mQueryOpTimeoutMs = 2 * 60 * 1000;
 
+    @Option(name="difference-threshold",
+            description="The maximum allowed difference between network stats in percent")
+    private int mDifferenceThreshold = 1;
+
+    @Option(name = "compact-ru-key",
+            description = "Name of the reporting unit for pass/fail results")
+    private String mCompactRuKey;
+
     private static final String TEST_RUNNER = "com.android.bandwidthtest.BandwidthTestRunner";
     private static final String TEST_SERVER_QUERY = "query";
     private static final String DEVICE_ID_LABEL = "device_id";
@@ -93,6 +101,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
     private static final String RX_LABEL = "rx";
     private static final String TX_LABEL = "tx";
     private static final String SIZE_LABEL = "size";
+
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -122,6 +131,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
                 bandwidthTestMetrics.putAll(testMetrics);
             }
         }
+
         // Fetch the data from the test server.
         String deviceId = bandwidthTestMetrics.get(DEVICE_ID_LABEL);
         String timestamp = bandwidthTestMetrics.get(TIMESTAMP_LABEL);
@@ -139,6 +149,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         BandwidthUtils bw = new BandwidthUtils(mTestDevice);
         Map<String, String> stats = bw.calculateStats();
         bandwidthTestMetrics.putAll(stats);
+        reportPassFail(listener, bw.getAccountingDifferences(), mCompactRuKey);
 
         // Calculate event log network stats - post-framework logic network stats
         Map<String, String> eventLogStats = fetchEventLogStats();
@@ -348,6 +359,50 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         CLog.d("About to report metrics: %s", metrics);
         listener.testRunStarted(runName, 0);
         listener.testRunEnded(0, metrics);
+    }
+
+    /**
+     * Report only the pass/fail results.
+     * @param listener the {@link ITestInvocationListener} of test results.
+     * @param metrics the metric that contains differences between accounting methods.
+     * @param compactRuKey the name of the reporting unit to post results.
+     */
+    private void reportPassFail(ITestInvocationListener listener,
+            Map<String, BandwidthStats> metrics, String compactRuKey) {
+        if (compactRuKey == null) return;
+
+        int passCount = 0;
+        int failCount = 0;
+
+        for (BandwidthStats stats : metrics.values()) {
+            if (Math.abs(stats.getRxBytes()) < mDifferenceThreshold) {
+                passCount += 1;
+            } else {
+                failCount += 1;
+            }
+            if (Math.abs(stats.getRxPackets()) < mDifferenceThreshold) {
+                passCount += 1;
+            } else {
+                failCount += 1;
+            }
+            if (Math.abs(stats.getTxBytes()) < mDifferenceThreshold) {
+                passCount += 1;
+            } else {
+                failCount += 1;
+            }
+            if (Math.abs(stats.getTxPackets()) < mDifferenceThreshold) {
+                passCount += 1;
+            } else {
+                failCount += 1;
+            }
+        }
+
+        Map<String, String> postMetrics = new HashMap<String, String>();
+        postMetrics.put("Pass", String.valueOf(passCount));
+        postMetrics.put("Fail", String.valueOf(failCount));
+
+        listener.testRunStarted(compactRuKey, 0);
+        listener.testRunEnded(0, postMetrics);
     }
 
     /**
