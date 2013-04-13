@@ -52,6 +52,7 @@ LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
 LOCAL_CLASSPATH := $(HOST_OUT)/framework/\*
 LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sdk
 LOCAL_DROIDDOC_OPTIONS:= \
+        -package \
         -toroot / \
         -hdf android.whichdoc online \
         -hdf sac true \
