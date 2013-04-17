@@ -93,6 +93,7 @@ public class GTestResultParser extends MultiLineReceiver {
     private TestResult mCurrentTestResult = null;
     private int mNumTestsRun = 0;
     private int mNumTestsExpected = 0;
+    private int mTotalNumberOfTestFailed = 0;
     private long mTotalRunTime = 0;
     private boolean mTestInProgress = false;
     private boolean mTestRunInProgress = false;
@@ -370,6 +371,9 @@ public class GTestResultParser extends MultiLineReceiver {
         if (mCoverageTarget != null) {
             metricsMap.put(XmlDefsTest.COVERAGE_TARGET_KEY, mCoverageTarget);
         }
+        //Parse the test result to report metrics.
+        metricsMap.put("Pass", Integer.toString(mNumTestsRun - mTotalNumberOfTestFailed));
+        metricsMap.put("Fail", Integer.toString(mTotalNumberOfTestFailed));
         return metricsMap;
     }
 
@@ -538,12 +542,16 @@ public class GTestResultParser extends MultiLineReceiver {
                 listener.testFailed(ITestRunListener.TestFailure.ERROR, testId,
                                 mCurrentTestResult.getTrace());
             }
+            // Report error as failure.
+            ++mTotalNumberOfTestFailed;
         }
         else if (!testPassed) {  // test failed
             for (ITestRunListener listener : mTestListeners) {
                 listener.testFailed(ITestRunListener.TestFailure.FAILURE, testId,
                                 mCurrentTestResult.getTrace());
             }
+
+            ++mTotalNumberOfTestFailed;
         }
         // For all cases (pass or fail), we ultimately need to report test has ended
         Map <String, String> emptyMap = Collections.emptyMap();
