@@ -50,7 +50,7 @@ LOCAL_IS_HOST_MODULE:=true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
 LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
 LOCAL_CLASSPATH := $(HOST_OUT)/framework/\*
-LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sdk
+LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sac
 LOCAL_DROIDDOC_OPTIONS:= \
         -package \
         -toroot / \
