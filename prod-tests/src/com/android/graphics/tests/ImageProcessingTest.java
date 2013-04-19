@@ -56,6 +56,9 @@ public class ImageProcessingTest implements IDeviceTest, IRemoteTest {
     private static final String BENCHMARK_KEY = "Benchmark";
     private static final String TEST_NAME_KEY = "Testname";
 
+    //Max test timeout - 30 mins
+    private static final int MAX_TEST_TIMEOUT = 30 * 60 * 1000;
+
     /**
      * Run the ImageProcessing benchmark test, parse test results.
      */
@@ -70,6 +73,7 @@ public class ImageProcessingTest implements IDeviceTest, IRemoteTest {
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.setClassName(TEST_CLASS);
+        runner.setMaxtimeToOutputResponse(MAX_TEST_TIMEOUT);
         // Add bugreport listener for failed test
         BugreportCollector bugListener = new
             BugreportCollector(standardListener, mTestDevice);
