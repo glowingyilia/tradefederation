@@ -226,7 +226,7 @@ public class FileLogger implements ILeveledLogOutput {
     /**
      * Dump the contents of the input stream to this log
      *
-     * @param createInputStream
+     * @param inputStream
      * @throws IOException
      */
     void dumpToLog(InputStream inputStream) throws IOException {

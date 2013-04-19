@@ -251,7 +251,7 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
      * <p/>
      * <i>[require] key=value1[|value2]</i>
      *
-     * @returns a {@link Map} of parsed key value pairs, or <code>null</code> if data could not be
+     * @return a {@link Map} of parsed key value pairs, or <code>null</code> if data could not be
      * parsed
      */
     static AndroidInfo getBuildRequirements(File deviceImgZipFile,

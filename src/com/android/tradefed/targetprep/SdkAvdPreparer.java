@@ -302,7 +302,7 @@ public class SdkAvdPreparer implements ITargetPreparer {
     /**
      * Sets the number of launch attempts to perform.
      *
-     * @param mLaunchAttempts
+     * @param launchAttempts
      */
     void setLaunchAttempts(int launchAttempts) {
         mLaunchAttempts = launchAttempts;

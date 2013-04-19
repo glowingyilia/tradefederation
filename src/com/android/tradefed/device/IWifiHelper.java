@@ -49,7 +49,6 @@ interface IWifiHelper {
      * Waits until one of the expected wifi states occurs.
      *
      * @param expectedStates one or more wifi states to expect
-     * @param timeout max time in ms to wait
      * @return <code>true</code> if the one of the expected states occurred. <code>false</code> if
      *         none of the states occurred before timeout is reached
      * @throws DeviceNotAvailableException

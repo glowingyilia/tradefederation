@@ -58,7 +58,7 @@ public class Email implements IEmail {
      * <p/>
      * Exposed for mocking
      *
-     * @param cmd The {@link String[]} to pass to the {@link ProcessBuilder} constructor
+     * @param cmd The {@code String[]} to pass to the {@link ProcessBuilder} constructor
      * @return The {@link Process} returned from from {@link ProcessBuilder#start()}
      * @throws IOException if sending email failed in a synchronously-detectable way
      */

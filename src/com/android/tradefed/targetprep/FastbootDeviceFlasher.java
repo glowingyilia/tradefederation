@@ -453,7 +453,7 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      * @param deviceBuild the {@link IDeviceBuildInfo} that contains the system image to flash
      * @return <code>true</code> if we should flash the system, <code>false</code> otherwise.
      */
-    private boolean shouldFlashSystem(String systemBuildId, String systemBuildFlavor,
+    boolean shouldFlashSystem(String systemBuildId, String systemBuildFlavor,
             IDeviceBuildInfo deviceBuild) {
         if (mForceSystemFlash) {
             // Flag overrides all logic.

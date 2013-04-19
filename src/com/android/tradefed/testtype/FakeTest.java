@@ -162,14 +162,14 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
      * Turn a given test specification into a series of test Run, Failure, and Error outputs
      *
      * @param listener The test listener to use to report results
-     * @param klass The test class name to use
+     * @param runName The test run name to use
      * @param spec A string consisting solely of the characters "P"(ass), "F"(ail), or "E"(rror).
      *        Each character will map to a testcase in the output.  Method names will be of the
      *        format "testMethod%d".
      */
-    void executeTestRun(ITestRunListener l, String runName, String spec)
+    void executeTestRun(ITestRunListener listener, String runName, String spec)
             throws IllegalArgumentException {
-        l.testRunStarted(runName, spec.length());
+        listener.testRunStarted(runName, spec.length());
         int i = 0;
         for (char c : spec.toCharArray()) {
             if (c != 'P' && c != 'F' && c != 'E') {
@@ -181,23 +181,23 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
             final String testName = String.format("testMethod%d", i);
             final TestIdentifier test = new TestIdentifier(runName, testName);
 
-            l.testStarted(test);
+            listener.testStarted(test);
             switch (c) {
                 case 'P':
                     // no-op
                     break;
                 case 'F':
-                    l.testFailed(TestFailure.FAILURE, test,
+                    listener.testFailed(TestFailure.FAILURE, test,
                             String.format("Test %s had a predictable boo-boo.", testName));
                     break;
                 case 'E':
-                    l.testFailed(TestFailure.ERROR, test,
+                    listener.testFailed(TestFailure.ERROR, test,
                             String.format("Test %s had an unexpected boo-boo. Uh-oh...", testName));
                     break;
             }
-            l.testEnded(test, EMPTY_MAP);
+            listener.testEnded(test, EMPTY_MAP);
         }
-        l.testRunEnded(0, EMPTY_MAP);
+        listener.testRunEnded(0, EMPTY_MAP);
     }
 
     /**

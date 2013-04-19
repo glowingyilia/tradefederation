@@ -253,7 +253,7 @@ public class CodeCoverageReporter extends StubTestInvocationListener {
     /**
      * Tries to find emma.jar in same location as ddmlib.jar.
      *
-     * @returns full path to emma jar file
+     * @return full path to emma jar file
      * @throws AssertionFailedError if could not find emma jar
      */
     String findEmmaJarPath() {

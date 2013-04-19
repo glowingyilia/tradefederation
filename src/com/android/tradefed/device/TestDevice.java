@@ -662,7 +662,7 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * {@inheridDoc}
+     * {@inheritDoc}
      */
     @Override
     public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
@@ -678,7 +678,7 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * {@inheridDoc}
+     * {@inheritDoc}
      */
     @Override
     public File pullFileFromExternal(String remoteFilePath) throws DeviceNotAvailableException {
@@ -1062,7 +1062,6 @@ class TestDevice implements IManagedTestDevice {
      * Queries the file listing service for a given directory
      *
      * @param remoteFileEntry
-     * @param service
      * @throws DeviceNotAvailableException
      */
      FileEntry[] getFileChildren(final FileEntry remoteFileEntry)
@@ -2032,7 +2031,7 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * @{inheritDoc}
+     * {@inheritDoc}
      */
     @Override
     public boolean isAdbRoot() throws DeviceNotAvailableException {
