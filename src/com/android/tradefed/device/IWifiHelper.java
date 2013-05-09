@@ -107,7 +107,7 @@ interface IWifiHelper {
      *
      * @throws DeviceNotAvailableException
      */
-    void removeAllNetworks() throws DeviceNotAvailableException;
+    boolean removeAllNetworks() throws DeviceNotAvailableException;
 
     /**
      * Check if wifi is currently enabled.

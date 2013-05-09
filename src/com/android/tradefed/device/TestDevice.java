@@ -1682,7 +1682,10 @@ class TestDevice implements IManagedTestDevice {
             throws DeviceNotAvailableException {
         try {
             if (!checkWifiConnection(wifiSsid))  {
-                disconnectFromWifi();
+                if (!disconnectFromWifi()) {
+                    CLog.w("Failed to disconnect from wifi on %s; wifi connection may fail",
+                            getSerialNumber());
+                }
                 return connectToWifiNetwork(wifiSsid, wifiPsk);
             }
             return true;
@@ -1704,11 +1707,28 @@ class TestDevice implements IManagedTestDevice {
     boolean checkWifiConnection(String wifiSSID) throws TargetSetupError,
             DeviceNotAvailableException {
         CLog.i("Checking connection with wifi network %s on %s", wifiSSID, getSerialNumber());
-        IWifiHelper wifi = createWifiHelper();
+        final IWifiHelper wifi = createWifiHelper();
         // getSSID returns SSID as "SSID"
-        String quotedSSID = String.format("\"%s\"", wifiSSID);
-        return wifi.isWifiEnabled() && quotedSSID.equals(wifi.getSSID()) && wifi.hasValidIp() &&
-                checkConnectivity();
+        final String quotedSSID = String.format("\"%s\"", wifiSSID);
+
+        boolean test = wifi.isWifiEnabled();
+        CLog.v("%s: wifi enabled? %b", getSerialNumber(), test);
+
+        if (test) {
+            final String actualSSID = wifi.getSSID();
+            test = quotedSSID.equals(actualSSID);
+            CLog.v("%s: SSID match (%s, %s, %b)", getSerialNumber(),
+                    quotedSSID, actualSSID, test);
+        }
+        if (test) {
+            test = wifi.hasValidIp();
+            CLog.v("%s: validIP? %b", getSerialNumber(), test);
+        }
+        if (test) {
+            test = checkConnectivity();
+            CLog.v("%s: checkConnectivity returned %b", getSerialNumber(), test);
+        }
+        return test;
     }
 
     /**
@@ -1718,10 +1738,17 @@ class TestDevice implements IManagedTestDevice {
     public boolean disconnectFromWifi() throws DeviceNotAvailableException {
         CLog.i("Disconnecting from wifi on %s", getSerialNumber());
         try {
+            boolean success = true;
             IWifiHelper wifi = createWifiHelper();
-            wifi.removeAllNetworks();
-            wifi.disableWifi();
-            return true;
+            if (!wifi.removeAllNetworks()) {
+                success = false;
+                CLog.w("Failed to remove all wifi networks from %s", getSerialNumber());
+            }
+            if (!wifi.disableWifi()) {
+                success = false;
+                CLog.w("Failed to disable wifi on %s", getSerialNumber());
+            }
+            return success;
         } catch (TargetSetupError e) {
             CLog.e(e);
             return false;

@@ -165,8 +165,8 @@ public class WifiHelper implements IWifiHelper {
      * @param networkId the network id identifying its profile in wpa_supplicant configuration
      * @throws DeviceNotAvailableException
      */
-    void removeNetwork(int networkId) throws DeviceNotAvailableException {
-        runWifiUtil("removeNetwork", "id", Integer.toString(networkId));
+    boolean removeNetwork(int networkId) throws DeviceNotAvailableException {
+        return asBool(runWifiUtil("removeNetwork", "id", Integer.toString(networkId)));
     }
 
     /**
@@ -250,8 +250,8 @@ public class WifiHelper implements IWifiHelper {
      * {@inheritDoc}
      */
     @Override
-    public void removeAllNetworks() throws DeviceNotAvailableException {
-        runWifiUtil("removeAllNetworks");
+    public boolean removeAllNetworks() throws DeviceNotAvailableException {
+        return asBool(runWifiUtil("removeAllNetworks"));
     }
 
     /**
