@@ -166,7 +166,13 @@ public class WifiHelper implements IWifiHelper {
      * @throws DeviceNotAvailableException
      */
     boolean removeNetwork(int networkId) throws DeviceNotAvailableException {
-        return asBool(runWifiUtil("removeNetwork", "id", Integer.toString(networkId)));
+        if (!asBool(runWifiUtil("removeNetwork", "id", Integer.toString(networkId)))) {
+            return false;
+        }
+        if (!asBool(runWifiUtil("saveConfiguration"))) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -251,7 +257,13 @@ public class WifiHelper implements IWifiHelper {
      */
     @Override
     public boolean removeAllNetworks() throws DeviceNotAvailableException {
-        return asBool(runWifiUtil("removeAllNetworks"));
+        if (!asBool(runWifiUtil("removeAllNetworks"))) {
+            return false;
+        }
+        if (!asBool(runWifiUtil("saveConfiguration"))) {
+            return false;
+        }
+        return true;
     }
 
     /**
