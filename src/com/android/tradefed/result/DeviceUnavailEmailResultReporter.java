@@ -15,8 +15,16 @@
  */
 package com.android.tradefed.result;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 import com.android.tradefed.config.OptionClass;
+
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.log.LogUtil.CLog;
+
+
 
 /**
  * An {@link EmailResultReporter} that will send email when invocation fails due to a device not
@@ -28,5 +36,28 @@ public class DeviceUnavailEmailResultReporter extends EmailResultReporter {
     @Override
     protected boolean shouldSendMessage() {
         return getInvocationException() instanceof DeviceNotAvailableException;
+    }
+
+    @Override
+    protected String generateEmailSubject() {
+        String buildAlias = getBuildInfo().getBuildAttributes().get("build_alias");
+        if (buildAlias == null){
+            //If build alias is null, use the build id instead.
+            buildAlias = getBuildInfo().getBuildId();
+        }
+
+        String hostName = null;
+        try {
+            hostName = InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            hostName = "Unknown";
+            CLog.e(e);
+        }
+
+        // Sample email subject: Device unavailable: mantaray-user JDQ39
+        // 015d172c980c2208 atl-034.mtv.corp.google.com
+        return String.format("Device unavailable: %s %s %s %s",
+                getBuildInfo().getBuildFlavor(), buildAlias,
+                getBuildInfo().getDeviceSerial(), hostName);
     }
 }
