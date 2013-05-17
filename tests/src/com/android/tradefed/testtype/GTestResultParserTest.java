@@ -88,7 +88,9 @@ public class GTestResultParserTest extends TestCase {
             mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                     (Map<String, String>)EasyMock.anyObject());
         }
-        mockRunListener.testRunEnded(3, EMPTY_MAP);  // time
+        // TODO: validate param values
+        mockRunListener.testRunEnded(EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
@@ -108,7 +110,9 @@ public class GTestResultParserTest extends TestCase {
             mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                     (Map<String, String>)EasyMock.anyObject());
         }
-        mockRunListener.testRunEnded(0, EMPTY_MAP);
+        // TODO: validate param values
+        mockRunListener.testRunEnded(EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
@@ -121,7 +125,9 @@ public class GTestResultParserTest extends TestCase {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_3);
         ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        mockRunListener.testRunEnded(0, EMPTY_MAP);
+        // TODO: validate param values
+        mockRunListener.testRunEnded(EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
@@ -141,7 +147,9 @@ public class GTestResultParserTest extends TestCase {
             mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                     (Map<String, String>)EasyMock.anyObject());
         }
-        mockRunListener.testRunEnded(325, EMPTY_MAP);  //time
+        // TODO: validate param values
+        mockRunListener.testRunEnded(EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
@@ -193,7 +201,9 @@ public class GTestResultParserTest extends TestCase {
                     (Map<String, String>)EasyMock.anyObject());
         }
 
-        mockRunListener.testRunEnded(8, EMPTY_MAP);  // time
+        // TODO: validate param values
+        mockRunListener.testRunEnded(EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
@@ -237,11 +247,12 @@ public class GTestResultParserTest extends TestCase {
                     (Map<String, String>)EasyMock.anyObject());
         }
 
-        mockRunListener.testRunEnded(10, EMPTY_MAP);  // time
+        // TODO: validate param values
+        mockRunListener.testRunEnded(EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         EasyMock.verify(mockRunListener);
     }
-
 }
