@@ -1664,6 +1664,7 @@ class TestDevice implements IManagedTestDevice {
      */
     boolean checkConnectivity() throws DeviceNotAvailableException {
         // wait for ping success
+        CLog.i("checking ping to www.google.com");
         for (int i = 0; i < 10; i++) {
             String pingOutput = executeShellCommand("ping -c 1 -w 5 www.google.com");
             if (pingOutput.contains("1 packets transmitted, 1 received")) {
@@ -1671,6 +1672,7 @@ class TestDevice implements IManagedTestDevice {
             }
             getRunUtil().sleep(1 * 1000);
         }
+        CLog.i("could not ping www.google.com");
         return false;
     }
 
@@ -1680,19 +1682,14 @@ class TestDevice implements IManagedTestDevice {
     @Override
     public boolean connectToWifiNetworkIfNeeded(String wifiSsid, String wifiPsk)
             throws DeviceNotAvailableException {
-        try {
-            if (!checkWifiConnection(wifiSsid))  {
-                if (!disconnectFromWifi()) {
-                    CLog.w("Failed to disconnect from wifi on %s; wifi connection may fail",
-                            getSerialNumber());
-                }
-                return connectToWifiNetwork(wifiSsid, wifiPsk);
+        if (!checkConnectivity())  {
+            if (!disconnectFromWifi()) {
+                CLog.w("Failed to disconnect from wifi on %s; wifi connection may fail",
+                        getSerialNumber());
             }
-            return true;
-        } catch (TargetSetupError e) {
-            CLog.e(e);
-            return false;
+            return connectToWifiNetwork(wifiSsid, wifiPsk);
         }
+        return true;
     }
 
     /**
