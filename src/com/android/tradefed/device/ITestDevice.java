@@ -644,8 +644,8 @@ public interface ITestDevice {
             throws DeviceNotAvailableException;
 
     /**
-     * A variant of {@link #connectToWifiNetwork(String, String)} that only connects if not
-     * currently successfully connected to the given network.
+     * A variant of {@link #connectToWifiNetwork(String, String)} that only connects if device
+     * currently does not have network connectivity.
      *
      * @param wifiSsid
      * @param wifiPsk
