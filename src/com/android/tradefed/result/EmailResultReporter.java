@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -44,11 +45,11 @@ public class EmailResultReporter extends CollectingTestListener implements
         ITestSummaryListener {
     private static final String DEFAULT_SUBJECT_TAG = "Tradefed";
 
-    @Option(name="sender", description="The envelope-sender address to use for the messages.",
+    @Option(name = "sender", description = "The envelope-sender address to use for the messages.",
             importance = Importance.IF_UNSET)
     private String mSender = null;
 
-    @Option(name="destination", description="One or more destination addresses.",
+    @Option(name = "destination", description = "One or more destination addresses.",
             importance = Importance.IF_UNSET)
     private Collection<String> mDestinations = new HashSet<String>();
 
@@ -118,23 +119,52 @@ public class EmailResultReporter extends CollectingTestListener implements
     /**
      * A method to generate the subject for email reports. Will not be called if
      * {@link #shouldSendMessage()} returns {@code false}.
+     * <p />
+     * Sample email subjects:
+     * <ul>
+     *   <li>"Tradefed result for powerChromeFullSitesLocal on mantaray-user git_jb-mr1.1-release
+     *       JDQ39: FAILED"</li>
+     *   <li>"Tradefed result for Monkey on build 25: FAILED"</li>
+     * </ul>
      *
      * @return A {@link String} containing the subject to use for an email
      *         report
      */
     protected String generateEmailSubject() {
-        String buildAlias = getBuildInfo().getBuildAttributes().get("build_alias");
-        if (buildAlias == null){
-            //If build alias is null, use the build id instead.
-            buildAlias = getBuildInfo().getBuildId();
+        final IBuildInfo build = getBuildInfo();  // for convenience
+        final StringBuilder subj = new StringBuilder(mSubjectTag);
+
+        subj.append(" result for ");
+
+        if (!appendUnlessNull(subj, build.getTestTag())) {
+            subj.append("(unknown suite)");
         }
 
-        //Sample email subject: Tradefed result for powerChromeFullSitesLocal
-        //on mantaray-user git_jb-mr1.1-release JDQ39: FAILED
-        return String.format("%s result for %s on %s %s %s: %s", mSubjectTag,
-                getBuildInfo().getTestTag(), getBuildInfo().getBuildFlavor(),
-                getBuildInfo().getBuildBranch(), buildAlias,
-                getInvocationStatus());
+        subj.append(" on ");
+        appendUnlessNull(subj, build.getBuildFlavor());
+        appendUnlessNull(subj, build.getBuildBranch());
+        if (!appendUnlessNull(subj, build.getBuildAttributes().get("build_alias"))) {
+            subj.append("build ");
+            subj.append(build.getBuildId());
+        }
+
+        subj.append(": ");
+        subj.append(getInvocationStatus());
+        return subj.toString();
+    }
+
+    /**
+     * Appends {@code str + " "} to {@code builder} IFF {@code str} is not null.
+     * @return {@code true} if str is not null, {@code false} if str is null.
+     */
+    private boolean appendUnlessNull(StringBuilder builder, String str) {
+        if (str == null) {
+            return false;
+        } else {
+            builder.append(str);
+            builder.append(" ");
+            return true;
+        }
     }
 
     /**

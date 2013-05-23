@@ -44,11 +44,31 @@ public class EmailResultReporterTest extends TestCase {
      * @throws IOException
      */
     public void testInvocationEnded() throws IllegalArgumentException, IOException {
-        mMockMailer.send((Message) EasyMock.anyObject());
+        mMockMailer.send(EasyMock.<Message>anyObject());
         EasyMock.replay(mMockMailer);
         mEmailReporter.invocationStarted(new BuildInfo("888", "mytest", "mybuild"));
         mEmailReporter.addDestination("foo");
         mEmailReporter.invocationEnded(0);
         EasyMock.verify(mMockMailer);
+
+        assertEquals("Tradefed result for mytest  on build 888: SUCCESS",
+                mEmailReporter.generateEmailSubject());
+    }
+
+    /**
+     * Make sure that we don't include the string "null" in a generated email subject
+     */
+    public void testNullFlavorAndBranch() throws Exception {
+        mMockMailer.send(EasyMock.<Message>anyObject());
+        EasyMock.replay(mMockMailer);
+
+        mEmailReporter.invocationStarted(new BuildInfo("888", null, null));
+        mEmailReporter.addDestination("foo");
+        mEmailReporter.invocationEnded(0);
+
+        EasyMock.verify(mMockMailer);
+
+        assertEquals("Tradefed result for (unknown suite) on build 888: SUCCESS",
+                mEmailReporter.generateEmailSubject());
     }
 }
