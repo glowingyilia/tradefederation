@@ -26,6 +26,14 @@ public enum LogDataType {
     ZIP("zip", true, false),
     GZIP("gz", true, false),
     COVERAGE("ec", false, false),  /* Emma coverage file */
+    /* Specific text file types */
+    BUGREPORT("txt", false, true),
+    LOGCAT("txt", false, true),
+    KERNEL_LOG("txt", false, true),
+    MONKEY_LOG("txt", false, true),
+    PROCRANK("txt", false, true),
+    MEM_INFO("txt", false, true),
+    /* Unknown file type */
     UNKNOWN("dat", false, false);
 
     private final String mFileExt;
