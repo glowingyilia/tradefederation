@@ -16,9 +16,12 @@
 
 package com.android.monkey;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.ArrayUtil;
 
 import junit.framework.TestCase;
+
+import org.easymock.EasyMock;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -53,6 +56,35 @@ public class MonkeyBaseTest extends TestCase {
         assertTrue(output.contains("a"));
         assertFalse(output.contains("b"));
         assertTrue(output.contains("c"));
+    }
+
+    /**
+     * Test success case for {@link MonkeyBase#getUptime()}.
+     */
+    public void testUptime() throws Exception {
+        MonkeyBase monkey = new MonkeyBase();
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        monkey.setDevice(mockDevice);
+        EasyMock.expect(mockDevice.executeShellCommand("cat /proc/uptime")).andReturn(
+                "5278.73 1866.80");
+        EasyMock.replay(mockDevice);
+        assertEquals("5278.73", monkey.getUptime());
+    }
+
+    /**
+     * Test case for {@link MonkeyBase#getUptime()} where device is initially unresponsive.
+     */
+    public void testUptime_fail() throws Exception {
+        MonkeyBase monkey = new MonkeyBase();
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        monkey.setDevice(mockDevice);
+        EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mockDevice.executeShellCommand("cat /proc/uptime")).andReturn(
+                "");
+        EasyMock.expect(mockDevice.executeShellCommand("cat /proc/uptime")).andReturn(
+                "5278.73 1866.80");
+        EasyMock.replay(mockDevice);
+        assertEquals("5278.73", monkey.getUptime());
     }
 }
 
