@@ -417,15 +417,25 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
      */
     protected String getUptime() {
         try {
-            // uptime will typically have a format like "5278.73 1866.80".  Use the first one
-            // (which is wall-time)
-            return mTestDevice.executeShellCommand("cat /proc/uptime").split(" ")[0];
+            // make two attempts to get valid uptime
+            for (int i = 0; i < 2; i++) {
+                // uptime will typically have a format like "5278.73 1866.80".  Use the first one
+                // (which is wall-time)
+                String uptime = mTestDevice.executeShellCommand("cat /proc/uptime").split(" ")[0];
+                try {
+                    Float.parseFloat(uptime);
+                    // if this parsed, its a valid uptime
+                    return uptime;
+                } catch (NumberFormatException e) {
+                    CLog.w("failed to get valid uptime from %s. Received: '%s'",
+                            mTestDevice.getSerialNumber(), uptime);
+                }
+            }
         } catch (DeviceNotAvailableException e) {
-            // Log
             CLog.e("Device %s became unresponsive while getting the uptime.",
                     mTestDevice.getSerialNumber());
-            return "0.00";
         }
+        return "0.00";
     }
 
     /**
