@@ -90,12 +90,12 @@ public class MonkeyBrillopadForwarder extends ResultForwarder {
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
         try {
             // just parse the logs for now. Forwarding of results will happen on test completion
-            if (dataName.startsWith(MonkeyBase.BUGREPORT_NAME)) {
+            if (LogDataType.BUGREPORT.equals(dataType)) {
                 CLog.i("Parsing %s", dataName);
                 mBugreport = new BugreportParser().parse(new BufferedReader(new InputStreamReader(
                         dataStream.createInputStream())));
             }
-            if (dataName.startsWith(MonkeyBase.MONKEY_LOG_NAME)) {
+            if (LogDataType.MONKEY_LOG.equals(dataType)) {
                 CLog.i("Parsing %s", dataName);
                 mMonkeyLog = new MonkeyLogParser().parse(new BufferedReader(new InputStreamReader(
                         dataStream.createInputStream())));

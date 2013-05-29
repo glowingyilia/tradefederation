@@ -307,7 +307,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     protected void takeBugreport(ITestInvocationListener listener, String bugreportName) {
         InputStreamSource bugreport = mTestDevice.getBugreport();
         try {
-            listener.testLog(bugreportName, LogDataType.TEXT, bugreport);
+            listener.testLog(bugreportName, LogDataType.BUGREPORT, bugreport);
         } finally {
             bugreport.cancel();
         }
@@ -333,7 +333,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
         InputStreamSource source = new ByteArrayInputStreamSource(log.getBytes());
         try {
-            listener.testLog(monkeyLogName, LogDataType.TEXT, source);
+            listener.testLog(monkeyLogName, LogDataType.MONKEY_LOG, source);
             return new MonkeyLogParser().parse(new BufferedReader(new InputStreamReader(
                     source.createInputStream())));
         } catch (IOException e) {
