@@ -121,14 +121,16 @@ public class MonkeyBrillopadForwarder extends ResultForwarder {
             Assert.assertNotNull("monkey log is missing stop time info",
                     mMonkeyLog.getStopUptimeDuration());
             LogcatItem systemLog = mBugreport.getSystemLog();
-            Assert.assertNotNull("system log is missing from bugreport",
-                    systemLog);
 
             MonkeyStatus status = reportMonkeyStats(mMonkeyLog, monkeyMetrics);
             StringBuilder crashTrace = new StringBuilder();
             reportAnrs(mMonkeyLog, monkeyMetrics, crashTrace);
             reportJavaCrashes(mMonkeyLog, monkeyMetrics, crashTrace);
-            reportNativeCrashes(systemLog, monkeyMetrics, crashTrace);
+            if (systemLog != null) {
+                reportNativeCrashes(systemLog, monkeyMetrics, crashTrace);
+            } else {
+                CLog.w("Failed to get system log from bugreport");
+            }
 
             if (!status.equals(MonkeyStatus.FINISHED)) {
                 String failure = String.format("%s.\n%s", status.getDescription(),
