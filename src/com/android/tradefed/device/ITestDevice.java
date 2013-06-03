@@ -198,6 +198,16 @@ public interface ITestDevice {
     public String getBootloaderVersion() throws DeviceNotAvailableException;
 
     /**
+     * Retrieve the alias of the build that the device is currently running.
+     *
+     * <p>Build alias is usually a more readable string than build id (typically a number for
+     * Nexus builds). For example, final Android 4.2 release has build alias JDQ39, and build id
+     * 573038
+     * @return the build alias or fall back to build id if it could not be retrieved
+     */
+    public String getBuildAlias();
+
+    /**
      * Retrieve the build the device is currently running.
      *
      * @return the build id or {@link IBuildInfo#UNKNOWN_BUILD_ID} if it could not be retrieved

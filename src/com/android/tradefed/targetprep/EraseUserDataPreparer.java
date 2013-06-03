@@ -32,6 +32,10 @@ public class EraseUserDataPreparer implements ITargetPreparer {
             "list of /data subdirectories to NOT wipe when doing UserDataFlashOption.TESTS_ZIP")
         private Collection<String> mDataWipeSkipList = new ArrayList<String>();
 
+    @Option(name="retain-data", description=
+            "Retain data, don't erase anything, effectively disables this preparer")
+    private boolean mRetainData = false;
+
     private ITestsZipInstaller mTestsZipInstaller = null;
 
     /**
@@ -41,6 +45,7 @@ public class EraseUserDataPreparer implements ITargetPreparer {
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
         device.enableAdbRoot();
+        if (mRetainData) return;
         if (mTestsZipInstaller == null) {
             if (mDataWipeSkipList.isEmpty()) {
                 // Maintain backwards compatibility

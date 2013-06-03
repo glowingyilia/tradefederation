@@ -98,7 +98,7 @@ public class DeviceBuildDescriptor {
     public static void injectDeviceAttributes(ITestDevice device, IBuildInfo b)
             throws DeviceNotAvailableException {
         b.addBuildAttribute(DEVICE_BUILD_ID, device.getBuildId());
-        b.addBuildAttribute(DEVICE_BUILD_ALIAS, device.getProperty("ro.build.id"));
+        b.addBuildAttribute(DEVICE_BUILD_ALIAS, device.getBuildAlias());
         String buildFlavor = String.format("%s-%s", device.getProperty("ro.product.name"),
                 device.getProperty("ro.build.type"));
         b.addBuildAttribute(DEVICE_BUILD_FLAVOR, buildFlavor);

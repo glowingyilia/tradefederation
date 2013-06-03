@@ -111,6 +111,7 @@ class TestDevice implements IManagedTestDevice {
     private static final String BUILD_ID_PROP = "ro.build.version.incremental";
     private static final String PRODUCT_NAME_PROP = "ro.product.name";
     private static final String BUILD_TYPE_PROP = "ro.build.type";
+    private static final String BUILD_ALIAS_PROP = "ro.build.id";
 
 
     /** The time in ms to wait for a command to complete. */
@@ -419,6 +420,18 @@ class TestDevice implements IManagedTestDevice {
             }
         }
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getBuildAlias() {
+        String alias = getIDevice().getProperty(BUILD_ALIAS_PROP);
+        if (alias == null || alias.isEmpty()) {
+            return getBuildId();
+        }
+        return alias;
     }
 
     /**
