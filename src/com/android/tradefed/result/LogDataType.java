@@ -33,6 +33,8 @@ public enum LogDataType {
     MONKEY_LOG("txt", false, true),
     PROCRANK("txt", false, true),
     MEM_INFO("txt", false, true),
+    TOP("txt", false, true),
+    DUMPSYS("txt", false, true),
     /* Unknown file type */
     UNKNOWN("dat", false, false);
 
