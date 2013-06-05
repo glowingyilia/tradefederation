@@ -96,9 +96,8 @@ public class TestDeviceStressTest extends DeviceTestCase {
             iterationPassed = runUITests();
             if (mStopOnFailure){
                 assertTrue(iterationPassed);
-            } else {
-                passed += iterationPassed? 1 : 0;
             }
+            passed += iterationPassed? 1 : 0;
         }
         assertEquals(mIterations, passed);
     }
