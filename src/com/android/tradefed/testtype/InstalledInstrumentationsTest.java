@@ -17,14 +17,15 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.MultiLineReceiver;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
-
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 
@@ -88,6 +89,10 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
     @Option(name = "class",
             description = "Only run tests in specified class")
     private String mTestClass = null;
+
+    @Option(name = "instrumentation-arg",
+            description = "Additional instrumentation arguments to provide.")
+    private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
     private List<InstrumentationTest> mTests = null;
 
@@ -260,11 +265,11 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                         t.setPackageName(m.group(1));
                         t.setRunnerName(runner);
                         t.setCoverageTarget(m.group(3));
-                        t.setRerunMode(mIsRerunMode);
-                        t.setResumeMode(mIsResumeMode);
-                        t.setTestSize(getTestSize());
-                        t.setTestTimeout(getTestTimeout());
-                        t.setBugreportFrequency(mBugreportFrequency);
+                        try {
+                            OptionCopier.copyOptions(this, t);
+                        } catch (ConfigurationException e) {
+                            CLog.e("failed to copy instrumentation options", e);
+                        }
                         mTests.add(t);
                     }
                 }
