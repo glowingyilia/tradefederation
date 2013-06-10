@@ -16,6 +16,9 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.config.ArgsOptionParser;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -65,11 +68,14 @@ public class InstalledInstrumentationsTestTest extends TestCase {
     /**
      * Test the run normal case. Simple verification that expected data is passed along, etc.
      */
-    public void testRun() throws DeviceNotAvailableException {
+    public void testRun() throws Exception {
         injectListInstrResponse();
         mMockListener.testRunStarted(TEST_PKG, 0);
         Capture<Map<String, String>> captureMetrics = new Capture<Map<String, String>>();
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captureMetrics));
+        ArgsOptionParser p = new ArgsOptionParser(mInstalledInstrTest);
+        p.parse("--size", "small");
+        mInstalledInstrTest.setSendCoverage(true);
         EasyMock.replay(mMockTestDevice, mMockListener);
         mInstalledInstrTest.run(mMockListener);
         assertEquals(mMockListener, mMockInstrumentationTest.getListener());
@@ -77,6 +83,7 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         assertEquals(TEST_RUNNER, mMockInstrumentationTest.getRunnerName());
         assertEquals(TEST_COVERAGE_TARGET, captureMetrics.getValue().get(
                 InstalledInstrumentationsTest.COVERAGE_TARGET_KEY));
+        assertEquals("small", mMockInstrumentationTest.getTestSize());
     }
 
     private void injectListInstrResponse() throws DeviceNotAvailableException {

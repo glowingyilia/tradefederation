@@ -262,14 +262,14 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                     String runner = m.group(2);
                     if (mRunnerFilter == null || mRunnerFilter.equals(runner)) {
                         InstrumentationTest t = createInstrumentationTest();
-                        t.setPackageName(m.group(1));
-                        t.setRunnerName(runner);
-                        t.setCoverageTarget(m.group(3));
                         try {
-                            OptionCopier.copyOptions(this, t);
+                            OptionCopier.copyOptions(InstalledInstrumentationsTest.this, t);
                         } catch (ConfigurationException e) {
                             CLog.e("failed to copy instrumentation options", e);
                         }
+                        t.setPackageName(m.group(1));
+                        t.setRunnerName(runner);
+                        t.setCoverageTarget(m.group(3));
                         mTests.add(t);
                     }
                 }
