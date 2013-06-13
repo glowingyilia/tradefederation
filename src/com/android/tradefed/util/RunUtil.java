@@ -18,9 +18,12 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.log.LogUtil.CLog;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -327,13 +330,25 @@ public class RunUtil implements IRunUtil {
                 processStdin.flush();
                 processStdin.close();
             }
+            // Redirect IO, so that the buffer for the spawn process does not fill up and cause
+            // deadlock.
+            ByteArrayOutputStream baStdOut = new ByteArrayOutputStream();
+            ByteArrayOutputStream baStdErr = new ByteArrayOutputStream();
+            BufferedOutputStream stdOut = new BufferedOutputStream(baStdOut);
+            BufferedOutputStream stdErr = new BufferedOutputStream(baStdErr);
+            inheritIO(mProcess.getInputStream(), stdOut);
+            inheritIO(mProcess.getErrorStream(), stdErr);
+            // Wait for process to complete.
             int rc = mProcess.waitFor();
             synchronized (this) {
                 if (mProcess != null) {
-                    mCommandResult.setStdout(StreamUtil.getStringFromStream(
-                            mProcess.getInputStream()));
-                    mCommandResult.setStderr(StreamUtil.getStringFromStream(
-                            mProcess.getErrorStream()));
+                    stdOut.flush();
+                    stdErr.flush();
+                    // Write out the streams to the result.
+                    mCommandResult.setStdout(baStdOut.toString("UTF-8"));
+                    mCommandResult.setStderr(baStdErr.toString("UTF-8"));
+                    stdOut.close();
+                    stdErr.close();
                 }
             }
 
@@ -355,4 +370,32 @@ public class RunUtil implements IRunUtil {
             }
         }
     };
+
+    /**
+     * Helper method to redirect input stream.
+     * @param src {@link InputStream} to inherit/redirect from
+     * @param dest {@link BufferedOutputStream} to inherit/redirect to
+     */
+    private static void inheritIO(final InputStream src, final BufferedOutputStream dest) {
+        new Thread(new Runnable() {
+            public void run() {
+                // Buffer the input stream.
+                BufferedInputStream s = new BufferedInputStream(src);
+                 int i;
+                 try {
+                     while((i = s.read()) != -1) {
+                         dest.write(i);
+                     }
+                 } catch (IOException e) {
+                     CLog.e("Failed to read input stream.");
+                 } finally {
+                     try {
+                         s.close();
+                     } catch (IOException ex) {
+                         CLog.e("Failed to close input stream.");
+                     }
+                 }
+            }
+        }).start();
+    }
 }

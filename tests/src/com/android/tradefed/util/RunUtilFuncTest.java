@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
 
 import junit.framework.TestCase;
@@ -80,5 +81,20 @@ public class RunUtilFuncTest extends TestCase {
         final long expectedPollTime = pollTime * (maxAttempts-1);
         assertTrue(String.format("Expected poll time %d, got %d", expectedPollTime, actualTime),
                 expectedPollTime <= actualTime && actualTime <= (2 * expectedPollTime));
+    }
+
+
+    /**
+     * Test timeout case for {@link RunUtil#runTimed(long, IRunnableResult)} and ensure we get the
+     * right stdout.
+     */
+    public void testRunTimedOutput() {
+        final long timeOut = 200;
+        // FIXME: this test case is not ideal, as it will only work on platforms that support printf
+        // command.
+        CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "printf", "hello");
+        assertTrue(result.getStatus() == CommandStatus.SUCCESS);
+        CLog.d(result.getStdout());
+        assertTrue(result.getStdout().equalsIgnoreCase("hello"));
     }
 }
