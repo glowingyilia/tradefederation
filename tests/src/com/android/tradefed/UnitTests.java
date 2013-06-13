@@ -58,6 +58,7 @@ import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
 import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.DeviceSetupTest;
@@ -164,6 +165,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(XmlResultReporterTest.class);
 
         // targetprep
+        addTestSuite(BuildInfoAttributePreparerTest.class);
         addTestSuite(DefaultTestsZipInstallerTest.class);
         addTestSuite(DeviceFlashPreparerTest.class);
         addTestSuite(DeviceSetupTest.class);
