@@ -73,11 +73,9 @@ public class DataIdleTest implements IDeviceTest, IRemoteTest {
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
         mTestHelper = new DataIdleTestHelper(mTestDevice);
-        if (mMobileDataOnly) {
-            // Make sure wifi is off. If conducting a WIFI test, make sure to include the
-            // include wifi setup in the configuration file.
-            Assert.assertTrue("Failed to disconnect from Wifi", mTestDevice.disconnectFromWifi());
-        }
+        // if mobile data only, then wifi should be disabled, or vice versa
+        Assert.assertEquals("incorrect wifi status for current test parameters",
+                mMobileDataOnly, !mTestDevice.isWifiEnabled());
         // Test the Internet connection.
         Assert.assertTrue("Failed to connect to get data.", mTestHelper.pingTest());
 
