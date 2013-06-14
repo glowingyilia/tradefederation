@@ -1692,6 +1692,21 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isWifiEnabled() throws DeviceNotAvailableException {
+        IWifiHelper wifi;
+        try {
+            wifi = createWifiHelper();
+            return wifi.isWifiEnabled();
+        } catch (TargetSetupError e) {
+            CLog.e(e);
+            return false;
+        }
+    }
+
+    /**
      * Checks that the device is currently successfully connected to given wifi SSID.
      *
      * @param wifiSSID the wifi ssid

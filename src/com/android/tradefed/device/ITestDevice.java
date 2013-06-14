@@ -669,6 +669,18 @@ public interface ITestDevice {
     public boolean disconnectFromWifi() throws DeviceNotAvailableException;
 
     /**
+     * Test if wifi is enabled.
+     * <p/>
+     * Checks if wifi is enabled on device. Useful for asserting wifi status before tests that
+     * shouldn't run with wifi, e.g. mobile data tests.
+     *
+     * @return <code>true</code> if wifi is enabled. <code>false</code> if disabled
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *             recovered.
+     */
+    public boolean isWifiEnabled() throws DeviceNotAvailableException;
+
+    /**
      * Gets the device's IP address.
      *
      * @return the device's IP address, or <code>null</code> if device has no IP address

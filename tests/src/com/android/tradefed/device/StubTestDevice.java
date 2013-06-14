@@ -423,6 +423,15 @@ public class StubTestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public boolean isWifiEnabled() throws DeviceNotAvailableException {
+        // ignore
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean clearErrorDialogs() throws DeviceNotAvailableException {
         // ignore
         return false;
