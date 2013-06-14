@@ -946,4 +946,12 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public Set<String> getUninstallablePackageNames() throws DeviceNotAvailableException;
+
+    /**
+     * Fetch information about a package installed on device.
+     *
+     * @return the {@link PackageInfo} or <code>null</code> if information could not be retrieved
+     * @throws DeviceNotAvailableException
+     */
+    public PackageInfo getAppPackageInfo(String packageName) throws DeviceNotAvailableException;
 }

@@ -737,4 +737,12 @@ public class StubTestDevice implements IManagedTestDevice {
     public InputStreamSource getLogcat(int maxBytes) {
         return null;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public PackageInfo getAppPackageInfo(String packageName) throws DeviceNotAvailableException {
+        return null;
+    }
 }
