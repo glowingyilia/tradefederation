@@ -20,7 +20,6 @@ import com.android.ddmlib.MultiLineReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -136,7 +135,7 @@ class DumpsysPackageReceiver extends MultiLineReceiver {
     /**
      * State of package parser where its looking for start of hidden packages to parse.
      */
-    class HiddenPackagesParserState implements ParserState {
+    private class HiddenPackagesParserState implements ParserState {
 
         /**
          * {@inheritDoc}
@@ -155,7 +154,7 @@ class DumpsysPackageReceiver extends MultiLineReceiver {
     /**
      * Parser for a single package's data
      */
-    class HiddenPackageParserState implements ParserState {
+    private class HiddenPackageParserState implements ParserState {
 
         private PackageInfo mPkgInfo;
 
@@ -169,7 +168,7 @@ class DumpsysPackageReceiver extends MultiLineReceiver {
                 throw new ParseException(String.format(
                         "could not find package for hidden package %s", name));
             }
-
+            mPkgInfo.setIsUpdatedSystemApp(true);
         }
 
         /**
@@ -177,7 +176,6 @@ class DumpsysPackageReceiver extends MultiLineReceiver {
          */
         @Override
         public ParserState parse(String line) throws ParseException {
-            mPkgInfo.setIsUpdatedSystemApp(true);
             Matcher matcher = PACKAGE_PATTERN.matcher(line);
             if (matcher.find()) {
                 String name = matcher.group(1);
@@ -198,10 +196,10 @@ class DumpsysPackageReceiver extends MultiLineReceiver {
     }
 
     /**
-     * @return the parsed {@link PackageInfo}.
+     * @return the parsed {@link PackageInfo}s as a map of package name to {@link PackageInfo}.
      */
-    public Collection<PackageInfo> getPackages() {
-        return mPkgInfoMap.values();
+    public Map<String, PackageInfo> getPackages() {
+        return mPkgInfoMap;
     }
 
     /**

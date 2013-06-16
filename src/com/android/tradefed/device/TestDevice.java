@@ -60,6 +60,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -2507,23 +2508,21 @@ class TestDevice implements IManagedTestDevice {
      */
     private class DumpPkgAction implements DeviceAction {
 
-        Collection<PackageInfo> mPkgInfos;
-        private String mArg;
+        Map<String, PackageInfo> mPkgInfoMap;
 
-        DumpPkgAction(String arg) {
-            mArg = arg;
+        DumpPkgAction() {
         }
 
         @Override
         public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
                 ShellCommandUnresponsiveException, InstallException, SyncException {
             DumpsysPackageReceiver receiver = new DumpsysPackageReceiver();
-            getIDevice().executeShellCommand("dumpsys package " + mArg, receiver);
-            mPkgInfos = receiver.getPackages();
-            if (mPkgInfos.size() == 0) {
+            getIDevice().executeShellCommand("dumpsys package p", receiver);
+            mPkgInfoMap = receiver.getPackages();
+            if (mPkgInfoMap.size() == 0) {
                 // Package parsing can fail if package manager is currently down. throw exception
                 // to retry
-                CLog.w("no packages found from dumpsys packag.");
+                CLog.w("no packages found from dumpsys package p.");
                 throw new IOException();
             }
             return true;
@@ -2535,11 +2534,11 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public Set<String> getUninstallablePackageNames() throws DeviceNotAvailableException {
-        DumpPkgAction action = new DumpPkgAction("p");
+        DumpPkgAction action = new DumpPkgAction();
         performDeviceAction("dumpsys package p", action, MAX_RETRY_ATTEMPTS);
 
         Set<String> pkgs = new HashSet<String>();
-        for (PackageInfo pkgInfo : action.mPkgInfos) {
+        for (PackageInfo pkgInfo : action.mPkgInfoMap.values()) {
             if (!pkgInfo.isSystemApp() || pkgInfo.isUpdatedSystemApp()) {
                 CLog.d("Found uninstallable package %s", pkgInfo.getPackageName());
                 pkgs.add(pkgInfo.getPackageName());
@@ -2553,14 +2552,9 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public PackageInfo getAppPackageInfo(String packageName) throws DeviceNotAvailableException {
-        DumpPkgAction action = new DumpPkgAction(packageName);
+        DumpPkgAction action = new DumpPkgAction();
         performDeviceAction("dumpsys package", action, MAX_RETRY_ATTEMPTS);
-        if (action.mPkgInfos.size() != 1) {
-            CLog.w("unable to get package info for %s", packageName);
-            return null;
-
-        }
-        return action.mPkgInfos.iterator().next();
+        return action.mPkgInfoMap.get(packageName);
     }
 
     private static interface PkgFilter {

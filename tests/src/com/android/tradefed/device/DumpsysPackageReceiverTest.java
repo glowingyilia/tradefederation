@@ -38,7 +38,7 @@ public class DumpsysPackageReceiverTest extends TestCase {
         DumpsysPackageReceiver p = new DumpsysPackageReceiver();
         p.processNewLines(froyoPkgTxt);
         assertEquals("failed to parse package data", 1, p.getPackages().size());
-        PackageInfo pkg = p.getPackages().iterator().next();
+        PackageInfo pkg = p.getPackages().get("com.android.soundrecorder");
         assertEquals("com.android.soundrecorder", pkg.getPackageName());
         assertTrue(pkg.isSystemApp());
         assertFalse(pkg.isUpdatedSystemApp());
@@ -58,7 +58,7 @@ public class DumpsysPackageReceiverTest extends TestCase {
         DumpsysPackageReceiver p = new DumpsysPackageReceiver();
         p.processNewLines(pkgTxt);
         assertEquals("failed to parse package data", 1, p.getPackages().size());
-        PackageInfo pkg = p.getPackages().iterator().next();
+        PackageInfo pkg = p.getPackages().get("com.android.soundrecorder");
         assertNotNull("failed to parse package data", pkg);
         assertEquals("com.android.soundrecorder", pkg.getPackageName());
         assertTrue(pkg.isSystemApp());
@@ -80,7 +80,7 @@ public class DumpsysPackageReceiverTest extends TestCase {
         DumpsysPackageReceiver p = new DumpsysPackageReceiver();
         p.processNewLines(pkgsTxt);
         assertEquals("failed to parse package data", 1, p.getPackages().size());
-        PackageInfo pkg = p.getPackages().iterator().next();
+        PackageInfo pkg = p.getPackages().get("com.android.soundrecorder");
         assertEquals("com.android.soundrecorder", pkg.getPackageName());
         assertTrue(pkg.isSystemApp());
         assertTrue(pkg.isUpdatedSystemApp());
@@ -93,5 +93,4 @@ public class DumpsysPackageReceiverTest extends TestCase {
         DumpsysPackageReceiver parser = new DumpsysPackageReceiver();
         assertEquals(0,  parser.getPackages().size());
     }
-
 }
