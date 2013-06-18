@@ -77,7 +77,7 @@ public class PackageInfo {
 
     void addAttribute(String name, String value) {
         mAttributes.put(name, value);
-        if (name.equals("pkgFlags")) {
+        if (name.equals("pkgFlags") || name.equals("flags")) {
             // do special handling of pkgFlags, which can be either hex or string form depending on
             // device OS version
             if (!parseFlagsAsInt(value)) {
