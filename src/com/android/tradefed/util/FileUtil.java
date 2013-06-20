@@ -18,7 +18,6 @@ package com.android.tradefed.util;
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.log.LogUtil.CLog;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -26,9 +25,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -837,4 +840,28 @@ public class FileUtil {
         // not found
         return 1;
     }
+
+    /**
+     * Returns all jar files found in given directory
+     */
+    public static Collection<File> collectJars(File dir) {
+        List<File> list = new ArrayList<File>();
+        File[] jarFiles = dir.listFiles(new JarFilter());
+        if (jarFiles != null) {
+            list.addAll(Arrays.asList(dir.listFiles(new JarFilter())));
+        }
+        return list;
+    }
+
+    private static class JarFilter implements FilenameFilter {
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public boolean accept(File dir, String name) {
+           return name.endsWith(".jar");
+        }
+    }
+
+
 }

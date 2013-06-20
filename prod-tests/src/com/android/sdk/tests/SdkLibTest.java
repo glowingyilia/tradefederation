@@ -30,11 +30,7 @@ import junit.framework.Assert;
 import junit.framework.Test;
 
 import java.io.File;
-import java.io.FilenameFilter;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * A class for running all the unit tests for SDK java libraries.
@@ -78,8 +74,8 @@ public class SdkLibTest implements IRemoteTest, IBuildReceiver {
          Assert.assertTrue(String.format("could not find tests/libtests folder in sdk %s",
                  mSdkBuild.getSdkDir()), sdkLibTestDir.exists());
 
-         Collection<File> libraries = collectJars(sdkLibDir);
-         Collection<File> testLibs = collectJars(sdkLibTestDir);
+         Collection<File> libraries = FileUtil.collectJars(sdkLibDir);
+         Collection<File> testLibs = FileUtil.collectJars(sdkLibTestDir);
          // also add testLibs to the dependentJars, since sdkuilib-tests depends on sdklib-tests
          libraries.addAll(testLibs);
 
@@ -88,7 +84,7 @@ public class SdkLibTest implements IRemoteTest, IBuildReceiver {
          File swtJarDir = new File(sdkLibDir, "x86_64");
          Assert.assertTrue(String.format("could not find tools/lib/x86_64 folder in sdk %s",
                  mSdkBuild.getSdkDir()), swtJarDir.exists());
-         libraries.addAll(collectJars(swtJarDir));
+         libraries.addAll(FileUtil.collectJars(swtJarDir));
 
          File platformsDir = FileUtil.getFileForPath(mSdkBuild.getSdkDir(), "platforms");
          File layoutlibJar = FileUtil.findFile(platformsDir, "layoutlib.jar");
@@ -103,25 +99,5 @@ public class SdkLibTest implements IRemoteTest, IBuildReceiver {
              Test junitSuite = loader.loadTests(testLib, libraries);
              JUnitRunUtil.runTest(listener, junitSuite);
          }
-    }
-
-    /**
-     * Returns all jar files found in given directory
-     */
-    private Collection<File> collectJars(File dir) {
-        List<File> list = new ArrayList<File>();
-        list.addAll(Arrays.asList(dir.listFiles(new JarFilter())));
-        return list;
-    }
-
-    private static class JarFilter implements FilenameFilter {
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public boolean accept(File dir, String name) {
-           return name.endsWith(".jar");
-        }
     }
 }
