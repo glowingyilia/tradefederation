@@ -17,7 +17,6 @@
 package com.android.performance.tests;
 
 import com.android.loganalysis.item.BugreportItem;
-import com.android.loganalysis.item.IItem;
 import com.android.loganalysis.item.MemInfoItem;
 import com.android.loganalysis.item.ProcrankItem;
 import com.android.loganalysis.parser.BugreportParser;
@@ -123,16 +122,19 @@ public class StartupMetricsTest implements IDeviceTest, IRemoteTest {
         } finally {
             bugSource.cancel();
         }
-        // Process meminfo information and post it to the dashboard
-        IItem item = bugreport.getMemInfo();
-        if (item != null) {
-            Map<String, String> memInfoMap = convertMap((MemInfoItem) item);
-            reportMetrics(listener, "startup-meminfo", memInfoMap);
-        }
 
-        // Process procrank information and post it to the dashboard
-        if (bugreport.getProcrank() != null) {
-            parseProcRankMap(listener, bugreport.getProcrank());
+        if (bugreport != null) {
+            // Process meminfo information and post it to the dashboard
+            MemInfoItem item = bugreport.getMemInfo();
+            if (item != null) {
+                Map<String, String> memInfoMap = convertMap(item);
+                reportMetrics(listener, "startup-meminfo", memInfoMap);
+            }
+
+            // Process procrank information and post it to the dashboard
+            if (bugreport.getProcrank() != null) {
+                parseProcRankMap(listener, bugreport.getProcrank());
+            }
         }
     }
 

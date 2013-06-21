@@ -86,6 +86,9 @@ public class FrameworkStressTest implements IDeviceTest, IRemoteTest {
             listener.testLog(BUGREPORT_LOG_NAME, LogDataType.TEXT, bugSource);
             bugreport = parser.parse(new BufferedReader(new InputStreamReader(
                     bugSource.createInputStream())));
+
+            Assert.assertNotNull(bugreport);
+            Assert.assertNotNull(bugreport.getSystemLog());
         } catch (IOException e) {
             Assert.fail(String.format("Failed to fetch and parse bugreport for device %s: %s",
                     mTestDevice.getSerialNumber(), e));
