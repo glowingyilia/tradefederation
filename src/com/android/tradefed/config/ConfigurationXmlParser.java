@@ -34,9 +34,6 @@ import javax.xml.parsers.SAXParserFactory;
  * See TODO for expected format
  */
 class ConfigurationXmlParser {
-
-    private static final String LOG_TAG = "ConfigurationDef";
-
     /**
      * SAX callback object. Handles parsing data from the xml tags.
      */

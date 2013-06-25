@@ -83,6 +83,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     private RemoteClient mRemoteClient = null;
     private RemoteManager mRemoteManager = null;
 
+    private CommandFileWatcher mCommandFileWatcher = null;
+
     /** latch used to notify other threads that this thread is running */
     private final CountDownLatch mRunLatch;
 
@@ -404,6 +406,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      * instantiated but not started.
      */
     public CommandScheduler() {
+        super("CommandScheduler");  // set the thread name
         initLogging();
 
         initDeviceManager();
@@ -416,6 +419,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         // is used instead of a java.util.Timer because it offers advanced shutdown options
         mCommandTimer = new ScheduledThreadPoolExecutor(1);
         mRunLatch = new CountDownLatch(1);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized CommandFileWatcher getCommandFileWatcher() {
+        if (mCommandFileWatcher == null) {
+            mCommandFileWatcher = new CommandFileWatcher(this);
+            mCommandFileWatcher.start();
+        }
+        return mCommandFileWatcher;
     }
 
     /**

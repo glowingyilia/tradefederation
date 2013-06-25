@@ -99,7 +99,9 @@ class CommandFileWatcher extends Thread {
     }
 
     public CommandFileWatcher(ICommandScheduler cmdScheduler) {
+        super("CommandFileWatcher");  // set the thread name
         mScheduler = cmdScheduler;
+        setDaemon(true);  // Don't keep the JVM alive for this thread
     }
 
     /**
@@ -164,8 +166,10 @@ class CommandFileWatcher extends Thread {
                     createCommandFileParser().parseFile(file, mScheduler, extraArgs);
                 }
             } catch (IOException e) {
+                // FIXME: Change this to WTF
                 CLog.e("Failed to automatically reload cmdfile", e);
             } catch (ConfigurationException e) {
+                // FIXME: Change this to WTF
                 CLog.e("Failed to automatically reload cmdfile", e);
             }
         }

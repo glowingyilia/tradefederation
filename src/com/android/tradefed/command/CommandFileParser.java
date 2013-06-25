@@ -16,6 +16,9 @@
 package com.android.tradefed.command;
 
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
@@ -23,6 +26,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,7 +49,7 @@ import java.util.regex.Pattern;
  *   ...
  * </pre>
  */
-class CommandFileParser {
+public class CommandFileParser {
 
     /**
      * A pattern that matches valid macro usages and captures the name of the macro.
@@ -54,6 +58,12 @@ class CommandFileParser {
      */
     private static final Pattern MACRO_PATTERN = Pattern.compile("([a-z][a-z0-9_-]*)\\(\\)",
             Pattern.CASE_INSENSITIVE);
+
+    @Option(name = "reload-cmdfiles", description =
+            "Whether to enable the command file autoreload mechanism")
+    // Note: this is static so that the setting is global.
+    // FIXME: enable this to be enabled or disabled on a per-cmdfile basis
+    private static boolean mReloadCmdfiles = false;
 
     private Map<String, CommandLine> mMacros = new HashMap<String, CommandLine>();
     private Map<String, List<CommandLine>> mLongMacros = new HashMap<String, List<CommandLine>>();
@@ -313,7 +323,20 @@ class CommandFileParser {
      */
     public void parseFile(File file, ICommandScheduler scheduler, List<String> args)
             throws IOException, ConfigurationException {
+        // Parse this cmdfile and all of its dependencies
         scanFile(file);
+
+        // Notify the CommandFileWatcher, if necessary
+        if (mReloadCmdfiles) {
+            final CommandFileWatcher watcher = scheduler.getCommandFileWatcher();
+            final File[] depFiles = new File[mIncludedFiles.size()];
+            int i = 0;
+            for (String dep : mIncludedFiles) {
+                depFiles[i++] = new File(dep);
+            }
+
+            watcher.addCmdFile(file, args, depFiles);
+        }
 
         // Now perform macro expansion
         /**

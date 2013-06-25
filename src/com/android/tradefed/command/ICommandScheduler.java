@@ -160,4 +160,9 @@ public interface ICommandScheduler {
      * Cancels the currently running remote manager.
      */
     public void stopRemoteManager();
+
+    /**
+     * Get the appropriate {@link CommandFileWatcher} for this scheduler
+     */
+    public CommandFileWatcher getCommandFileWatcher();
 }
