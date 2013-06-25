@@ -162,6 +162,10 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     @Option(name = "idle-time", description = "How long to sleep before running monkey, in secs")
     private int mIdleTimeSecs = 5 * 60;
 
+    @Option(name = "monkey-arg", description = "Extra parameters to pass onto monkey. Key/value " +
+            "pairs should be passed as key:value. May be repeated.")
+    private Collection<String> mMonkeyArgs = new LinkedList<String>();
+
     @Option(name = "use-pkg-whitelist-file", description = "Whether to use the monkey " +
             "--pkg-whitelist-file option to work around cmdline length limits")
     private boolean mUseWhitelistFile = false;
@@ -386,6 +390,14 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
         if (mUseWhitelistFile) {
             cmdList.add("--pkg-whitelist-file");
             cmdList.add(DEVICE_WHITELIST_PATH);
+        }
+
+        for (String arg : mMonkeyArgs) {
+            String[] args = arg.split(":");
+            cmdList.add(String.format("--%s", args[0]));
+            if (args.length > 1) {
+                cmdList.add(args[1]);
+            }
         }
 
         cmdList.addAll(mOptions);
