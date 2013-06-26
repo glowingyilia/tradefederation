@@ -52,7 +52,7 @@ class CommandFileParser {
      * Macro names must start with an alpha character, and may contain alphanumerics, underscores,
      * or hyphens.
      */
-    private static final Pattern mMacroPattern = Pattern.compile("([a-z][a-z0-9_-]*)\\(\\)",
+    private static final Pattern MACRO_PATTERN = Pattern.compile("([a-z][a-z0-9_-]*)\\(\\)",
             Pattern.CASE_INSENSITIVE);
 
     private Map<String, CommandLine> mMacros = new HashMap<String, CommandLine>();
@@ -398,7 +398,7 @@ class CommandFileParser {
             throws ConfigurationException {
         for (int idx = 0; idx < line.size(); ++idx) {
             String token = line.get(idx);
-            Matcher matchMacro = mMacroPattern.matcher(token);
+            Matcher matchMacro = MACRO_PATTERN.matcher(token);
             if (matchMacro.matches()) {
                 // we hit a macro; expand it
                 List<CommandLine> expansion = new LinkedList<CommandLine>();
@@ -447,7 +447,7 @@ class CommandFileParser {
         int idx = 0;
         while (idx < line.size()) {
             String token = line.get(idx);
-            Matcher matchMacro = mMacroPattern.matcher(token);
+            Matcher matchMacro = MACRO_PATTERN.matcher(token);
             if (matchMacro.matches() && mMacros.containsKey(matchMacro.group(1))) {
                 // we hit a macro; expand it
                 String name = matchMacro.group(1);
