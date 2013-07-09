@@ -154,7 +154,8 @@ public class RadioStressTest implements IRemoteTest, IDeviceTest {
             throws DeviceNotAvailableException {
         // take a bug report, it is possible the system crashed
         InputStreamSource bugreport = mTestDevice.getBugreport();
-        listener.testLog(String.format("bugreport_%d.txt", iteration), LogDataType.TEXT, bugreport);
+        listener.testLog(String.format("bugreport_%d.txt", iteration), LogDataType.BUGREPORT,
+                bugreport);
         bugreport.cancel();
     }
 

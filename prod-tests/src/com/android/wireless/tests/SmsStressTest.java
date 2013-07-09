@@ -159,7 +159,7 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
         throws DeviceNotAvailableException {
         // Capture a bugreport right after the test
         InputStreamSource bugreport = mTestDevice.getBugreport();
-        listener.testLog("bugreport", LogDataType.TEXT, bugreport);
+        listener.testLog("bugreport", LogDataType.BUGREPORT, bugreport);
         bugreport.cancel();
 
         InputStreamSource outputSource = null;

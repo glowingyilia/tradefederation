@@ -500,7 +500,7 @@ public class TestInvocation implements ITestInvocation {
 
         for (ITestInvocationListener listener : listeners) {
             if (logcatSource != null) {
-                listener.testLog(DEVICE_LOG_NAME, LogDataType.TEXT, logcatSource);
+                listener.testLog(DEVICE_LOG_NAME, LogDataType.LOGCAT, logcatSource);
             }
             listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
         }
@@ -526,7 +526,7 @@ public class TestInvocation implements ITestInvocation {
         InputStreamSource bugreport = device.getBugreport();
         try {
             for (ITestInvocationListener listener : listeners) {
-                listener.testLog(bugreportName, LogDataType.TEXT, bugreport);
+                listener.testLog(bugreportName, LogDataType.BUGREPORT, bugreport);
             }
         } finally {
             bugreport.cancel();

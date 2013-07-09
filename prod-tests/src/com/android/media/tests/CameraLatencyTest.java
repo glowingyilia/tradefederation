@@ -148,8 +148,8 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
                     test.mTestName, auxListener.getNumFailedTests(),
                     auxListener.getNumErrorTests());
             InputStreamSource bugreport = mTestDevice.getBugreport();
-            listener.testLog(String.format("bugreport-%s.txt", test.mTestName), LogDataType.TEXT,
-                    bugreport);
+            listener.testLog(String.format("bugreport-%s.txt", test.mTestName),
+                    LogDataType.BUGREPORT, bugreport);
             bugreport.cancel();
         }
     }

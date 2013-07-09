@@ -120,7 +120,7 @@ public class DataIdleTest implements IDeviceTest, IRemoteTest {
      */
     void logBugReport(ITestInvocationListener listener) {
         InputStreamSource bugreport = mTestDevice.getBugreport();
-        listener.testLog(BUG_REPORT_LABEL, LogDataType.TEXT, bugreport);
+        listener.testLog(BUG_REPORT_LABEL, LogDataType.BUGREPORT, bugreport);
         bugreport.cancel();
     }
 

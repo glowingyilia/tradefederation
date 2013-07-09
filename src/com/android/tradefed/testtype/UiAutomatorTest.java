@@ -296,7 +296,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
             if (mFailureAction == TestFailureAction.BUGREPORT ||
                     mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
                 data = getDevice().getBugreport();
-                mListener.testLog(prefix + "_bugreport", LogDataType.TEXT, data);
+                mListener.testLog(prefix + "_bugreport", LogDataType.BUGREPORT, data);
                 if (data != null) {
                     data.cancel();
                 }
