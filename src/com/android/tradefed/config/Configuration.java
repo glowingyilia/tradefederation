@@ -26,6 +26,8 @@ import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.WaitDeviceRecovery;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
+import com.android.tradefed.result.FileSystemLogSaver;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -52,6 +54,7 @@ public class Configuration implements IConfiguration {
     public static final String TEST_TYPE_NAME = "test";
     public static final String DEVICE_RECOVERY_TYPE_NAME = "device_recovery";
     public static final String LOGGER_TYPE_NAME = "logger";
+    public static final String LOG_SAVER_TYPE_NAME = "log_saver";
     public static final String RESULT_REPORTER_TYPE_NAME = "result_reporter";
     public static final String CMD_OPTIONS_TYPE_NAME = "cmd_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
@@ -96,6 +99,7 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(TEST_TYPE_NAME, new ObjTypeInfo(IRemoteTest.class, true));
             sObjTypeMap.put(DEVICE_RECOVERY_TYPE_NAME, new ObjTypeInfo(IDeviceRecovery.class, false));
             sObjTypeMap.put(LOGGER_TYPE_NAME, new ObjTypeInfo(ILeveledLogOutput.class, false));
+            sObjTypeMap.put(LOG_SAVER_TYPE_NAME, new ObjTypeInfo(ILogSaver.class, false));
             sObjTypeMap.put(RESULT_REPORTER_TYPE_NAME, new ObjTypeInfo(ITestInvocationListener.class,
                     true));
             sObjTypeMap.put(CMD_OPTIONS_TYPE_NAME, new ObjTypeInfo(ICommandOptions.class,
@@ -123,6 +127,7 @@ public class Configuration implements IConfiguration {
         setTest(new StubTest());
         setDeviceRecovery(new WaitDeviceRecovery());
         setLogOutput(new StdoutLogger());
+        setLogSaver(new FileSystemLogSaver());  // FileSystemLogSaver saves to tmp by default.
         setTestInvocationListener(new TextResultReporter());
     }
 
@@ -180,6 +185,14 @@ public class Configuration implements IConfiguration {
     @Override
     public ILeveledLogOutput getLogOutput() {
         return (ILeveledLogOutput)getConfigurationObject(LOGGER_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ILogSaver getLogSaver() {
+        return (ILogSaver)getConfigurationObject(LOG_SAVER_TYPE_NAME);
     }
 
     /**
@@ -335,6 +348,14 @@ public class Configuration implements IConfiguration {
     @Override
     public void setLogOutput(ILeveledLogOutput logger) {
         setConfigurationObjectNoThrow(LOGGER_TYPE_NAME, logger);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        setConfigurationObjectNoThrow(LOG_SAVER_TYPE_NAME, logSaver);
     }
 
     /**

@@ -75,6 +75,15 @@ public class ResultForwarder implements ITestInvocationListener {
     }
 
     /**
+     * Get the list of listeners.  Intended only for use by subclasses.
+     *
+     * @return The list of {@link ITestInvocationListener}s.
+     */
+    protected List<ITestInvocationListener> getListeners() {
+        return mListeners;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override

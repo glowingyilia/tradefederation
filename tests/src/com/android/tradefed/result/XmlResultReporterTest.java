@@ -18,14 +18,12 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.build.IBuildInfo;
 
 import junit.framework.TestCase;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.Map;
 
@@ -33,10 +31,40 @@ import java.util.Map;
  * Unit tests for {@link XmlResultReporter}.
  */
 public class XmlResultReporterTest extends TestCase {
+    private static final String PATH = "path";
+    private static final String URL = "url";
 
     private XmlResultReporter mResultReporter;
     private ByteArrayOutputStream mOutputStream;
-    private File mReportDir;
+    private ILogSaver mMockLogSaver;
+
+    class MockLogSaver implements ILogSaver {
+        @Override
+        public LogFile saveLogData(String dataName, LogDataType dataType,
+                InputStream dataStream) {
+            return new LogFile(PATH, URL);
+        }
+
+        @Override
+        public LogFile saveLogDataRaw(String dataName, String ext, InputStream dataStream) {
+            return new LogFile(PATH, URL);
+        }
+
+        @Override
+        public LogFile getLogReportDir() {
+            return new LogFile(PATH, URL);
+        }
+
+        @Override
+        public void invocationStarted(IBuildInfo buildInfo) {
+            // Ignore
+        }
+
+        @Override
+        public void invocationEnded(long elapsedTime) {
+            // Ignore
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -45,10 +73,12 @@ public class XmlResultReporterTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        mOutputStream = new ByteArrayOutputStream();
+        mMockLogSaver = new MockLogSaver();
+
         mResultReporter = new XmlResultReporter() {
             @Override
-            OutputStream createOutputResultStream(File reportDir) throws IOException {
+            ByteArrayOutputStream createOutputStream() {
+                mOutputStream = new ByteArrayOutputStream();
                 return mOutputStream;
             }
 
@@ -57,16 +87,11 @@ public class XmlResultReporterTest extends TestCase {
                 return "ignore";
             }
         };
-        // TODO: use mock file dir instead
-        mReportDir = FileUtil.createTempDir("foo");
-        mResultReporter.setReportDir(mReportDir);
+        mResultReporter.setLogSaver(mMockLogSaver);
     }
 
     @Override
     protected void tearDown() throws Exception {
-        if (mReportDir != null) {
-            FileUtil.recursiveDelete(mReportDir);
-        }
         super.tearDown();
     }
 

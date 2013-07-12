@@ -22,6 +22,7 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -86,6 +87,13 @@ public interface IConfiguration {
      * @return the {@link ILeveledLogOutput} provided in the configuration.
      */
     public ILeveledLogOutput getLogOutput();
+
+    /**
+     * Gets the {@link ILogSaver} to use from the configuration.
+     *
+     * @return the {@link ILogSaver} provided in the configuration.
+     */
+    public ILogSaver getLogSaver();
 
     /**
      * Gets the {@link ICommandOptions} to use from the configuration.
@@ -167,6 +175,13 @@ public interface IConfiguration {
      * @param logger
      */
     public void setLogOutput(ILeveledLogOutput logger);
+
+    /**
+     * Set the {@link ILogSaver}, replacing any existing value.
+     *
+     * @param logSaver
+     */
+    public void setLogSaver(ILogSaver logSaver);
 
     /**
      * Set the {@link IDeviceRecovery}, replacing any existing value.

@@ -71,7 +71,7 @@ public class LogFileSaverTest extends TestCase {
         EasyMock.expect(mockBuild.getBuildId()).andReturn(buildId).anyTimes();
         EasyMock.expect(mockBuild.getTestTag()).andReturn(testtag).anyTimes();
         EasyMock.replay(mockBuild);
-        ILogFileSaver saver = new LogFileSaver(mockBuild, mRootDir);
+        LogFileSaver saver = new LogFileSaver(mockBuild, mRootDir);
         File generatedDir = saver.getFileDir();
         File tagDir = generatedDir.getParentFile();
         // ensure a directory with name == testtag is parent of generated directory
@@ -86,7 +86,7 @@ public class LogFileSaverTest extends TestCase {
         assertEquals(0, mRootDir.compareTo(branchDir.getParentFile()));
 
         // now create a new log saver,
-        ILogFileSaver newsaver = new LogFileSaver(mockBuild, mRootDir);
+        LogFileSaver newsaver = new LogFileSaver(mockBuild, mRootDir);
         File newgeneratedDir = newsaver.getFileDir();
         // ensure a new dir is created
         assertTrue(generatedDir.compareTo(newgeneratedDir) != 0);
@@ -106,7 +106,7 @@ public class LogFileSaverTest extends TestCase {
         EasyMock.expect(mockBuild.getBuildId()).andReturn(buildId).anyTimes();
         EasyMock.expect(mockBuild.getTestTag()).andReturn(testtag).anyTimes();
         EasyMock.replay(mockBuild);
-        ILogFileSaver saver = new LogFileSaver(mockBuild, mRootDir);
+        LogFileSaver saver = new LogFileSaver(mockBuild, mRootDir);
         File generatedDir = saver.getFileDir();
         File tagDir = generatedDir.getParentFile();
         // ensure a directory with name == testtag is parent of generated directory
@@ -131,7 +131,7 @@ public class LogFileSaverTest extends TestCase {
         EasyMock.expect(mockBuild.getBuildId()).andReturn(buildId).anyTimes();
         EasyMock.expect(mockBuild.getTestTag()).andReturn(testtag).anyTimes();
         EasyMock.replay(mockBuild);
-        ILogFileSaver saver = new LogFileSaver(mockBuild, mRootDir, 1);
+        LogFileSaver saver = new LogFileSaver(mockBuild, mRootDir, 1);
         File retentionFile = new File(saver.getFileDir(), RetentionFileSaver.RETENTION_FILE_NAME);
         assertTrue(retentionFile.isFile());
         String timestamp = StreamUtil.getStringFromStream(new FileInputStream(retentionFile));
@@ -151,7 +151,7 @@ public class LogFileSaverTest extends TestCase {
         BufferedReader logFileReader = null;
         try {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
-            ILogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
+            LogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
             logFile = saver.saveLogData("testSaveLogData", LogDataType.TEXT, mockInput);
@@ -178,7 +178,7 @@ public class LogFileSaverTest extends TestCase {
         File logFile = null;
         try {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
-            ILogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
+            LogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
             logFile = saver.saveAndZipLogData("testSaveLogData", LogDataType.TEXT, mockInput);
@@ -206,7 +206,7 @@ public class LogFileSaverTest extends TestCase {
         InputStream gzipInputStream = null;
         try {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
-            ILogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
+            LogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
             logFile = saver.createCompressedLogFile("testSaveAndGZipLogData", LogDataType.TEXT,
                     LogDataType.GZIP);
             assertTrue(logFile.getName().endsWith(LogDataType.TEXT.getFileExt() + "." +

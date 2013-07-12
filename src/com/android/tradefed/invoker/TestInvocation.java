@@ -16,7 +16,6 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
@@ -30,10 +29,13 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.InvocationSummaryHelper;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
@@ -102,11 +104,86 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
+     * A {@link ResultForwarder} for saving logs with the global file saver.
+     */
+    private class LogSaverResultForwarder extends ResultForwarder {
+
+        ILogSaver mLogSaver;
+
+        public LogSaverResultForwarder(ILogSaver logSaver,
+                List<ITestInvocationListener> listeners) {
+            super(listeners);
+            mLogSaver = logSaver;
+            for (ITestInvocationListener listener : listeners) {
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener).setLogSaver(mLogSaver);
+                }
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void invocationStarted(IBuildInfo buildInfo) {
+            // Intentionally call invocationStarted for the log saver first.
+            mLogSaver.invocationStarted(buildInfo);
+            for (ITestInvocationListener listener : getListeners()) {
+                try {
+                    listener.invocationStarted(buildInfo);
+                } catch (RuntimeException e) {
+                    // don't let the listener leave the invocation in a bad state
+                    CLog.e("Caught runtime exception from ITestInvocationListener");
+                    CLog.e(e);
+                }
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void invocationEnded(long elapsedTime) {
+            InvocationSummaryHelper.reportInvocationEnded(getListeners(), 0);
+            // Intentionally call invocationEnded for the log saver last.
+            mLogSaver.invocationEnded(elapsedTime);
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p/>
+         * Also, save the log file with the global {@link ILogSaver} and call
+         * {@link ILogSaverListener#testLogSaved(String, LogDataType, InputStreamSource, LogFile)}
+         * for those listeners implementing the {@link ILogSaverListener} interface.
+         */
+        @Override
+        public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+            super.testLog(dataName, dataType, dataStream);
+            try {
+                LogFile logFile = mLogSaver.saveLogData(dataName, dataType,
+                        dataStream.createInputStream());
+                for (ITestInvocationListener listener : getListeners()) {
+                    if (listener instanceof ILogSaverListener) {
+                        ((ILogSaverListener) listener).testLogSaved(dataName, dataType,
+                                dataStream, logFile);
+                    }
+                }
+            } catch (IOException e) {
+                CLog.e("Failed to save log data");
+                CLog.e(e);
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler)
             throws DeviceNotAvailableException, Throwable {
+        ITestInvocationListener listener = new LogSaverResultForwarder(config.getLogSaver(),
+                config.getTestInvocationListeners());
+
         try {
             mStatus = "fetching build";
             config.getLogOutput().init();
@@ -124,7 +201,7 @@ public class TestInvocation implements ITestInvocation {
                             device.getSerialNumber());
                 } else {
                     device.setRecovery(config.getDeviceRecovery());
-                    performInvocation(config, device, info, rescheduler);
+                    performInvocation(config, device, info, rescheduler, listener);
                     // exit here, depend on performInvocation to deregister logger
                     return;
                 }
@@ -136,14 +213,11 @@ public class TestInvocation implements ITestInvocation {
         } catch (BuildRetrievalError e) {
             CLog.e(e);
             // report an empty invocation, so this error is sent to listeners
-            startInvocation(config, device, e.getBuildInfo());
+            startInvocation(config, device, e.getBuildInfo(), listener);
             // don't want to use #reportFailure, since that will call buildNotTested
-            for (ITestInvocationListener listener : config.getTestInvocationListeners()) {
-                listener.invocationFailed(e);
-            }
-            reportLogs(device, config.getTestInvocationListeners(), config.getLogOutput());
-            InvocationSummaryHelper.reportInvocationEnded(
-                    config.getTestInvocationListeners(), 0);
+            listener.invocationFailed(e);
+            reportLogs(device, listener, config.getLogOutput());
+            listener.invocationEnded(0);
             return;
         } catch (IOException e) {
             CLog.e(e);
@@ -265,8 +339,6 @@ public class TestInvocation implements ITestInvocation {
 
     /**
      * Returns a user-friendly description of the build
-     * @param info
-     * @return
      */
     private String getBuildDescription(IBuildInfo info) {
         return String.format("'%s'", buildSpacedString(info.getBuildBranch(),
@@ -297,27 +369,27 @@ public class TestInvocation implements ITestInvocation {
      * @param info the {@link IBuildInfo}
      */
     private void performInvocation(IConfiguration config, ITestDevice device, IBuildInfo info,
-            IRescheduler rescheduler) throws Throwable {
+            IRescheduler rescheduler, ITestInvocationListener listener) throws Throwable {
 
         boolean resumed = false;
         long startTime = System.currentTimeMillis();
         long elapsedTime = -1;
 
         info.setDeviceSerial(device.getSerialNumber());
-        startInvocation(config, device, info);
+        startInvocation(config, device, info, listener);
         try {
             device.setOptions(config.getDeviceOptions());
 
-            prepareAndRun(config, device, info, rescheduler);
+            prepareAndRun(config, device, info, listener);
         } catch (BuildError e) {
             CLog.w("Build %s failed on device %s. Reason: %s", info.getBuildId(),
                     device.getSerialNumber(), e.toString());
-            takeBugreport(device, config.getTestInvocationListeners(), BUILD_ERROR_BUGREPORT_NAME);
-            reportFailure(e, config.getTestInvocationListeners(), config, info, rescheduler);
+            takeBugreport(device, listener, BUILD_ERROR_BUGREPORT_NAME);
+            reportFailure(e, listener, config, info, rescheduler);
         } catch (TargetSetupError e) {
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
-            reportFailure(e, config.getTestInvocationListeners(), config, info, rescheduler);
+            reportFailure(e, listener, config, info, rescheduler);
         } catch (DeviceNotAvailableException e) {
             // log a warning here so its captured before reportLogs is called
             CLog.w("Invocation did not complete due to device %s becoming not available. " +
@@ -325,12 +397,11 @@ public class TestInvocation implements ITestInvocation {
             if ((e instanceof DeviceUnresponsiveException)
                     && TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                 // under certain cases it might still be possible to grab a bugreport
-                takeBugreport(device, config.getTestInvocationListeners(),
-                        DEVICE_UNRESPONSIVE_BUGREPORT_NAME);
+                takeBugreport(device, listener, DEVICE_UNRESPONSIVE_BUGREPORT_NAME);
             }
             resumed = resume(config, info, rescheduler, System.currentTimeMillis() - startTime);
             if (!resumed) {
-                reportFailure(e, config.getTestInvocationListeners(), config, info, rescheduler);
+                reportFailure(e, listener, config, info, rescheduler);
             } else {
                 CLog.i("Rescheduled failed invocation for resume");
             }
@@ -338,21 +409,19 @@ public class TestInvocation implements ITestInvocation {
         } catch (RuntimeException e) {
             // log a warning here so its captured before reportLogs is called
             CLog.w("Unexpected exception when running invocation: %s", e.toString());
-            reportFailure(e, config.getTestInvocationListeners(), config, info, rescheduler);
+            reportFailure(e, listener, config, info, rescheduler);
             throw e;
         } catch (AssertionError e) {
             CLog.w("Caught AssertionError while running invocation: ", e.toString());
-            reportFailure(e, config.getTestInvocationListeners(), config, info, rescheduler);
+            reportFailure(e, listener, config, info, rescheduler);
         } finally {
             mStatus = "done running tests";
             try {
-                reportLogs(device, config.getTestInvocationListeners(), config.getLogOutput());
+                reportLogs(device, listener, config.getLogOutput());
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
-                    InvocationSummaryHelper.reportInvocationEnded(
-                            config.getTestInvocationListeners(), elapsedTime);
+                    listener.invocationEnded(elapsedTime);
                 }
-
             } finally {
                 config.getBuildProvider().cleanUp(info);
             }
@@ -363,13 +432,13 @@ public class TestInvocation implements ITestInvocation {
      * Do setup, run the tests, then call tearDown
      */
     private void prepareAndRun(IConfiguration config, ITestDevice device, IBuildInfo info,
-            IRescheduler rescheduler) throws Throwable {
+            ITestInvocationListener listener) throws Throwable {
         // use the JUnit3 logic for handling exceptions when running tests
         Throwable exception = null;
 
         try {
             doSetup(config, device, info);
-            runTests(device, info, config, rescheduler);
+            runTests(device, config, listener);
         } catch (Throwable running) {
             exception = running;
         } finally {
@@ -416,17 +485,10 @@ public class TestInvocation implements ITestInvocation {
      * @param device
      * @param info
      */
-    private void startInvocation(IConfiguration config, ITestDevice device, IBuildInfo info) {
+    private void startInvocation(IConfiguration config, ITestDevice device, IBuildInfo info,
+            ITestInvocationListener listener) {
         logStartInvocation(info, device);
-        for (ITestInvocationListener listener : config.getTestInvocationListeners()) {
-            try {
-                listener.invocationStarted(info);
-            } catch (RuntimeException e) {
-                // don't let one listener leave the invocation in a bad state
-                CLog.e("Caught runtime exception from ITestInvocationListener");
-                CLog.e(e);
-            }
-        }
+        listener.invocationStarted(info);
     }
 
     /**
@@ -469,11 +531,9 @@ public class TestInvocation implements ITestInvocation {
         return false;
     }
 
-    private void reportFailure(Throwable exception, List<ITestInvocationListener> listeners,
+    private void reportFailure(Throwable exception, ITestInvocationListener listener,
             IConfiguration config, IBuildInfo info, IRescheduler rescheduler) {
-        for (ITestInvocationListener listener : listeners) {
-            listener.invocationFailed(exception);
-        }
+        listener.invocationFailed(exception);
         if (!(exception instanceof BuildError)) {
             config.getBuildProvider().buildNotTested(info);
             rescheduleTest(config, rescheduler);
@@ -490,7 +550,7 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    private void reportLogs(ITestDevice device, List<ITestInvocationListener> listeners,
+    private void reportLogs(ITestDevice device, ITestInvocationListener listener,
             ILeveledLogOutput logger) {
         InputStreamSource logcatSource = null;
         InputStreamSource globalLogSource = logger.getLog();
@@ -498,12 +558,11 @@ public class TestInvocation implements ITestInvocation {
             logcatSource = device.getLogcat();
         }
 
-        for (ITestInvocationListener listener : listeners) {
-            if (logcatSource != null) {
-                listener.testLog(DEVICE_LOG_NAME, LogDataType.LOGCAT, logcatSource);
-            }
-            listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
+        if (logcatSource != null) {
+            listener.testLog(DEVICE_LOG_NAME, LogDataType.LOGCAT, logcatSource);
         }
+        listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
+
 
         // Clean up after our ISSen
         if (logcatSource != null) {
@@ -517,7 +576,7 @@ public class TestInvocation implements ITestInvocation {
         logger.closeLog();
     }
 
-    private void takeBugreport(ITestDevice device, List<ITestInvocationListener> listeners,
+    private void takeBugreport(ITestDevice device, ITestInvocationListener listener,
             String bugreportName) {
         if (device == null) {
             return;
@@ -525,9 +584,7 @@ public class TestInvocation implements ITestInvocation {
 
         InputStreamSource bugreport = device.getBugreport();
         try {
-            for (ITestInvocationListener listener : listeners) {
-                listener.testLog(bugreportName, LogDataType.BUGREPORT, bugreport);
-            }
+            listener.testLog(bugreportName, LogDataType.BUGREPORT, bugreport);
         } finally {
             bugreport.cancel();
         }
@@ -546,20 +603,17 @@ public class TestInvocation implements ITestInvocation {
      * Runs the test.
      *
      * @param device the {@link ITestDevice} to run tests on
-     * @param buildInfo the {@link BuildInfo} describing the build target
      * @param config the {@link IConfiguration} to run
-     * @param rescheduler the {@link IRescheduler} used to reschedule the test.
+     * @param listener the {@link ITestInvocationListener} of test results
      * @throws DeviceNotAvailableException
      */
-    private void runTests(ITestDevice device, IBuildInfo buildInfo, IConfiguration config,
-            IRescheduler rescheduler)
-            throws DeviceNotAvailableException {
-        List<ITestInvocationListener> listeners = config.getTestInvocationListeners();
+    private void runTests(ITestDevice device, IConfiguration config,
+            ITestInvocationListener listener) throws DeviceNotAvailableException {
         for (IRemoteTest test : config.getTests()) {
             if (test instanceof IDeviceTest) {
                 ((IDeviceTest)test).setDevice(device);
             }
-            test.run(new ResultForwarder(listeners));
+            test.run(listener);
         }
     }
 
