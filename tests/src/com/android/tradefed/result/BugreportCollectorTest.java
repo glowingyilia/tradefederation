@@ -159,12 +159,12 @@ public class BugreportCollectorTest extends TestCase {
         mCollector.addPredicate(pred);
         setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value",
                 true /*failed*/);
-        mMockListener.testLog(EasyMock.contains("bug-FAILED-FooTest#testName1."),
-                EasyMock.eq(LogDataType.TEXT), EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains("bug-FAILED-FooTest__testName1."),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value",
                 true /*failed*/);
-        mMockListener.testLog(EasyMock.contains("bug-FAILED-FooTest#testName2."),
-                EasyMock.eq(LogDataType.TEXT), EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains("bug-FAILED-FooTest__testName2."),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName1", "testName1", "value", true /*failed*/);
         injectTestRun("runName2", "testName2", "value", true /*failed*/);
@@ -175,11 +175,11 @@ public class BugreportCollectorTest extends TestCase {
         Predicate pred = new Predicate(Relation.AFTER, Freq.EACH, Noun.TESTCASE);
         mCollector.addPredicate(pred);
         setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value");
-        mMockListener.testLog(EasyMock.contains("bug-FooTest#testName1."),
-                EasyMock.eq(LogDataType.TEXT), EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains("bug-FooTest__testName1."),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value");
-        mMockListener.testLog(EasyMock.contains("bug-FooTest#testName2."),
-                EasyMock.eq(LogDataType.TEXT), EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains("bug-FooTest__testName2."),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName1", "testName1", "value");
         injectTestRun("runName2", "testName2", "value");
@@ -194,11 +194,11 @@ public class BugreportCollectorTest extends TestCase {
         mMockDevice.waitForDeviceOnline(1000);
         EasyMock.expectLastCall().times(2);  // Once per ending test method
         setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value");
-        mMockListener.testLog(EasyMock.contains("bug-FooTest#testName1."),
-                EasyMock.eq(LogDataType.TEXT), EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains("bug-FooTest__testName1."),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value");
-        mMockListener.testLog(EasyMock.contains("bug-FooTest#testName2."),
-                EasyMock.eq(LogDataType.TEXT), EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains("bug-FooTest__testName2."),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName1", "testName1", "value");
         injectTestRun("runName2", "testName2", "value");
@@ -209,11 +209,11 @@ public class BugreportCollectorTest extends TestCase {
         Predicate pred = new Predicate(Relation.AFTER, Freq.FIRST, Noun.TESTCASE);
         mCollector.addPredicate(pred);
         setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value");
-        mMockListener.testLog(EasyMock.contains("bug-FooTest#testName1."),
-                EasyMock.eq(LogDataType.TEXT), EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains("bug-FooTest__testName1."),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value");
-        mMockListener.testLog(EasyMock.contains("bug-FooTest#testName2."),
-                EasyMock.eq(LogDataType.TEXT), EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains("bug-FooTest__testName2."),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName1", "testName1", "value");
         injectTestRun("runName2", "testName2", "value");
@@ -225,8 +225,8 @@ public class BugreportCollectorTest extends TestCase {
         mCollector.addPredicate(pred);
         // Note: only one testLog
         setListenerTestRunExpectations(mMockListener, "runName", "testName", "value");
-        mMockListener.testLog(EasyMock.contains(pred.toString()), EasyMock.eq(LogDataType.TEXT),
-                EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains(pred.toString()),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value");
         replayMocks();
         injectTestRun("runName", "testName", "value");
@@ -238,8 +238,8 @@ public class BugreportCollectorTest extends TestCase {
         Predicate pred = new Predicate(Relation.AFTER, Freq.EACH, Noun.TESTRUN);
         mCollector.addPredicate(pred);
         setListenerTestRunExpectations(mMockListener, "runName", "testName", "value");
-        mMockListener.testLog(EasyMock.contains(pred.toString()), EasyMock.eq(LogDataType.TEXT),
-                EasyMock.eq(mBugreportISS));
+        mMockListener.testLog(EasyMock.contains(pred.toString()),
+                EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName", "testName", "value");
         verifyMocks();
@@ -248,9 +248,9 @@ public class BugreportCollectorTest extends TestCase {
     public void testDescriptiveName() throws Exception {
         final String normalName = "AT_START_OF_FIRST_TESTCASE";
         final String descName = "custom_descriptive_name";
-        mMockListener.testLog(EasyMock.contains(normalName), EasyMock.eq(LogDataType.TEXT),
+        mMockListener.testLog(EasyMock.contains(normalName), EasyMock.eq(LogDataType.BUGREPORT),
                 EasyMock.eq(mBugreportISS));
-        mMockListener.testLog(EasyMock.contains(descName), EasyMock.eq(LogDataType.TEXT),
+        mMockListener.testLog(EasyMock.contains(descName), EasyMock.eq(LogDataType.BUGREPORT),
                 EasyMock.eq(mBugreportISS));
         replayMocks();
         mCollector.grabBugreport(normalName);

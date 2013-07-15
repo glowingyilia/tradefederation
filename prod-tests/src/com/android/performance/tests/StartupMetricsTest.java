@@ -113,7 +113,7 @@ public class StartupMetricsTest implements IDeviceTest, IRemoteTest {
         // Retrieve bugreport
         InputStreamSource bugSource = mTestDevice.getBugreport();
         try {
-            listener.testLog(BUGREPORT_LOG_NAME, LogDataType.TEXT, bugSource);
+            listener.testLog(BUGREPORT_LOG_NAME, LogDataType.BUGREPORT, bugSource);
             bugreport = parser.parse(new BufferedReader(new InputStreamReader(
                     bugSource.createInputStream())));
         } catch (IOException e) {

@@ -219,7 +219,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
                 mLogFile = null;
             }
             InputStreamSource bugreport = mTestDevice.getBugreport();
-            listener.testLog(String.format("bugreport_%s", mKey), LogDataType.TEXT, bugreport);
+            listener.testLog(String.format("bugreport_%s", mKey), LogDataType.BUGREPORT, bugreport);
             if (mUseCpuStats) {
                 addCpuStats(mCpuStatsCollector);
             } else {

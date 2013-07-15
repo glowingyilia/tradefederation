@@ -372,7 +372,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource(new byte[0]));
         resumeListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
         resumeListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
 
@@ -397,7 +397,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource(new byte[0]));
         resumeListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
         resumeListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
         resumeListener.invocationEnded(EasyMock.anyLong());
@@ -568,9 +568,9 @@ public class TestInvocationTest extends TestCase {
 
         if (throwable instanceof BuildError) {
             mMockTestListener.testLog(EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME),
-                    EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+                    EasyMock.eq(LogDataType.BUGREPORT), (InputStreamSource)EasyMock.anyObject());
             mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME),
-                    EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+                    EasyMock.eq(LogDataType.BUGREPORT), (InputStreamSource)EasyMock.anyObject());
         }
 
         // invocationFailed
@@ -582,10 +582,10 @@ public class TestInvocationTest extends TestCase {
 
         // testLog (mMockTestListener)
         mMockTestListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
         // testLog (mMockSummaryListener)
         mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
         mMockTestListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
 

@@ -213,7 +213,7 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
     private void reportMetrics(ITestInvocationListener listener, String runName,
             Map<String, String> metrics) {
         InputStreamSource bugreport = mTestDevice.getBugreport();
-        listener.testLog("bugreport", LogDataType.TEXT, bugreport);
+        listener.testLog("bugreport", LogDataType.BUGREPORT, bugreport);
         bugreport.cancel();
 
         CLog.d(String.format("About to report metrics: %s", metrics));

@@ -209,11 +209,12 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
             listener.testRunEnded(durationMs, metrics);
             if (mLastKmsg != null) {
                 listener.testLog(String.format("last_kmsg_%s", getDevice().getSerialNumber()),
-                        LogDataType.TEXT, new ByteArrayInputStreamSource(mLastKmsg.getBytes()));
+                        LogDataType.KERNEL_LOG,
+                        new ByteArrayInputStreamSource(mLastKmsg.getBytes()));
             }
             if (mDmesg != null) {
                 listener.testLog(String.format("dmesg_%s", getDevice().getSerialNumber()),
-                        LogDataType.TEXT, new ByteArrayInputStreamSource(mDmesg.getBytes()));
+                        LogDataType.KERNEL_LOG, new ByteArrayInputStreamSource(mDmesg.getBytes()));
             }
             CLog.logAndDisplay(LogLevel.INFO, "Device %s completed %d of %d iterations",
                     getDevice().getSerialNumber(), actualIterations, mIterations);

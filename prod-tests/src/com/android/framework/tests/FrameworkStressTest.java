@@ -83,7 +83,7 @@ public class FrameworkStressTest implements IDeviceTest, IRemoteTest {
         InputStreamSource bugSource = mTestDevice.getBugreport();
 
         try {
-            listener.testLog(BUGREPORT_LOG_NAME, LogDataType.TEXT, bugSource);
+            listener.testLog(BUGREPORT_LOG_NAME, LogDataType.BUGREPORT, bugSource);
             bugreport = parser.parse(new BufferedReader(new InputStreamReader(
                     bugSource.createInputStream())));
 

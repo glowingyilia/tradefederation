@@ -198,7 +198,7 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
             CLog.d("Sending %d byte file %s into the logosphere!",
                    resFile.length(), resFile);
             outputSource = new SnapshotInputStreamSource(new FileInputStream(resFile));
-            listener.testLog(String.format("result_%d", mResIndex++), LogDataType.TEXT,
+            listener.testLog(String.format("result_%d", mResIndex++), LogDataType.BUGREPORT,
                              outputSource);
             br = new BufferedReader(new FileReader(resFile));
             String line = null;

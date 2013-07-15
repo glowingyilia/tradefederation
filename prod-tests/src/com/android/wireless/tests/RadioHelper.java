@@ -174,7 +174,7 @@ public class RadioHelper {
             throws DeviceNotAvailableException {
         CLog.d("Capture a bugreport");
         InputStreamSource bugreport = mDevice.getBugreport();
-        listener.testLog("bugreport", LogDataType.TEXT, bugreport);
+        listener.testLog("bugreport", LogDataType.BUGREPORT, bugreport);
         bugreport.cancel();
     }
 }
