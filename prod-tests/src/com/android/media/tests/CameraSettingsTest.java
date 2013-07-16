@@ -49,8 +49,8 @@ import java.util.regex.Pattern;
  */
 public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
 
-    private static final String ZOOM_STANZA = "testStressCameraZoom:";
-    private static final String SCENE_MODES_STANZA = "testStressCameraSceneModes:";
+    private static final String ZOOM_STANZA = "testStressCameraZoom";
+    private static final String SCENE_MODES_STANZA = "testStressCameraSceneModes";
     private static final Pattern EXPECTED_LOOP_COUNT_PATTERN =
             Pattern.compile("(Total number of loops:)(\\s*)(\\d+)");
     private static final Pattern ACTUAL_LOOP_COUNT_PATTERN =
