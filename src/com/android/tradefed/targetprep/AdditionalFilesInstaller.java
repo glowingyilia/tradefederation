@@ -44,6 +44,7 @@ public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
+        removeFiles(device);
         for (VersionedFile buildFile : buildInfo.getFiles()) {
             File file = buildFile.getFile();
             CLog.d("Examining build file %s", file.getName());
@@ -60,11 +61,46 @@ public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner
      * {@inheritDoc}
      */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable t)
             throws DeviceNotAvailableException {
-        if (mUninstall) {
-            // TODO: verify contents removed
-            device.executeShellCommand(String.format("rm %s*", DEST_PATH));
+        try {
+            removeFiles(device);
+        } catch (TargetSetupError e) {
+            CLog.e(e);
         }
+
+    }
+
+    /**
+     * Remove all files from dest path, if --uninstall option is set/
+     *
+     * @param device the {@link ITestDevice} to use
+     * @throws DeviceNotAvailableException if communication was lost with device.
+     * @throws TargetSetupError if failed to remove contents after 3 attempts
+     */
+    private void removeFiles(ITestDevice device) throws DeviceNotAvailableException,
+            TargetSetupError {
+        if (mUninstall) {
+            for (int i=0; i < 3; i++) {
+                device.executeShellCommand(String.format("rm %s*", DEST_PATH));
+                if (!hasContents(device, DEST_PATH)) {
+                    return;
+                }
+            }
+            throw new TargetSetupError(String.format("failed to remove files from %s", DEST_PATH));
+        }
+    }
+
+    /**
+     * Check for presence of any files in <var>path</var> on <var>device</var>.
+     *
+     * @param device the {@link ITestDevice} to use
+     * @param path the absolute file system path to check
+     * @return true if path has contents, false otherwise
+     * @throws DeviceNotAvailableException if communication was lost with device.
+     */
+    private boolean hasContents(ITestDevice device, String path)
+            throws DeviceNotAvailableException {
+        return device.executeShellCommand(String.format("ls %s", path)).trim().length() > 0;
     }
 }
