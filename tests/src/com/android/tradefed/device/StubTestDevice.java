@@ -542,6 +542,13 @@ public class StubTestDevice implements IManagedTestDevice {
     /**
      * {@inheritDoc}
      */
+    public String getBuildAlias() {
+        return getBuildId();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getBuildId() {
         return IBuildInfo.UNKNOWN_BUILD_ID;
