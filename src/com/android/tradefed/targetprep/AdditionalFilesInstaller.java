@@ -82,7 +82,7 @@ public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner
             TargetSetupError {
         if (mUninstall) {
             for (int i=0; i < 3; i++) {
-                device.executeShellCommand(String.format("rm %s*", DEST_PATH));
+                device.executeShellCommand(String.format("rm -r %s*", DEST_PATH));
                 if (!hasContents(device, DEST_PATH)) {
                     return;
                 }
