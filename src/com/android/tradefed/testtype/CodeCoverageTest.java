@@ -23,10 +23,12 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
 import java.util.Map;
@@ -82,6 +84,12 @@ public class CodeCoverageTest extends InstrumentationTest {
                 }
             } else {
                 CLog.w("Missing coverage file %s. Did test crash?", mCoverageFile);
+                RunUtil.getDefault().sleep(2000);
+                // grab logcat snapshot when this happens
+                InputStreamSource s = getDevice().getLogcat(500*1024);
+                listener.testLog(getPackageName() + "_coverage_crash_" + getTestSize(),
+                        LogDataType.LOGCAT, s);
+                s.cancel();
             }
         } finally {
             if (coverageFile != null) {
