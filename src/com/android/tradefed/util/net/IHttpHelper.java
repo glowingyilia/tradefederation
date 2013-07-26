@@ -186,7 +186,7 @@ public interface IHttpHelper {
      * @see IRunUtil#runEscalatingTimedRetry(long, long, long, long,
      *     com.android.tradefed.util.IRunUtil.IRunnableResult)
      */
-    long getOpTimeout();
+    int getOpTimeout();
 
     /**
      * Set the operation timeout in ms.
@@ -194,7 +194,7 @@ public interface IHttpHelper {
      * @see IRunUtil#runEscalatingTimedRetry(long, long, long, long,
      *     com.android.tradefed.util.IRunUtil.IRunnableResult)
      */
-    void setOpTimeout(long time);
+    void setOpTimeout(int time);
 
     /**
      * Get the initial poll interval in ms.
@@ -202,7 +202,7 @@ public interface IHttpHelper {
      * @see IRunUtil#runEscalatingTimedRetry(long, long, long, long,
      *     com.android.tradefed.util.IRunUtil.IRunnableResult)
      */
-    long getInitialPollInterval();
+    int getInitialPollInterval();
 
     /**
      * Set the initial poll interval in ms.
@@ -210,7 +210,7 @@ public interface IHttpHelper {
      * @see IRunUtil#runEscalatingTimedRetry(long, long, long, long,
      *     com.android.tradefed.util.IRunUtil.IRunnableResult)
      */
-    void setInitialPollInterval(long time);
+    void setInitialPollInterval(int time);
 
     /**
      * Get the max poll interval in ms.
@@ -218,7 +218,7 @@ public interface IHttpHelper {
      * @see IRunUtil#runEscalatingTimedRetry(long, long, long, long,
      *     com.android.tradefed.util.IRunUtil.IRunnableResult)
      */
-    long getMaxPollInterval();
+    int getMaxPollInterval();
 
     /**
      * Set the initial poll interval in ms.
@@ -226,7 +226,7 @@ public interface IHttpHelper {
      * @see IRunUtil#runEscalatingTimedRetry(long, long, long, long,
      *     com.android.tradefed.util.IRunUtil.IRunnableResult)
      */
-    void setMaxPollInterval(long time);
+    void setMaxPollInterval(int time);
 
     /**
      * Get the maximum time to keep trying the request in ms.
@@ -234,7 +234,7 @@ public interface IHttpHelper {
      * @see IRunUtil#runEscalatingTimedRetry(long, long, long, long,
      *     com.android.tradefed.util.IRunUtil.IRunnableResult)
      */
-    long getMaxTime();
+    int getMaxTime();
 
     /**
      * Set the maximum time to keep trying the request in ms.
@@ -242,5 +242,5 @@ public interface IHttpHelper {
      * @see IRunUtil#runEscalatingTimedRetry(long, long, long, long,
      *     com.android.tradefed.util.IRunUtil.IRunnableResult)
      */
-    void setMaxTime(long time);
+    void setMaxTime(int time);
 }

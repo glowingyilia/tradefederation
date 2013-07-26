@@ -23,6 +23,7 @@ import com.android.tradefed.testtype.DeviceTestSuite;
 import com.android.tradefed.testtype.InstrumentationTestFuncTest;
 import com.android.tradefed.util.FileUtilFuncTest;
 import com.android.tradefed.util.RunUtilFuncTest;
+import com.android.tradefed.util.net.HttpHelperFuncTest;
 
 import junit.framework.Test;
 
@@ -44,6 +45,7 @@ public class FuncTests extends DeviceTestSuite {
         this.addTestSuite(InstrumentationTestFuncTest.class);
         this.addTestSuite(RunUtilFuncTest.class);
         this.addTestSuite(TestDeviceFuncTest.class);
+        this.addTestSuite(HttpHelperFuncTest.class);
     }
 
     public static Test suite() {
