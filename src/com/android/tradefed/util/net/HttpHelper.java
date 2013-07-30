@@ -36,22 +36,15 @@ import java.net.URLEncoder;
  * Contains helper methods for making http requests
  */
 public class HttpHelper implements IHttpHelper {
-    /**
-     * Time before timing out a request in ms.
-     */
-    private long mQueryTimeout = 1 * 60 * 1000;
-    /**
-     * Initial poll interval in ms.
-     */
-    private long mInitialPollInterval = 1 * 1000;
-    /**
-     * Max poll interval in ms.
-     */
-    private long mMaxPollInterval = 10 * 60 * 1000;
-    /**
-     * Max time for retrying request in ms.
-     */
-    private long mMaxTime = 10 * 60 * 1000;
+    // Note: max int timeout, expressed in millis, is 24 days
+    /** Time before timing out a request in ms. */
+    private int mQueryTimeout = 1 * 60 * 1000;
+    /** Initial poll interval in ms. */
+    private int mInitialPollInterval = 1 * 1000;
+    /** Max poll interval in ms. */
+    private int mMaxPollInterval = 10 * 60 * 1000;
+    /** Max time for retrying request in ms. */
+    private int mMaxTime = 10 * 60 * 1000;
 
     /**
      * {@inheritDoc}
@@ -152,6 +145,8 @@ public class HttpHelper implements IHttpHelper {
         }
         connection.setDoInput(true);
         connection.setDoOutput(true);
+        connection.setConnectTimeout(getOpTimeout());  // timeout for establishing the connection
+        connection.setReadTimeout(getOpTimeout());  // timeout for receiving a read() response
         return connection;
     }
 
@@ -396,7 +391,7 @@ public class HttpHelper implements IHttpHelper {
      * @throws IOException if stream could not be opened.
      */
     InputStream getRemoteUrlStream(URL url) throws IOException {
-        return url.openStream();
+        return createConnection(url, "GET", null).getInputStream();
     }
 
     /**
@@ -417,7 +412,7 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
-    public long getOpTimeout() {
+    public int getOpTimeout() {
         return mQueryTimeout;
     }
 
@@ -425,7 +420,7 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
-    public void setOpTimeout(long time) {
+    public void setOpTimeout(int time) {
         mQueryTimeout = time;
     }
 
@@ -433,7 +428,7 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
-    public long getInitialPollInterval() {
+    public int getInitialPollInterval() {
         return mInitialPollInterval;
     }
 
@@ -441,7 +436,7 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
-    public void setInitialPollInterval(long time) {
+    public void setInitialPollInterval(int time) {
         mInitialPollInterval = time;
     }
 
@@ -449,7 +444,7 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
-    public long getMaxPollInterval() {
+    public int getMaxPollInterval() {
         return mMaxPollInterval;
     }
 
@@ -457,7 +452,7 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
-    public void setMaxPollInterval(long time) {
+    public void setMaxPollInterval(int time) {
         mMaxPollInterval = time;
     }
 
@@ -465,7 +460,7 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
-    public long getMaxTime() {
+    public int getMaxTime() {
         return mMaxTime;
     }
 
@@ -473,7 +468,7 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
-    public void setMaxTime(long time) {
+    public void setMaxTime(int time) {
         mMaxTime = time;
     }
 
