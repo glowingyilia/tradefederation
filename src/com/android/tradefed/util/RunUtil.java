@@ -65,6 +65,9 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public synchronized void setWorkingDir(File dir) {
+        if (this.equals(sDefaultInstance)) {
+            throw new UnsupportedOperationException("Cannot setWorkingDir on default RunUtil");
+        }
         mWorkingDir = dir;
     }
 
@@ -73,6 +76,9 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public synchronized void setEnvVariable(String name, String value) {
+        if (this.equals(sDefaultInstance)) {
+            throw new UnsupportedOperationException("Cannot setEnvVariable on default RunUtil");
+        }
         mEnvVariables.put(name, value);
     }
 
@@ -378,6 +384,7 @@ public class RunUtil implements IRunUtil {
      */
     private static void inheritIO(final InputStream src, final BufferedOutputStream dest) {
         new Thread(new Runnable() {
+            @Override
             public void run() {
                 // Buffer the input stream.
                 BufferedInputStream s = new BufferedInputStream(src);
