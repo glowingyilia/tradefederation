@@ -18,6 +18,7 @@ package com.android.continuous;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.result.TestFailureEmailResultReporter;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestResult.TestStatus;
@@ -30,6 +31,7 @@ import java.util.Map;
 /**
  * A customized failure reporter that sends emails in a specific format
  */
+@OptionClass(alias = "smoke-failure-email")
 public class SmokeTestFailureReporter extends TestFailureEmailResultReporter {
     /**
      * Default constructor
