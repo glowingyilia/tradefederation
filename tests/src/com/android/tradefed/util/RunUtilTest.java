@@ -21,6 +21,8 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.io.File;
+
 /**
  * Unit tests for {@link RunUtilTest}
  */
@@ -87,5 +89,30 @@ public class RunUtilTest extends TestCase {
         assertEquals(CommandStatus.TIMED_OUT, result.getStatus());
         assertNull(result.getStdout());
         assertNull(result.getStderr());
+    }
+
+    /**
+     * Verify that calling {@link RunUtil#setWorkingDir()} is not allowed on default instance.
+     */
+    public void testSetWorkingDir_default() {
+        try {
+            RunUtil.getDefault().setWorkingDir(new File("foo"));
+            fail("could set working dir on RunUtil.getDefault()");
+        } catch (RuntimeException e) {
+            // expected
+        }
+    }
+
+    /**
+     * Verify that calling {@link RunUtil#setEnvVariable(String, String)} is not allowed on default
+     * instance.
+     */
+    public void testSetEnvVariable_default() {
+        try {
+            RunUtil.getDefault().setEnvVariable("foo", "bar");
+            fail("could set env var on RunUtil.getDefault()");
+        } catch (RuntimeException e) {
+            // expected
+        }
     }
 }
