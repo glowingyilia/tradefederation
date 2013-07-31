@@ -28,5 +28,7 @@ public class AaptParserTest extends TestCase {
             "sdkVersion:'5'\n" +
             "uses-permission:'android.permission.INTERNET'");
         assertEquals("com.android.foo", p.getPackageName());
+        assertEquals("13", p.getVersionCode());
+        assertEquals("2.3", p.getVersionName());
     }
 }
