@@ -27,20 +27,25 @@ import java.util.regex.Pattern;
  * aapt must be on PATH
  */
 public class AaptParser {
+    private static final Pattern PKG_PATTERN = Pattern.compile(
+            "package:\\s+name='(.*?)'\\s+versionCode='(\\d+)'\\s+versionName='(.*)'");
 
     private String mPackageName;
+    private String mVersionCode;
+    private String mVersionName;
 
     // @VisibleForTesting
     AaptParser() {
     }
 
     void parse(String aaptOut) {
-        Pattern p = Pattern.compile("package: name='(.*?)'");
-        Matcher m = p.matcher(aaptOut);
+        Matcher m = PKG_PATTERN.matcher(aaptOut);
         if (m.find()) {
             mPackageName = m.group(1);
+            mVersionCode = m.group(2);
+            mVersionName = m.group(3);
         } else {
-            CLog.e("Failed to parse package name from 'aapt dump badging'");
+            CLog.e("Failed to parse package and version info from 'aapt dump badging'");
         }
     }
 
@@ -66,4 +71,11 @@ public class AaptParser {
         return mPackageName;
     }
 
+    public String getVersionCode() {
+        return mVersionCode;
+    }
+
+    public String getVersionName() {
+        return mVersionName;
+    }
 }
