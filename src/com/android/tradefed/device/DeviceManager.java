@@ -572,6 +572,7 @@ public class DeviceManager implements IDeviceManager {
         fullArgs.add(port.toString());
 
         try {
+            CLog.i("launching emulator with %s",fullArgs.toString());
             Process p = runUtil.runCmdInBackground(fullArgs);
             // sleep a small amount to wait for process to start successfully
             getRunUtil().sleep(500);
