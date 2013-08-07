@@ -20,18 +20,17 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestResult.TestStatus;
-import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import org.kxml2.io.KXmlSerializer;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
@@ -51,11 +50,10 @@ import java.util.TimeZone;
  * Result files will be stored in path constructed via [--output-file-path]/[build_id]
  */
 @OptionClass(alias = "xml")
-public class XmlResultReporter extends CollectingTestListener {
+public class XmlResultReporter extends CollectingTestListener implements ILogSaverListener {
 
     private static final String LOG_TAG = "XmlResultReporter";
 
-    private static final String TEST_RESULT_FILE_SUFFIX = ".xml";
     private static final String TEST_RESULT_FILE_PREFIX = "test_result_";
 
     private static final String TESTSUITE = "testsuite";
@@ -77,15 +75,8 @@ public class XmlResultReporter extends CollectingTestListener {
     /** the XML namespace */
     private static final String ns = null;
 
-    private static final String REPORT_DIR_NAME = "output-file-path";
-    @Option(name = REPORT_DIR_NAME, description = "root file system path to directory to store xml "
-            + "test results and associated logs.")
-    private File mReportDir = new File(System.getProperty("java.io.tmpdir"));
-
-    private ILogFileSaver mLogFileSaver;
+    private ILogSaver mLogSaver;
     private IBuildInfo mBuildInfo;
-
-    private String mReportPath = "";
 
     /**
      * {@inheritDoc}
@@ -93,9 +84,7 @@ public class XmlResultReporter extends CollectingTestListener {
     @Override
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
-        if (mReportDir != null) {
-            generateSummary(mLogFileSaver.getFileDir(), elapsedTime);
-        }
+        generateSummary(elapsedTime);
     }
 
     /**
@@ -104,10 +93,7 @@ public class XmlResultReporter extends CollectingTestListener {
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
         super.invocationStarted(buildInfo);
-        if (mReportDir == null) {
-            throw new IllegalArgumentException(String.format("missing %s", REPORT_DIR_NAME));
-        }
-        mLogFileSaver = new LogFileSaver(buildInfo, mReportDir);
+
         mBuildInfo = buildInfo;
     }
 
@@ -120,39 +106,38 @@ public class XmlResultReporter extends CollectingTestListener {
     /**
      * Creates a report file and populates it with the report data from the completed tests.
      */
-    private void generateSummary(File reportDir, long elapsedTime) {
+    private void generateSummary(long elapsedTime) {
         String timestamp = getTimestamp();
 
-        OutputStream stream = null;
+        ByteArrayOutputStream outputStream = null;
+        InputStream inputStream = null;
+
         try {
-            stream = createOutputResultStream(reportDir);
+            outputStream = createOutputStream();
             KXmlSerializer serializer = new KXmlSerializer();
-            serializer.setOutput(stream, "UTF-8");
+            serializer.setOutput(outputStream, "UTF-8");
             serializer.startDocument("UTF-8", null);
             serializer.setFeature(
                     "http://xmlpull.org/v1/doc/features.html#indent-output", true);
             // TODO: insert build info
             printTestResults(serializer, timestamp, elapsedTime);
             serializer.endDocument();
+
+            inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+            LogFile log = mLogSaver.saveLogData(TEST_RESULT_FILE_PREFIX, LogDataType.XML,
+                    inputStream);
+
             String msg = String.format("XML test result file generated at %s. Total tests %d, " +
-                    "Failed %d, Error %d", getAbsoluteReportPath(), getNumTotalTests(),
-                    getNumFailedTests(), getNumErrorTests());
+                    "Failed %d, Error %d", log.getPath(), getNumTotalTests(), getNumFailedTests(),
+                    getNumErrorTests());
             Log.logAndDisplay(LogLevel.INFO, LOG_TAG, msg);
         } catch (IOException e) {
             Log.e(LOG_TAG, "Failed to generate report data");
             // TODO: consider throwing exception
         } finally {
-            if (stream != null) {
-                try {
-                    stream.close();
-                } catch (IOException ignored) {
-                }
-            }
+            StreamUtil.close(outputStream);
+            StreamUtil.close(inputStream);
         }
-    }
-
-    private String getAbsoluteReportPath() {
-        return mReportPath ;
     }
 
     /**
@@ -170,13 +155,8 @@ public class XmlResultReporter extends CollectingTestListener {
     /**
      * Creates the output stream to use for test results. Exposed for mocking.
      */
-    OutputStream createOutputResultStream(File reportDir) throws IOException {
-        File reportFile = FileUtil.createTempFile(TEST_RESULT_FILE_PREFIX, TEST_RESULT_FILE_SUFFIX,
-                reportDir);
-        Log.i(LOG_TAG, String.format("Created xml report file at %s",
-                reportFile.getAbsolutePath()));
-        mReportPath = reportFile.getAbsolutePath();
-        return new FileOutputStream(reportFile);
+    ByteArrayOutputStream createOutputStream() {
+        return new ByteArrayOutputStream();
     }
 
     void printTestResults(KXmlSerializer serializer, String timestamp, long elapsedTime)
@@ -237,25 +217,28 @@ public class XmlResultReporter extends CollectingTestListener {
     }
 
     /**
-     * Sets the report file to use. Exposed for mocking.
+     * {@inheritDoc}
      */
-    void setReportDir(File file) {
-        mReportDir = file;
+    @Override
+    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        // Ignore
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        try {
-            File logFile = mLogFileSaver.saveLogData(dataName, dataType,
-                    dataStream.createInputStream());
-            Log.logAndDisplay(LogLevel.INFO, LOG_TAG, String.format("Saved %s log to %s", dataName,
-                    logFile.getAbsolutePath()));
-        } catch (IOException e) {
-            Log.e(LOG_TAG, "Failed to save log data");
-            Log.e(LOG_TAG, e);
-        }
+    public void testLogSaved(String dataName, LogDataType dataType, InputStreamSource dataStream,
+            LogFile logFile) {
+        Log.logAndDisplay(LogLevel.INFO, LOG_TAG, String.format("Saved %s log to %s", dataName,
+                logFile.getPath()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        mLogSaver = logSaver;
     }
 }

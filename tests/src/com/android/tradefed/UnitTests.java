@@ -51,6 +51,7 @@ import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
 import com.android.tradefed.result.EmailResultReporterTest;
 import com.android.tradefed.result.FailureEmailResultReporterTest;
+import com.android.tradefed.result.FileSystemLogSaverTest;
 import com.android.tradefed.result.InvocationFailureEmailResultReporterTest;
 import com.android.tradefed.result.InvocationToJUnitResultForwarderTest;
 import com.android.tradefed.result.JUnitToInvocationResultForwarderTest;
@@ -157,6 +158,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(CollectingTestListenerTest.class);
         addTestSuite(EmailResultReporterTest.class);
         addTestSuite(FailureEmailResultReporterTest.class);
+        addTestSuite(FileSystemLogSaverTest.class);
         addTestSuite(InvocationFailureEmailResultReporterTest.class);
         addTestSuite(InvocationToJUnitResultForwarderTest.class);
         addTestSuite(JUnitToInvocationResultForwarderTest.class);

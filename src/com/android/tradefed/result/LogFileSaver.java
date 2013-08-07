@@ -38,7 +38,8 @@ import java.util.zip.ZipOutputStream;
 /**
  * A helper for {@link ITestInvocationListener}'s that will save log data to a file
  */
-public class LogFileSaver implements ILogFileSaver {
+// TODO: Evaluate if this class can be deleted.
+public class LogFileSaver {
 
     private static final int BUFFER_SIZE = 64 * 1024;
     private File mRootDir;
@@ -106,9 +107,10 @@ public class LogFileSaver implements ILogFileSaver {
     }
 
     /**
-     * {@inheritDoc}
+     * Get the directory used to store files.
+     *
+     * @return the {@link File} directory
      */
-    @Override
     public File getFileDir() {
         return mRootDir;
     }
@@ -157,9 +159,14 @@ public class LogFileSaver implements ILogFileSaver {
     }
 
     /**
-     * {@inheritDoc}
+     * Save the log data to a file
+     *
+     * @param dataName a {@link String} descriptive name of the data. e.g. "dev
+     * @param dataType the {@link LogDataType} of the file.
+     * @param dataStream the {@link InputStream} of the data.
+     * @return the file of the generated data
+     * @throws IOException if log file could not be generated
      */
-    @Override
     public File saveLogData(String dataName, LogDataType dataType, InputStream dataStream)
             throws IOException {
         final String saneDataName = sanitizeFilename(dataName);
@@ -172,9 +179,15 @@ public class LogFileSaver implements ILogFileSaver {
     }
 
     /**
-     * {@inheritDoc}
+     * Save and compress, if necessary, the log data to a zip file
+     *
+     * @param dataName a {@link String} descriptive name of the data. e.g. "dev
+     * @param dataType the {@link LogDataType} of the file. Log data which is a
+     *            (ie {@link LogDataType#isCompressed()} is <code>true</code>)
+     * @param dataStream the {@link InputStream} of the data.
+     * @return the file of the generated data
+     * @throws IOException if log file could not be generated
      */
-    @Override
     public File saveAndZipLogData(String dataName, LogDataType dataType, InputStream dataStream)
             throws IOException {
         if (dataType.isCompressed()) {
@@ -203,9 +216,16 @@ public class LogFileSaver implements ILogFileSaver {
     }
 
     /**
-     * {@inheritDoc}
+     * Creates an empty file for storing compressed log data.
+     *
+     * @param dataName a {@link String} descriptive name of the data to be stor
+     *            "device_logcat"
+     * @param origDataType the type of {@link LogDataType} to be stored
+     * @param compressedType the {@link LogDataType} representing the compressi
+     *            {@link LogDataType#GZIP} or {@link LogDataType#ZIP}
+     * @return a {@link File}
+     * @throws IOException if log file could not be created
      */
-    @Override
     public File createCompressedLogFile(String dataName, LogDataType origDataType,
             LogDataType compressedType) throws IOException {
         // add underscore to end of data name to make generated name more readable
@@ -215,18 +235,29 @@ public class LogFileSaver implements ILogFileSaver {
     }
 
     /**
-     * {@inheritDoc}
+     * Creates a output stream to write GZIP-compressed data to a file
+     *
+     * @param dataFile the {@link File} to write to
+     * @return the {@link OutputStream} to compress and write data to the file.
+     *         this stream when complete
+     * @throws IOException if stream could not be generated
      */
-    @Override
     public OutputStream createGZipLogStream(File logFile) throws IOException {
         return new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(
                 logFile)), BUFFER_SIZE);
     }
 
     /**
-     * {@inheritDoc}
+     * Helper method to create an input stream to read contents of given log fi
+     * <p/>
+     * TODO: consider moving this method elsewhere. Placed here for now so it e
+     * users of this class to mock.
+     *
+     * @param logFile the {@link File} to read from
+     * @return a buffered {@link InputStream} to read file data. Callers must c
+     *         this stream when complete
+     * @throws IOException if stream could not be generated
      */
-    @Override
     public InputStream createInputStreamFromFile(File logFile) throws IOException {
         return new BufferedInputStream(new FileInputStream(logFile), BUFFER_SIZE);
     }

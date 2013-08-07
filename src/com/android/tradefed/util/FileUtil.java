@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.log.LogUtil.CLog;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;

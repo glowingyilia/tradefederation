@@ -29,6 +29,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import junit.framework.Assert;
+import junit.framework.AssertionFailedError;
 
 import java.io.File;
 import java.io.IOException;
@@ -67,7 +68,7 @@ public class CodeCoverageReporter extends StubTestInvocationListener {
     static public String XML_REPORT_NAME = "report.xml";
 
     private IBuildInfo mBuildInfo;
-    private ILogFileSaver mLogFileSaver;
+    private LogFileSaver mLogFileSaver;
 
     private File mLocalTmpDir = null;
     private List<File> mCoverageFilesList = new ArrayList<File>();
