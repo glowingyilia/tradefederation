@@ -35,6 +35,8 @@ import java.util.regex.Pattern;
 public class FastbootDeviceFlasher implements IDeviceFlasher  {
     public static final String BASEBAND_IMAGE_NAME = "radio";
 
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+
     private UserDataFlashOption mUserDataFlashOption = UserDataFlashOption.FLASH;
 
     private IFlashingResourcesRetriever mResourceRetriever;
@@ -500,16 +502,25 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      */
     protected String getImageVersion(ITestDevice device, String imageName)
             throws DeviceNotAvailableException, TargetSetupError {
+        int attempts = 0;
         String versionQuery = String.format("version-%s", imageName);
-        String queryOutput = executeFastbootCmd(device, "getvar", versionQuery);
         String patternString = String.format("%s:\\s(.*)\\s", versionQuery);
         Pattern versionOutputPattern = Pattern.compile(patternString);
-        Matcher matcher = versionOutputPattern.matcher(queryOutput);
-        if (matcher.find()) {
-            return matcher.group(1);
+
+        while (attempts < MAX_RETRY_ATTEMPTS) {
+            String queryOutput = executeFastbootCmd(device, "getvar", versionQuery);
+            Matcher matcher = versionOutputPattern.matcher(queryOutput);
+            if (matcher.find()) {
+                return matcher.group(1);
+            } else {
+                attempts++;
+                CLog.w("Could not find version for '%s'. Output '%s', retrying.",
+                            imageName, queryOutput);
+                continue;
+            }
         }
-        throw new TargetSetupError(String.format("Could not find version for '%s'. Output '%s'",
-                imageName, queryOutput));
+        throw new TargetSetupError(String.format(
+                "Could not find version for '%s' after %d retry attempts", imageName, attempts));
     }
 
     /**
