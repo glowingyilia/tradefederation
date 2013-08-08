@@ -103,7 +103,6 @@ public class FileSystemLogSaver implements ILogSaver {
                     BUFFER_SIZE));
             outputStream.putNextEntry(new ZipEntry(saneDataName + "." + dataType.getFileExt()));
             StreamUtil.copyStreams(bufferedDataStream, outputStream);
-            FileUtil.writeToFile(dataStream, log);
             CLog.i("Saved log file %s", log.getAbsolutePath());
             return new LogFile(log.getAbsolutePath(), getUrl(log));
         } finally {
