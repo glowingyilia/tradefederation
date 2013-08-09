@@ -62,6 +62,9 @@ public class SdkAvdPreparer implements ITargetPreparer {
     @Option(name = "gpu", description = "launch emulator with GPU on")
     private boolean mGpu = false;
 
+    @Option(name = "force-kvm", description = "require kvm for emulator launch")
+    private boolean mForceKvm = false;
+
     @Option(name = "abi", description = "abi to select for the avd")
     private String mAbi = null;
 
@@ -139,6 +142,12 @@ public class SdkAvdPreparer implements ITargetPreparer {
             emulatorArgs.add("on");
         }
 
+        // qemu must be the last parameter, it assumes params that follow it are it's own
+        if(mForceKvm) {
+            emulatorArgs.add("-qemu");
+            emulatorArgs.add("-enable-kvm");
+        }
+
         launchEmulator(device, avd, emulatorArgs);
         if (!device.getIDevice().getAvdName().equals(avd)) {
             // not good. Either emulator isn't reporting its avd name properly, or somehow
@@ -156,6 +165,10 @@ public class SdkAvdPreparer implements ITargetPreparer {
      */
     public void setGpu(boolean gpu) {
         mGpu = gpu;
+    }
+
+    public void setForceKvm(boolean forceKvm) {
+        mForceKvm = forceKvm;
     }
 
     /**

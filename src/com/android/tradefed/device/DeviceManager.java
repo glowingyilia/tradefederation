@@ -567,9 +567,13 @@ public class DeviceManager implements IDeviceManager {
             throw new IllegalArgumentException(String.format(
                     "Failed to determine emulator port for %s", device.getSerialNumber()));
         }
+
         List<String> fullArgs = new ArrayList<String>(emulatorArgs);
-        fullArgs.add("-port");
-        fullArgs.add(port.toString());
+        // add port first to avoid qemu problems
+        final int firstAfterTheCommand=1;
+        final int secondAfterCommand=2;
+        fullArgs.add(firstAfterTheCommand, "-port");
+        fullArgs.add(secondAfterCommand, port.toString());
 
         try {
             CLog.i("launching emulator with %s",fullArgs.toString());
