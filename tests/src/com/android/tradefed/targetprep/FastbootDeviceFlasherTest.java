@@ -126,6 +126,33 @@ public class FastbootDeviceFlasherTest extends TestCase {
     }
 
     /**
+     * Test that a fastboot command is retried if it does not output anything.
+     */
+    public void testRetryGetVersionCommand() throws DeviceNotAvailableException, TargetSetupError {
+        // The first time command is tried, make it return an empty string.
+        CommandResult fastbootInValidResult = new CommandResult();
+        fastbootInValidResult.setStatus(CommandStatus.SUCCESS);
+        // output of getvar is on stderr for some unknown reason
+        fastbootInValidResult.setStderr("");
+        fastbootInValidResult.setStdout("");
+
+        // Return the correct value on second attempt.
+        CommandResult fastbootValidResult = new CommandResult();
+        fastbootValidResult.setStatus(CommandStatus.SUCCESS);
+        fastbootValidResult.setStderr("version-baseband: 1.0.1\nfinished. total time: 0.001s");
+        fastbootValidResult.setStdout("");
+
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "version-baseband")).
+                andReturn(fastbootInValidResult);
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "version-baseband")).
+                andReturn(fastbootValidResult);
+
+        EasyMock.replay(mMockDevice);
+        String actualVersion = mFlasher.getImageVersion(mMockDevice, "baseband");
+        assertEquals("1.0.1", actualVersion);
+    }
+
+    /**
      * Test that baseband can be flashed when current baseband version is empty
      */
     public void testFlashBaseband_noVersion()
