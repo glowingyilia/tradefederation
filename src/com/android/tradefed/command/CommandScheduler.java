@@ -637,6 +637,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     private ExecutableCommand createExecutableCommand(CommandTracker cmdTracker,
             IConfiguration config, boolean rescheduled) {
         ExecutableCommand cmd = new ExecutableCommand(cmdTracker, config, rescheduled);
+        CLog.d("adding command");
         mAllCommands.add(cmd);
         return cmd;
     }
@@ -757,12 +758,17 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         return mCommandTimer.isShutdown() || (mShutdownOnEmpty && mAllCommands.isEmpty());
     }
 
+    private synchronized boolean isShuttingDown() {
+        return mCommandTimer.isShutdown() || mShutdownOnEmpty;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public synchronized void shutdown() {
-        if (!isShutdown()) {
+        if (!isShuttingDown()) {
+            CLog.d("initiating shutdown");
             clearWaitingCommands();
             if (mCommandTimer != null) {
                 mCommandTimer.shutdownNow();
@@ -775,7 +781,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public synchronized void shutdownOnEmpty() {
-        if (!isShutdown()) {
+        if (!isShuttingDown()) {
+            CLog.d("initiating shutdown on empty");
             mShutdownOnEmpty = true;
         }
     }
