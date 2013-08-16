@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -36,22 +37,25 @@ import java.util.zip.ZipOutputStream;
 /**
  * Save logs to a file system.
  */
+@OptionClass(alias = "file-system-log-saver")
 public class FileSystemLogSaver implements ILogSaver {
 
     private static final int BUFFER_SIZE = 64 * 1024;
 
-    @Option(name="log-file-path", description="root file system path to store log files.")
+    @Option(name = "log-file-path", description = "root file system path to store log files.")
     private File mRootReportDir = new File(System.getProperty("java.io.tmpdir"));
 
-    @Option(name="log-file-url", description="root http url of log files. Assumes files placed " +
-            "in log-file-path are visible via this url.")
+    @Option(name = "log-file-url", description =
+            "root http url of log files. Assumes files placed in log-file-path are visible via " +
+            "this url.")
     private String mReportUrl = null;
 
-    @Option(name="log-retention-days", description="the number of days to keep saved log files.")
+    @Option(name = "log-retention-days", description =
+            "the number of days to keep saved log files.")
     private Integer mLogRetentionDays = null;
 
-    @Option(name="compress-files", description="whether to compress files which are not already " +
-            "compressed")
+    @Option(name = "compress-files", description =
+            "whether to compress files which are not already compressed")
     private boolean mCompressFiles = true;
 
     private File mLogReportDir = null;
