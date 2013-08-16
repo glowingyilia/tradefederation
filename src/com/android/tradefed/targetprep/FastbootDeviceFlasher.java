@@ -27,6 +27,7 @@ import com.android.tradefed.util.RunUtil;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,7 +38,7 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     public static final String BASEBAND_IMAGE_NAME = "radio";
 
     private static final int MAX_RETRY_ATTEMPTS = 3;
-    private static final long RETRY_SLEEP = 2 * 1000; // 2s sleep between retries
+    private static final int RETRY_SLEEP = 2 * 1000; // 2s sleep between retries
 
     private UserDataFlashOption mUserDataFlashOption = UserDataFlashOption.FLASH;
 
@@ -518,7 +519,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
                 attempts++;
                 CLog.w("Could not find version for '%s'. Output '%s', retrying.",
                             imageName, queryOutput);
-                RunUtil.getDefault().sleep(RETRY_SLEEP * attempts);
+                RunUtil.getDefault().sleep(RETRY_SLEEP * (attempts - 1)
+                        + new Random(System.currentTimeMillis()).nextInt(RETRY_SLEEP));
                 continue;
             }
         }
