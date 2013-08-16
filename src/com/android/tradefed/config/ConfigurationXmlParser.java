@@ -16,8 +16,6 @@
 
 package com.android.tradefed.config;
 
-import com.android.ddmlib.Log;
-
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -130,7 +128,8 @@ class ConfigurationXmlParser {
                 }
 
             } else {
-                Log.w(LOG_TAG, String.format("Unrecognized tag '%s' in configuration", localName));
+                throw new SAXException(String.format(
+                        "Unrecognized tag '%s' in configuration", localName));
             }
         }
 
