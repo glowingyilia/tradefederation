@@ -174,6 +174,19 @@ public class ConfigurationXmlParserTest extends TestCase {
     }
 
     /**
+     * Test parsing a tag whose name is not recognized.
+     */
+    public void testParse_badTag() throws ConfigurationException {
+        final String config = "<blah name=\"foo\" />";
+        try {
+            xmlParser.parse("name", getStringAsStream(config));
+            fail("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // expected
+        }
+    }
+
+    /**
      * Test parsing invalid xml.
      */
     public void testParse_xml() throws ConfigurationException {
