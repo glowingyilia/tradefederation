@@ -30,8 +30,14 @@ public class PackageManagerOTATests extends DeviceTestCase {
     @Option(name = "test-app-path", description =
             "path to the app repository containing test apks", importance = Importance.IF_UNSET)
     private File mTestAppRepositoryPath = null;
+    @Option(name = "use-priv-path", description =
+            "set to true if the special priviledged app directory should be used; default is false",
+            importance = Importance.IF_UNSET)
+    private boolean mUsePrivAppDirectory = false;
 
     private PackageManagerOTATestUtils mUtils = null;
+    private String mSystemAppPath = "/system/app/version_test.apk";
+    private String mDiffSystemAppPath = "/system/app/version_test_diff.apk";
 
     // String constants use for the tests.
     private static final String PACKAGE_XPATH = "/packages/package[@name=\"" +
@@ -49,9 +55,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
     private static final String VERSION_3_APK = "FrameworkCoreTests_version_3.apk";
     private static final String SYSTEM_APK = "version_test.apk";
     private static final String SYSTEM_DIFF_APK = "version_test_diff.apk";
-    private static final String SYSTEM_APP_PATH = "/system/app/version_test.apk";
     private static final String DATA_APP_DIRECTORY = "/data/app/";
-    private static final String DIFF_SYSTEM_APP_PATH = "/system/app/version_test_diff.apk";
     private static final String PACKAGE_NAME = "com.android.frameworks.coretests.version_test";
     private static final String VIBRATE_PERMISSION = "android.permission.VIBRATE";
     private static final String CACHE_PERMISSION = "android.permission.ACCESS_CACHE_FILESYSTEM";
@@ -74,6 +78,11 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
         assertFalse("Updated-package should not be present before test",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
+
+        if (mUsePrivAppDirectory) {
+            mSystemAppPath = "/system/priv-app/version_test.apk";
+            mDiffSystemAppPath = "/system/priv-app/version_test_diff.apk";
+        }
     }
 
     @Override
@@ -132,7 +141,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), mSystemAppPath);
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After system app push, package should still be installed",
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
@@ -170,7 +179,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_APK), SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_APK), mSystemAppPath);
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After system app push, package should still be installed",
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
@@ -193,7 +202,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
      * @throws DeviceNotAvailableException
      */
     public void testSystemAppRemoved() throws DeviceNotAvailableException {
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_APK), SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_APK), mSystemAppPath);
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("Initial package should be installed",
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
@@ -216,7 +225,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
      * @throws DeviceNotAvailableException
      */
     public void testSystemAppUpdatedNewerVersion() throws DeviceNotAvailableException {
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), mSystemAppPath);
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("The package should be installed",
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
@@ -233,7 +242,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         mUtils.installFile(getTestAppFilePath(VERSION_3_APK), true);
         mPackageXml = mUtils.pullPackagesXML();
         assertFalse("After system app upgrade, the path should be the upgraded app on /data",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
         assertTrue("Package version should be 3",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
@@ -247,7 +256,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         getDevice().reboot();
         mPackageXml = mUtils.pullPackagesXML();
         assertFalse("After system app upgrade, the path should be the upgraded app on /data",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
         assertTrue("Package version should be 3",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
@@ -261,7 +270,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         getDevice().reboot();
         mPackageXml = mUtils.pullPackagesXML();
         assertFalse("After system app upgrade, the path should be the upgraded app on /data",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
         assertTrue("Package version should be 3",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
@@ -281,7 +290,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
      * @throws DeviceNotAvailableException
      */
     public void testSystemAppUpdatedOlderVersion() throws DeviceNotAvailableException {
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), mSystemAppPath);
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After system app push, the package should be installed",
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
@@ -314,7 +323,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         getDevice().reboot();
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the path should be the be installed",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
         assertTrue("Package version should be 2",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should NOT be present",
@@ -328,7 +337,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         getDevice().reboot();
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the path should be the be installed",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
         assertTrue("Package version should be 2",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should NOT be present",
@@ -348,7 +357,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
      * @throws DeviceNotAvailableException
      */
     public void testSystemAppUpdatedSameVersion() throws DeviceNotAvailableException {
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), mSystemAppPath);
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("The package should be installed",
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
@@ -365,7 +374,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         mUtils.installFile(getTestAppFilePath(VERSION_2_APK), true);
         mPackageXml = mUtils.pullPackagesXML();
         assertFalse("After system app upgrade, the path should be the upgraded app on /data",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
         assertTrue("Package version should be 2",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertTrue("Updated-package should be present",
@@ -379,7 +388,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         getDevice().reboot();
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the path should be the be installed",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
         assertTrue("Package version should be 2",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should NOT be present",
@@ -393,7 +402,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         getDevice().reboot();
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the path should be the be installed",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
         assertTrue("Package version should be 2",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should NOT be present",
@@ -413,7 +422,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
      * @throws DeviceNotAvailableException
      */
     public void testUpdatedSystemAppChangeFileName() throws DeviceNotAvailableException {
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_APK), SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_APK), mSystemAppPath);
         mPackageXml = mUtils.pullPackagesXML();
         assertNotNull("Failed to pull packages xml file from device", mPackageXml);
         assertTrue("After system app push, the package should be installed",
@@ -444,11 +453,11 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
         mUtils.removeSystemApp(SYSTEM_APK, false);
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), DIFF_SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), mDiffSystemAppPath);
 
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the system path should be correct",
-                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, DIFF_SYSTEM_APP_PATH));
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mDiffSystemAppPath));
         assertTrue("Package version should be 2",
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should not be present",
@@ -468,7 +477,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
      * @throws DeviceNotAvailableException
      */
     public void testUpdatedSystemAppRemoved() throws DeviceNotAvailableException {
-        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_APK), SYSTEM_APP_PATH);
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_APK), mSystemAppPath);
         mUtils.installFile(getTestAppFilePath(VERSION_2_APK), true);
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("Package should be installed",
