@@ -252,7 +252,8 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
     private class LoggingWrapper extends StubTestInvocationListener {
 
         ITestInvocationListener mListener;
-        private boolean mLoggedFailure = false;
+        private boolean mLoggedTestFailure = false;
+        private boolean mLoggedTestRunFailure = false;
 
         public LoggingWrapper(ITestInvocationListener listener) {
             mListener = listener;
@@ -264,15 +265,31 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
                 doScreenshotAndBugreport(String.format("%s_%s_failure",
                         test.getClassName(), test.getTestName()));
                 // set the flag so that we don't log again when test finishes
-                mLoggedFailure = true;
+                mLoggedTestFailure = true;
+            }
+        }
+
+        @Override
+        public void testRunFailed(String errorMessage) {
+            if (mLoggingOption == LoggingOption.AFTER_FAILURE) {
+                doScreenshotAndBugreport("test_run_failure");
+                // set the flag so that we don't log again when test run finishes
+                mLoggedTestRunFailure = true;
             }
         }
 
         @Override
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-            if (!mLoggedFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
+            if (!mLoggedTestFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
                 doScreenshotAndBugreport(String.format("%s_%s_final",
                         test.getClassName(), test.getTestName()));
+            }
+        }
+
+        @Override
+        public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+            if (!mLoggedTestRunFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
+                doScreenshotAndBugreport("test_run_final");
             }
         }
 
