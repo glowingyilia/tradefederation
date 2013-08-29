@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.targetprep.IDeviceFlasher;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 
 import junit.framework.TestCase;
 
@@ -33,6 +34,7 @@ import org.easymock.EasyMock;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.concurrent.Semaphore;
 
 /**
  * Unit tests for {@link DeviceFlashPreparer}.
@@ -148,5 +150,78 @@ public class DeviceFlashPreparerTest extends TestCase {
             assertTrue(e instanceof DeviceFailedToBootError);
         }
         EasyMock.verify(mMockFlasher, mMockDevice);
+    }
+
+    /**
+     * Ensure that the flasher instance limiting machinery is working as expected.
+     */
+    public void testFlashLimit() throws Exception {
+        final DeviceFlashPreparer dfp = mDeviceFlashPreparer;
+        try {
+            Thread waiter = new Thread() {
+                @Override
+                public void run() {
+                    dfp.takeFlashingPermit();
+                    dfp.returnFlashingPermit();
+                }
+            };
+            dfp.setConcurrentFlashSettings(1, new Semaphore(1), true);
+            // take the permit; the next attempt to take the permit should block
+            dfp.takeFlashingPermit();
+            assertFalse(dfp.getConcurrentFlashLock().hasQueuedThreads());
+
+            waiter.start();
+            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
+            assertTrue("Invalid state: waiter thread is not alive", waiter.isAlive());
+            assertTrue("No queued threads", dfp.getConcurrentFlashLock().hasQueuedThreads());
+
+            dfp.returnFlashingPermit();
+            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
+            assertFalse("Unexpected queued threads",
+                    dfp.getConcurrentFlashLock().hasQueuedThreads());
+
+            waiter.join(1000);
+            assertFalse("waiter thread has not returned", waiter.isAlive());
+        } finally {
+            // Attempt to reset concurrent flash settings to defaults
+            dfp.setConcurrentFlashSettings(null, null, true);
+        }
+    }
+
+    /**
+     * Ensure that the flasher instance limiting machinery is working as expected.
+     */
+    public void testUnlimitedFlashLimit() throws Exception {
+        final DeviceFlashPreparer dfp = mDeviceFlashPreparer;
+        try {
+            Thread waiter = new Thread() {
+                @Override
+                public void run() {
+                    dfp.takeFlashingPermit();
+                    dfp.returnFlashingPermit();
+                }
+            };
+            dfp.setConcurrentFlashSettings(null, null, true);
+            // take a permit; the next attempt to take the permit should proceed without blocking
+            dfp.takeFlashingPermit();
+            assertNull("Flash lock is non-null", dfp.getConcurrentFlashLock());
+
+            waiter.start();
+            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
+            Thread.State waiterState = waiter.getState();
+            assertTrue("Invalid state: waiter thread hasn't started",
+                    waiter.isAlive() || Thread.State.TERMINATED.equals(waiterState));
+            assertNull("Flash lock is non-null", dfp.getConcurrentFlashLock());
+
+            dfp.returnFlashingPermit();
+            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
+            assertNull("Flash lock is non-null", dfp.getConcurrentFlashLock());
+
+            waiter.join(1000);
+            assertFalse("waiter thread has not returned", waiter.isAlive());
+        } finally {
+            // Attempt to reset concurrent flash settings to defaults
+            dfp.setConcurrentFlashSettings(null, null, true);
+        }
     }
 }
