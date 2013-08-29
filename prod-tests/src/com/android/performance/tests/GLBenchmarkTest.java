@@ -172,8 +172,7 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
                 RunUtil.getDefault().sleep(POLLING_INTERVAL_MS);
                 isTimedOut = (System.currentTimeMillis() - benchmarkStartTime >= TIMEOUT_MS);
                 isResultGenerated = device.doesFileExist(resultExcelXmlPath);
-                isRunningBenchmark = device.executeShellCommand(
-                        String.format("ps | grep %s", mGlbenchmarkPackageName)).contains(
+                isRunningBenchmark = device.executeShellCommand("ps").contains(
                         "glbenchmark");
             }
             attempts++;
@@ -186,7 +185,7 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
         } else {
             // pull result from device
             File benchmarkReport = device.pullFile(mGlbenchmarkResultXmlPath);
-            if (benchmarkReport != null && benchmarkReport.exists()) {
+            if (benchmarkReport != null) {
                 // parse result
                 CLog.i("== GLBenchmark result ==");
                 Map<String, String> benchmarkResult = parseResultXml(benchmarkReport);
@@ -195,9 +194,10 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
                 } else {
                     metrics = benchmarkResult;
                 }
-                // delete results from device
+                // delete results from device and host
                 device.executeShellCommand(String.format("rm %s", mGlbenchmarkResultXmlPath));
                 device.executeShellCommand(String.format("rm %s", resultExcelXmlPath));
+                benchmarkReport.delete();
             } else {
                 errMsg = "GLBenchmark report not found.";
             }
