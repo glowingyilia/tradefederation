@@ -393,13 +393,13 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
     private boolean mRunVideoRecord = true;
 
     @Option(name="video-record-package")
-    private String mVideoRecordPackage = "com.google.android.gallery3d.tests";
+    private String mVideoRecordPackage = "com.google.android.camera.tests";
 
     @Option(name="video-record-test-runner")
-    private String mVideoRecordTestRunner = "com.android.gallery3d.stress.CameraStressTestRunner";
+    private String mVideoRecordTestRunner = "com.android.camera.stress.CameraStressTestRunner";
 
     @Option(name="video-record-class")
-    private String mVideoRecordClass = "com.android.gallery3d.stress.VideoCapture";
+    private String mVideoRecordClass = "com.android.camera.stress.VideoCapture";
 
     @Option(name="video-record-method")
     private String mVideoRecordMethod = "testBackVideoCapture";
