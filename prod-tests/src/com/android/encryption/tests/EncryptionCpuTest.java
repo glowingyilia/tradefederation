@@ -331,7 +331,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
             setupLogging();
             try {
                 IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
-                        "com.android.mediaframeworktest", ".MediaRecorderStressTestRunner",
+                        "com.android.mediaframeworktest", ".MediaPlayerStressTestRunner",
                         mTestDevice.getIDevice());
                 runner.setClassName("com.android.mediaframeworktest.stress.MediaPlayerStressTest");
                 runner.setMaxtimeToOutputResponse(TEST_TIMEOUT);
