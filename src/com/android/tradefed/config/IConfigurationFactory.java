@@ -44,8 +44,8 @@ public interface IConfigurationFactory {
      * a file path to a configuration xml file.
      *
      * @param args the command line arguments
-     * @param nonGlobalArgs a list which will be populated with the arguments that weren't processed
-     *                      as global arguments
+     * @param nonGlobalArgs a list which will be populated with the arguments that weren't
+     *                      processed as global arguments
      * @return the loaded {@link IGlobalConfiguration}. The delegate object {@link Option} fields
      *         have been populated with values in args.
      * @throws {@link ConfigurationException} if configuration could not be loaded

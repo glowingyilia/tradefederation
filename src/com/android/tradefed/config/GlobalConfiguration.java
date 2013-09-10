@@ -16,7 +16,9 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceSelectionOptions;
+import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.util.ArrayUtil;
@@ -37,6 +39,7 @@ import java.util.Map;
 public class GlobalConfiguration implements IGlobalConfiguration {
     // type names for built in configuration objects
     public static final String DEVICE_MONITOR_TYPE_NAME = "device_monitor";
+    public static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
     public static final String HOST_OPTIONS_TYPE_NAME = "host_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
 
@@ -64,6 +67,20 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             throw new IllegalStateException("GlobalConfiguration has not yet been initialized!");
         }
         return sInstance;
+    }
+
+    /**
+     * Returns a reference to the singleton {@link DeviceManager} instance for this TF
+     * instance.
+     *
+     * @throws IllegalStateException if {@see createGlobalConfiguration(String[])} has not already
+     *         been called.
+     */
+    public static IDeviceManager getDeviceManagerInstance() {
+        if (sInstance == null) {
+            throw new IllegalStateException("GlobalConfiguration has not yet been initialized!");
+        }
+        return sInstance.getDeviceManager();
     }
 
     /**
@@ -160,6 +177,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         if (sObjTypeMap == null) {
             sObjTypeMap = new HashMap<String, ObjTypeInfo>();
             sObjTypeMap.put(DEVICE_MONITOR_TYPE_NAME, new ObjTypeInfo(IDeviceMonitor.class, false));
+            sObjTypeMap.put(DEVICE_MANAGER_TYPE_NAME, new ObjTypeInfo(IDeviceManager.class, false));
             sObjTypeMap.put(DEVICE_REQUIREMENTS_TYPE_NAME, new ObjTypeInfo(IDeviceSelection.class,
                     false));
         }
@@ -180,9 +198,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mName = name;
         mDescription = description;
         mConfigMap = new LinkedHashMap<String, List<Object>>();
-        // Don't set a default DeviceMonitor here, because DeviceMonitorAsyncProxy avoids spawning
-        // its dispatcher thread if it gets a null child Monitor.
         setDeviceRequirements(new DeviceSelectionOptions());
+        setDeviceManager(new DeviceManager());
     }
 
     /**
@@ -205,6 +222,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public IDeviceMonitor getDeviceMonitor() {
         return (IDeviceMonitor)getConfigurationObject(DEVICE_MONITOR_TYPE_NAME);
+    }
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IDeviceManager getDeviceManager() {
+        return (IDeviceManager)getConfigurationObject(DEVICE_MANAGER_TYPE_NAME);
     }
 
     /**
@@ -283,6 +307,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void setDeviceMonitor(IDeviceMonitor monitor) {
         setConfigurationObjectNoThrow(DEVICE_MONITOR_TYPE_NAME, monitor);
+    }
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setDeviceManager(IDeviceManager manager) {
+        setConfigurationObjectNoThrow(DEVICE_MANAGER_TYPE_NAME, manager);
     }
 
     /**

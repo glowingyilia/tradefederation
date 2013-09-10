@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.testtype.DeviceTestCase;
 
@@ -41,12 +42,27 @@ public class DeviceManagerFuncTest extends DeviceTestCase {
      */
     public void testReconnectDeviceToTcp_backUsb() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "Starting testReconnectDeviceToTcp_backUsb");
-        ITestDevice tcpDevice = DeviceManager.getInstance().reconnectDeviceToTcp(mUsbDevice);
+
+
+        IDeviceManager deviceManager = getDeviceManager();
+        ITestDevice tcpDevice = deviceManager.reconnectDeviceToTcp(mUsbDevice);
         assertNotNull(tcpDevice);
-        assertTrue(tcpDevice.isAdbTcp());
-        assertTrue(DeviceManager.getInstance().disconnectFromTcpDevice(tcpDevice));
-        // ensure device is back on usb
-        mUsbDevice.waitForDeviceAvailable(30 * 1000);
+        try{
+            assertTrue(tcpDevice.isAdbTcp());
+
+
+
+            assertTrue(deviceManager.disconnectFromTcpDevice(tcpDevice));
+            // ensure device is back on usb
+            mUsbDevice.waitForDeviceAvailable(30 * 1000);
+        } finally {
+            deviceManager.disconnectFromTcpDevice(tcpDevice);
+        }
+
+    }
+
+    private IDeviceManager getDeviceManager() {
+        return GlobalConfiguration.getDeviceManagerInstance();
     }
 
     /**
@@ -60,7 +76,10 @@ public class DeviceManagerFuncTest extends DeviceTestCase {
      */
     public void testReconnectDeviceToTcp_reboot() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "Starting testReconnectDeviceToTcp_reboot");
-        ITestDevice tcpDevice = DeviceManager.getInstance().reconnectDeviceToTcp(mUsbDevice);
+
+
+        IDeviceManager deviceManager = getDeviceManager();
+        ITestDevice tcpDevice = deviceManager.reconnectDeviceToTcp(mUsbDevice);
         assertNotNull(tcpDevice);
         try {
             try {
@@ -72,7 +91,9 @@ public class DeviceManagerFuncTest extends DeviceTestCase {
             // ensure device is back on usb
             mUsbDevice.waitForDeviceAvailable();
         } finally {
-            DeviceManager.getInstance().freeDevice(tcpDevice, FreeDeviceState.IGNORE);
+
+
+            deviceManager.disconnectFromTcpDevice(tcpDevice);
         }
 
     }

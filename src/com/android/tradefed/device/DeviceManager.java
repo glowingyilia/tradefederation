@@ -23,6 +23,8 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
@@ -54,6 +56,8 @@ import java.util.regex.Pattern;
 /**
  * {@inheritDoc}
  */
+
+@OptionClass(alias = "dmgr", global_namespace = false)
 public class DeviceManager implements IDeviceManager {
 
     /** max wait time in ms for fastboot devices command to complete */
@@ -67,9 +71,9 @@ public class DeviceManager implements IDeviceManager {
     /** a {@link DeviceSelectionOptions} that matches any device.  Visible for testing. */
     static final IDeviceSelection ANY_DEVICE_OPTIONS = new DeviceSelectionOptions();
 
-    private static DeviceManager sInstance;
 
-    private final IDeviceMonitor mDvcMon;
+
+    private IDeviceMonitor mDvcMon;
 
     private boolean mIsInitialized = false;
     /** A thread-safe map that tracks the devices currently allocated for testing.*/
@@ -85,24 +89,24 @@ public class DeviceManager implements IDeviceManager {
     private boolean mEnableLogcat = true;
     private boolean mIsTerminated = false;
     private IDeviceSelection mGlobalDeviceFilter;
-    /** the maximum number of emulators that can be allocated at one time */
+    @Option(name="max-emulators",
+            description = "the maximum number of emulators that can be allocated at one time")
     private int mNumEmulatorSupported = 1;
-    /** the maximum number of no device runs that can be allocated at one time */
+    @Option(name="max-null-devices",
+            description = "the maximum number of no device runs that can be allocated at one time.")
     private int mNumNullDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
 
     /**
-     * Package-private constructor, should only be used by this class and its associated unit test.
-     * Use {@link #getInstance()} instead.
+     * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
      */
-    DeviceManager() {
-        mDvcMon = getGlobalConfig().getDeviceMonitor();
+    public DeviceManager() {
     }
 
     @Override
     public void init() {
-        init(null);
+        init(null,null);
     }
 
     /**
@@ -110,7 +114,8 @@ public class DeviceManager implements IDeviceManager {
      * methods are called.
      */
     @Override
-    public synchronized void init(IDeviceSelection globalDeviceFilter) {
+    public synchronized void init(IDeviceSelection globalDeviceFilter,
+                                  IDeviceMonitor globalDeviceMonitor) {
         if (mIsInitialized) {
             throw new IllegalStateException("already initialized");
         }
@@ -119,8 +124,13 @@ public class DeviceManager implements IDeviceManager {
             globalDeviceFilter = getGlobalConfig().getDeviceRequirements();
         }
 
+        if (globalDeviceMonitor == null) {
+            globalDeviceMonitor = getGlobalConfig().getDeviceMonitor();
+        }
+
         mIsInitialized = true;
         mGlobalDeviceFilter = globalDeviceFilter;
+        mDvcMon = globalDeviceMonitor;
         // Using ConcurrentHashMap for thread safety: handles concurrent modification and iteration
         mAllocatedDeviceMap = new ConcurrentHashMap<String, IManagedTestDevice>();
         mAvailableDeviceQueue = new ConditionPriorityBlockingQueue<IDevice>();
@@ -349,16 +359,6 @@ public class DeviceManager implements IDeviceManager {
      */
     ConditionPriorityBlockingQueue<IDevice> getAvailableDeviceQueue() {
         return mAvailableDeviceQueue;
-    }
-
-    /**
-     * Return the {@link IDeviceManager} singleton, creating if necessary.
-     */
-    public synchronized static IDeviceManager getInstance() {
-        if (sInstance == null) {
-            sInstance = new DeviceManager();
-        }
-        return sInstance;
     }
 
     void updateDeviceMonitor() {

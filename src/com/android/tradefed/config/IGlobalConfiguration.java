@@ -17,6 +17,7 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.device.DeviceManager;
+import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 
@@ -106,5 +107,19 @@ public interface IGlobalConfiguration {
      */
     public IDeviceSelection getDeviceRequirements();
 
+    /**
+     * Gets the {@link IDeviceManager} to use from the configuration. Manages the set of available
+     * devices for testing
+     *
+     * @return the {@link IDeviceManager} provided in the configuration.
+     */
+    public IDeviceManager getDeviceManager();
 
+    /**
+     * Set the {@link IDeviceManager}, replacing any existing values.  This sets the manager
+     * for the test devices
+     *
+     * @param deviceManager
+     */
+    public void setDeviceManager(IDeviceManager deviceManager);
 }

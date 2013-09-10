@@ -72,7 +72,7 @@ public interface IDeviceManager {
      *
      * @param globalDeviceFilter the device filter
      */
-    public void init(IDeviceSelection globalDeviceFilter);
+    public void init(IDeviceSelection globalDeviceFilter, IDeviceMonitor deviceMonitor);
 
     /**
      * Request a physical device for testing, waiting indefinitely until one becomes available.

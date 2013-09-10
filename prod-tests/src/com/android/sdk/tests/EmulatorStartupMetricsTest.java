@@ -18,9 +18,10 @@ package com.android.sdk.tests;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.ISdkBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -65,7 +66,7 @@ public class EmulatorStartupMetricsTest implements IDeviceTest, IRemoteTest, IBu
             long availableTime = System.currentTimeMillis();
             firstBootDuration = availableTime - launchTime;
 
-            DeviceManager.getInstance().killEmulator(mTestDevice);
+            getDeviceManager().killEmulator(mTestDevice);
 
             // measuring second boot time for a given avd
             launchTime = System.currentTimeMillis();
@@ -83,6 +84,10 @@ public class EmulatorStartupMetricsTest implements IDeviceTest, IRemoteTest, IBu
             CLog.e(be);
             Assert.fail("Emulator failed to launch");
         }
+    }
+
+    private IDeviceManager getDeviceManager() {
+        return GlobalConfiguration.getDeviceManagerInstance();
     }
 
     @Override
