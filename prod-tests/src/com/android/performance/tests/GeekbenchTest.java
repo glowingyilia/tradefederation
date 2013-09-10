@@ -55,7 +55,7 @@ public class GeekbenchTest implements IDeviceTest, IRemoteTest {
     private static final int TIMEOUT_MS = 10 * 60 * 1000;
 
     private static final String DEVICE_TEMPORARY_DIR_PATH = "/data/local/tmp/";
-    private static final String GEEKBENCH_BINARY_FILENAME = "geekbench_armeabi_32";
+    private static final String GEEKBENCH_BINARY_FILENAME = "geekbench_armeabi-v7a_32";
     private static final String GEEKBENCH_BINARY_DEVICE_PATH =
             DEVICE_TEMPORARY_DIR_PATH + GEEKBENCH_BINARY_FILENAME;
     private static final String GEEKBENCH_PLAR_DEVICE_PATH =
