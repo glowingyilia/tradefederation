@@ -32,7 +32,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -845,7 +844,7 @@ public class FileUtil {
     /**
      * Returns all jar files found in given directory
      */
-    public static Collection<File> collectJars(File dir) {
+    public static List<File> collectJars(File dir) {
         List<File> list = new ArrayList<File>();
         File[] jarFiles = dir.listFiles(new JarFilter());
         if (jarFiles != null) {
