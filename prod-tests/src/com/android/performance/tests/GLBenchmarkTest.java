@@ -249,6 +249,10 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
                 String score = getData(testResult, "score");
                 String testName = String.format("%s - %s", testTitle, testType);
                 if (METRICS_KEY_MAP.containsKey(testName)) {
+                    if (testName.contains("Fill") || testName.contains("Triangle")) {
+                        // Use Mtexels/sec as unit
+                        score = String.valueOf((long)(Double.parseDouble(score) / 1.0E6));
+                    }
                     CLog.i(String.format("%s: %s (fps=%s)", testName, score, fps));
                     String testKey = METRICS_KEY_MAP.get(testName);
                     if (score != null && !score.trim().equals("0")) {
