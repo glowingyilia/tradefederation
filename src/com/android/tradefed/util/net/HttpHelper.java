@@ -45,6 +45,8 @@ public class HttpHelper implements IHttpHelper {
     private int mMaxPollInterval = 10 * 60 * 1000;
     /** Max time for retrying request in ms. */
     private int mMaxTime = 10 * 60 * 1000;
+    /** Max number of redirects to follow */
+    private int mMaxRedirects = 5;
 
     /**
      * {@inheritDoc}
@@ -391,7 +393,28 @@ public class HttpHelper implements IHttpHelper {
      * @throws IOException if stream could not be opened.
      */
     InputStream getRemoteUrlStream(URL url) throws IOException {
-        return createConnection(url, "GET", null).getInputStream();
+        // Redirects are handle by HttpURLConnection, except when the protocol changes.
+        // e.g.: http to https, and vice versa.
+        boolean redirect;
+        int redirectCount = 0;
+        HttpURLConnection conn = createConnection(url, "GET", null);
+        do {
+            redirect = false;
+            int status = conn.getResponseCode();
+            if (status != HttpURLConnection.HTTP_OK) {
+                if (status == HttpURLConnection.HTTP_MOVED_PERM
+                        || status == HttpURLConnection.HTTP_MOVED_TEMP
+                        || status == HttpURLConnection.HTTP_SEE_OTHER) {
+                    redirect = true;
+                }
+            }
+            if (redirect) {
+                String location = conn.getHeaderField("Location");
+                URL newURL = new URL(location);
+                conn = createConnection(newURL, "GET", null);
+            }
+        } while(redirect && redirectCount < mMaxRedirects);
+        return conn.getInputStream();
     }
 
     /**
