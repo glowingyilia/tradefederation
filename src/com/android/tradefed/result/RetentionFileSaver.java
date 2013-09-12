@@ -33,8 +33,6 @@ public class RetentionFileSaver {
     static final String RETENTION_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss zzz";
     static final String RETENTION_FILE_NAME = ".retention";
 
-    private static final SimpleDateFormat sFormatter = new SimpleDateFormat(RETENTION_DATE_FORMAT);
-
     /**
      * Creates a .retention file in given dir with timestamp == current + logRetentionDays
      */
@@ -44,7 +42,8 @@ public class RetentionFileSaver {
                     60 * 1000;
             Date date = new Date(deleteTimeEpoch);
             File retentionFile = new File(dir, RETENTION_FILE_NAME);
-            FileUtil.writeToFile(sFormatter.format(date), retentionFile);
+            FileUtil.writeToFile(new SimpleDateFormat(RETENTION_DATE_FORMAT).format(date),
+                    retentionFile);
         } catch (IOException e) {
             CLog.e("Unable to create retention file in directory in %s", dir.getAbsolutePath());
             CLog.e(e);
@@ -59,7 +58,7 @@ public class RetentionFileSaver {
         String timestamp;
         try {
             timestamp = FileUtil.readStringFromFile(retentionFile);
-            Date retentionDate = sFormatter.parse(timestamp);
+            Date retentionDate = new SimpleDateFormat(RETENTION_DATE_FORMAT).parse(timestamp);
             return new Date().after(retentionDate);
         } catch (IOException e) {
             CLog.e("Unable to read retention file %s", retentionFile.getAbsolutePath());
