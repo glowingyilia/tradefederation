@@ -19,6 +19,7 @@ import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IAppBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -29,6 +30,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.AaptParser;
+import com.android.tradefed.util.FileUtil;
 
 import junit.framework.Assert;
 
@@ -72,6 +74,10 @@ public class AppLaunchTest implements IDeviceTest, IRemoteTest, IBuildReceiver {
     }
 
     /**
+     * Installs all apks listed in {@link IAppBuildInfo}, then attempts to run the package in the
+     * first apk.  Note that this does <emph>not</emph> attempt to uninstall the apks, and requires
+     * external cleanup.
+     * <p />
      * {@inheritDoc}
      */
     @Override
@@ -81,17 +87,23 @@ public class AppLaunchTest implements IDeviceTest, IRemoteTest, IBuildReceiver {
         try {
             Assert.assertTrue(mBuild instanceof IAppBuildInfo);
             IAppBuildInfo appBuild = (IAppBuildInfo)mBuild;
-            Assert.assertEquals(1, appBuild.getAppPackageFiles().size());
-            File apkFile = appBuild.getAppPackageFiles().get(0).getFile();
-            AaptParser p = AaptParser.parse(apkFile);
+            Assert.assertFalse(appBuild.getAppPackageFiles().isEmpty());
+
+            // We assume that the first apk is the one to be executed, and any others are to be
+            // installed and uninstalled.
+            File appApkFile = appBuild.getAppPackageFiles().get(0).getFile();
+            AaptParser p = AaptParser.parse(appApkFile);
             Assert.assertNotNull(p);
             String packageName = p.getPackageName();
             Assert.assertNotNull(String.format("Failed to parse package name from %s",
-                    apkFile.getAbsolutePath()), packageName);
+                    appApkFile.getAbsolutePath()), packageName);
 
-            performInstallTest(apkFile, listener);
+            for (final VersionedFile apkVersionedFile : appBuild.getAppPackageFiles()) {
+                final File apkFile = apkVersionedFile.getFile();
+                performInstallTest(apkFile, listener);
+            }
+
             performLaunchTest(packageName, listener);
-            getDevice().uninstallPackage(packageName);
         } catch (AssertionError e) {
             listener.testRunFailed(e.toString());
         } finally {
@@ -104,7 +116,7 @@ public class AppLaunchTest implements IDeviceTest, IRemoteTest, IBuildReceiver {
     private void performInstallTest(File apkFile, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         TestIdentifier installTest = new TestIdentifier("com.android.app.tests.InstallTest",
-                "testInstall");
+                FileUtil.getBaseName(apkFile.getName()));
         listener.testStarted(installTest);
         String result = getDevice().installPackage(apkFile, true);
         if (result != null) {

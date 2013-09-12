@@ -136,8 +136,12 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
         }
     }
 
+    /**
+     * Make multiple attempts to uninstall apps, aborting if failed
+     *
+     * @return {@code true} if all apps were uninstalled, {@code false} otherwise.
+     */
     private boolean uninstallAllApps(ITestDevice device) throws DeviceNotAvailableException {
-        // make multiple attempts to uninstall apps, aborting if failed
         // TODO: consider moving this to ITestDevice, so more sophisticated recovery attempts
         // can be performed
         for (int i = 0; i < 3; i++) {
@@ -153,7 +157,7 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
                 }
             }
         }
-        // check getAppsToUninstall one more time, cause last attempt through loop might have been
+        // check getAppsToUninstall one more time, since last attempt through loop might have been
         // successful
         return getAllAppsToUninstall(device).isEmpty();
     }
