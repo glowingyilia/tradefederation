@@ -64,6 +64,7 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
     private static final String TEST_RU = "CameraApplicationStress";
 
     private final String mOutputPath = "cameraStressOutput.txt";
+    private final int MAX_TIME_OUT = 90 * 60 * 1000; //90 mins
 
     @Option(name="testMethodName", description="Used to specify a specific test method to run")
     private String mTestMethodName = null;
@@ -84,6 +85,7 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
         if (mTestMethodName != null) {
             runner.setMethodName(TEST_CLASS_NAME, mTestMethodName);
         }
+        runner.setMaxtimeToOutputResponse(MAX_TIME_OUT);
 
         BugreportCollector bugListener = new BugreportCollector(listener, mTestDevice);
         bugListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);
