@@ -54,8 +54,10 @@ public class RemoveSystemAppPreparer implements ITargetPreparer {
 
         remount(device);
         for (String file : mFiles) {
-            CLog.d("Removing system app %s", file);
+            CLog.d("Removing system app %s from /system/app", file);
             device.executeShellCommand(String.format("rm /system/app/%s", file));
+            CLog.d("Removing system app %s from /system/priv-app", file);
+            device.executeShellCommand(String.format("rm /system/priv-app/%s", file));
         }
 
         // Reboot the device to put /system back into read-only
