@@ -135,6 +135,7 @@ public class SdkAvdPreparer implements ITargetPreparer {
 
         if (!mWindow) {
             emulatorArgs.add("-no-window");
+            emulatorArgs.add("-no-audio");
         }
 
         if (mGpu) {
