@@ -19,6 +19,8 @@ package com.android.tradefed.command;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.command.remote.RemoteClient;
+import com.android.tradefed.command.remote.RemoteManager;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -830,7 +832,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             CLog.d("connected to remote manager at %d", handoverPort);
             // inform remote manager of the devices we are still using
             for (String deviceInUse : getDeviceManager().getAllocatedDevices()) {
-                if (!mRemoteClient.sendFilterDevice(deviceInUse)) {
+                if (!mRemoteClient.sendAllocateDevice(deviceInUse)) {
                     CLog.e("Failed to send command to remote manager");
                     return false;
                 }
@@ -874,7 +876,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         // TODO: send freed device state too
         if (mRemoteClient != null) {
             try {
-                mRemoteClient.sendUnfilterDevice(device.getSerialNumber());
+                mRemoteClient.sendFreeDevice(device.getSerialNumber());
             } catch (IOException e) {
                 CLog.e("Failed to send unfilter device %s to remote manager",
                         device.getSerialNumber());
