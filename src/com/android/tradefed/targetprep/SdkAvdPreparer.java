@@ -18,8 +18,8 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.ISdkBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
@@ -75,7 +75,7 @@ public class SdkAvdPreparer implements ITargetPreparer {
      * Creates a {@link SdkAvdPreparer}.
      */
     public SdkAvdPreparer() {
-        this(new RunUtil(), DeviceManager.getInstance());
+        this(new RunUtil(), GlobalConfiguration.getDeviceManagerInstance());
     }
 
     /**

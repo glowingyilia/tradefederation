@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.util.RunUtil;
 
 import junit.framework.TestCase;
@@ -36,11 +37,13 @@ public class DeviceDiagTest extends TestCase {
      * Queries the {@link DeviceManager} to verify all visible devices are available for testing.
      */
     public void testAllDevicesAvailable() {
-        Collection<String> unavailDevices = DeviceManager.getInstance().getUnavailableDevices();
+        Collection<String> unavailDevices =
+            getDeviceManager().getUnavailableDevices();
         for (int i=0; i < 5 && unavailDevices.size() > 0; i++) {
             Log.i(LOG_TAG, "Unavailable devices detected, sleeping and polling");
             RunUtil.getDefault().sleep(1*1000);
-            unavailDevices = DeviceManager.getInstance().getUnavailableDevices();
+            unavailDevices =
+                getDeviceManager().getUnavailableDevices();
         }
         for (String device : unavailDevices) {
             System.out.println(String.format(
@@ -49,5 +52,9 @@ public class DeviceDiagTest extends TestCase {
             // TODO: add more specific hints
         }
         assertEquals("Not all devices are available", 0, unavailDevices.size());
+    }
+
+    private IDeviceManager getDeviceManager() {
+        return GlobalConfiguration.getDeviceManagerInstance();
     }
 }

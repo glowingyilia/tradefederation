@@ -196,7 +196,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * Note will not populate configuration with values from options
      *
      * @param arrayArgs the full list of command line arguments, including the config name
-     * @param listArgs an empty list, that will be populated with the remaining option arguments
+     * @param optionArgsRef an empty list, that will be populated with the remaining option
+     *                      arguments
      * @return
      * @throws ConfigurationException
      */
@@ -233,7 +234,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * Note will not populate configuration with values from options
      *
      * @param arrayArgs the full list of command line arguments, including the config name
-     * @param listArgs an empty list, that will be populated with the remaining option arguments
+     * @param optionArgsRef an empty list, that will be populated with the remaining option
+     *                      arguments
      * @return
      * @throws ConfigurationException
      */

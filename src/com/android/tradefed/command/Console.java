@@ -23,7 +23,6 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.log.ConsoleReaderOutputStream;
 import com.android.tradefed.log.LogRegistry;
@@ -474,7 +473,8 @@ public class Console extends Thread {
         trie.put(new Runnable() {
                     @Override
                     public void run() {
-                        IDeviceManager manager = DeviceManager.getInstance();
+                        IDeviceManager manager =
+                                GlobalConfiguration.getDeviceManagerInstance();
                         manager.displayDevicesInfo(new PrintWriter(System.out, true));
                     }
                 }, LIST_PATTERN, "d(?:evices)?");

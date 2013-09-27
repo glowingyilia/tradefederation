@@ -21,9 +21,9 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
-import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.IDeviceManager;
@@ -441,7 +441,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      * @return the {@link IDeviceManager} to use
      */
     IDeviceManager getDeviceManager() {
-        return DeviceManager.getInstance();
+        return GlobalConfiguration.getDeviceManagerInstance();
     }
 
     /**
