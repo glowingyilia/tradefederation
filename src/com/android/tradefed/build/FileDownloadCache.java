@@ -58,8 +58,8 @@ public class FileDownloadCache {
 
     private long mCurrentCacheSize = 0;
 
-    /** The approximate maximum allowed size of the local file cache. Default to 2 gig */
-    private long mMaxFileCacheSize = 2L * 1024L * 1024L * 1024L;
+    /** The approximate maximum allowed size of the local file cache. Default to 20 gig */
+    private long mMaxFileCacheSize = 20L * 1024L * 1024L * 1024L;
 
     /**
      * Struct for a {@link File} and its remote relative path
