@@ -191,6 +191,22 @@ public class FileUtil {
     }
 
     /**
+     * Recursively set read and exec (if folder) permissions for given file.
+     */
+    public static void setReadableRecursive(File file) {
+        file.setReadable(true);
+        if (file.isDirectory()) {
+            file.setExecutable(true);
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File childFile: file.listFiles()) {
+                    setReadableRecursive(childFile);
+                }
+            }
+        }
+    }
+
+    /**
      * Helper function to create a temp directory in the system default temporary file directory.
      *
      * @param prefix The prefix string to be used in generating the file's name; must be at least
@@ -862,6 +878,4 @@ public class FileUtil {
            return name.endsWith(".jar");
         }
     }
-
-
 }
