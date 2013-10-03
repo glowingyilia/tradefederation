@@ -137,7 +137,8 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     @Option(name = "option", description = "Option to pass to monkey command. May be repeated.")
     private Collection<String> mOptions = new LinkedList<String>();
 
-    @Option(name = "target-count", description = "Target number of events to send.")
+    @Option(name = "target-count", description = "Target number of events to send.",
+            importance = Importance.ALWAYS)
     private int mTargetCount = 125000;
 
     @Option(name = "random-seed", description = "Random seed to use for the monkey.")
