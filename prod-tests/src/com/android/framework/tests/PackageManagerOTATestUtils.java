@@ -82,7 +82,7 @@ public class PackageManagerOTATestUtils {
             throws DeviceNotAvailableException {
         remountSystemRW();
         mDevice.waitForDeviceAvailable();
-        String cmd = String.format("rm /system/app/%s", systemApp);
+        String cmd = String.format("rm %s", systemApp);
         mDevice.executeShellCommand(cmd);
         if (reboot) {
             mDevice.reboot();
