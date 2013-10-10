@@ -70,4 +70,9 @@ public interface ICommandOptions {
      */
     public boolean runOnAllDevices();
 
+    /**
+     * Return true if a bugreport should be taken when the test invocation has ended.
+     */
+    public boolean takeBugreportOnInvocationEnded();
+
 }
