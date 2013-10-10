@@ -411,6 +411,7 @@ public class HttpHelper implements IHttpHelper {
             if (redirect) {
                 String location = conn.getHeaderField("Location");
                 URL newURL = new URL(location);
+                CLog.d("Redirect occured during GET, new url %s", location);
                 conn = createConnection(newURL, "GET", null);
             }
         } while(redirect && redirectCount < mMaxRedirects);
