@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.command;
+package com.android.tradefed.command.remote;
 
-import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.command.ICommandScheduler;
+import com.android.tradefed.command.remote.RemoteOperation.RemoteException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
@@ -29,12 +30,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.Hashtable;
-import java.util.Map;
 
 /**
- * Class that receives remote commands to add and remove devices from use via a socket.
+ * Class that receives {@link RemoteOperation}s via a socket.
  * <p/>
  * Currently accepts only one remote connection at one time, and processes incoming commands
  * serially.
@@ -49,19 +47,10 @@ import java.util.Map;
  */
 public class RemoteManager extends Thread {
 
-    // constants that define wire protocol between RemoteClient and RemoteManager
-    static final String DELIM = ";";
-    static final String FILTER = "filter";
-    static final String UNFILTER = "unfilter";
-    static final String ALL_DEVICES = "*";
-    static final String CLOSE = "close";
-    static final String ADD_COMMAND = "add_command";
-
     private ServerSocket mServerSocket = null;
     private boolean mCancel = false;
     private final IDeviceManager mDeviceManager;
     private final ICommandScheduler mScheduler;
-    private Map<String, ITestDevice> mFilteredDeviceMap = new Hashtable<String, ITestDevice>();
 
     /**
      * Creates a {@link RemoteManager}.
@@ -130,7 +119,7 @@ public class RemoteManager extends Thread {
                 clientSocket = serverSocket.accept();
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 out = new PrintWriter(clientSocket.getOutputStream(), true);
-                processClientCommands(in, out);
+                processClientOperations(in, out);
             } catch (IOException e) {
                 CLog.e("Failed to accept connection: %s", e);
             } finally {
@@ -141,91 +130,84 @@ public class RemoteManager extends Thread {
         }
     }
 
-    private void processClientCommands(BufferedReader in, PrintWriter out) throws IOException {
+    private void processClientOperations(BufferedReader in, PrintWriter out) throws IOException {
         String line = null;
         while ((line = in.readLine()) != null && !mCancel) {
             boolean result = false;
-            String[] commandSegments = line.split(DELIM);
-            String cmdType = commandSegments[0];
-            if (FILTER.equals(cmdType)) {
-                result = processFilterCommand(commandSegments);
-            } else if (UNFILTER.equals(cmdType)) {
-                result = processUnfilterCommand(commandSegments);
-            } else if (CLOSE.equals(cmdType)) {
-                cancel();
-                result = true;
-            } else if (ADD_COMMAND.equals(cmdType)) {
-                result = processAddCommand(commandSegments);
+            RemoteOperation rc;
+            try {
+                rc = RemoteOperation.createRemoteOpFromString(line);
+                switch (rc.getType()) {
+                    case ADD_COMMAND:
+                        result = processAdd((AddCommandOp)rc);
+                        break;
+                    case CLOSE:
+                        result = processClose((CloseOp)rc);
+                        break;
+                    case ALLOCATE_DEVICE:
+                        result = processAllocate((AllocateDeviceOp)rc);
+                        break;
+                    case FREE_DEVICE:
+                        result = processFree((FreeDeviceOp)rc);
+                        break;
+                }
+            } catch (RemoteException e) {
+                CLog.e("Failed to handle remote command", e);
             }
             sendAck(result, out);
         }
     }
 
-    private boolean processFilterCommand(final String[] commandSegments) {
-        if (commandSegments.length < 2) {
-            CLog.e("Invalid command received: %s", ArrayUtil.join(" ", (Object[])commandSegments));
-            return false;
-        }
-        final String serial = commandSegments[1];
-        ITestDevice allocatedDevice = mDeviceManager.forceAllocateDevice(serial);
+    private boolean processAllocate(AllocateDeviceOp c) {
+        ITestDevice allocatedDevice = mDeviceManager.forceAllocateDevice(c.mDeviceSerial);
         if (allocatedDevice != null) {
-            Log.logAndDisplay(LogLevel.INFO, "RemoteManager",
-                    String.format("Allocating device %s that is still in use by remote tradefed",
-                            serial));
-            mFilteredDeviceMap.put(serial, allocatedDevice);
+            CLog.logAndDisplay(LogLevel.INFO,
+                    "Allocating device %s that is still in use by remote tradefed",
+                            c.mDeviceSerial);
+            DeviceTracker.getInstance().allocateDevice(allocatedDevice);
             return true;
-        } else {
-            CLog.e("Failed to allocate remote device %s", serial);
-            return false;
         }
+        CLog.e("Failed to allocate device %s", c.mDeviceSerial);
+        return false;
     }
 
-    private boolean processUnfilterCommand(final String[] commandSegments) {
-        if (commandSegments.length < 2) {
-            CLog.e("Invalid command received: %s", ArrayUtil.join(" ", (Object[])commandSegments));
-            return false;
-        }
-        // TODO: consider making this synchronous, and sending ack back to client once allocated
-        final String serial = commandSegments[1];
-        if (ALL_DEVICES.equals(serial)) {
+    private boolean processFree(FreeDeviceOp c) {
+        if (FreeDeviceOp.ALL_DEVICES.equals(c.mDeviceSerial)) {
             freeAllDevices();
             return true;
         } else {
-            ITestDevice d = mFilteredDeviceMap.remove(serial);
+            ITestDevice d = DeviceTracker.getInstance().freeDevice(c.mDeviceSerial);
             if (d != null) {
-                Log.logAndDisplay(LogLevel.INFO, "RemoteManager",
-                        String.format("Freeing device %s no longer in use by remote tradefed",
-                                serial));
+                CLog.logAndDisplay(LogLevel.INFO,
+                        "Freeing device %s no longer in use by remote tradefed",
+                                c.mDeviceSerial);
                 mDeviceManager.freeDevice(d, FreeDeviceState.AVAILABLE);
                 return true;
             } else {
-                CLog.w("Could not find device to free %s", serial);
+                CLog.w("Could not find device to free %s", c.mDeviceSerial);
             }
         }
         return false;
     }
 
-    private boolean processAddCommand(final String[] commandSegments) {
-        if (commandSegments.length < 3) {
-            CLog.e("Invalid command received: %s", ArrayUtil.join(" ", (Object[])commandSegments));
-            return false;
-        }
-        long totalTime = Long.parseLong(commandSegments[1]);
-        String[] cmdArgs = Arrays.copyOfRange(commandSegments, 2, commandSegments.length);
-        Log.logAndDisplay(LogLevel.INFO, "RemoteManager",
-                String.format("Adding command '%s'", ArrayUtil.join(" ", (Object[])cmdArgs)));
-        return mScheduler.addCommand(cmdArgs, totalTime);
+    boolean processAdd(AddCommandOp c) {
+        CLog.logAndDisplay(LogLevel.INFO, "Adding command '%s'", ArrayUtil.join(" ",
+                c.mCommandArgs));
+        return mScheduler.addCommand(c.mCommandArgs, c.mTotalTime);
+    }
+
+    private boolean processClose(CloseOp rc) {
+        cancel();
+        return true;
     }
 
     private void freeAllDevices() {
-        for (ITestDevice d : mFilteredDeviceMap.values()) {
-            Log.logAndDisplay(LogLevel.INFO, "RemoteManager",
-                    String.format("Freeing device %s no longer in use by remote tradefed",
-                            d.getSerialNumber()));
-
+        for (ITestDevice d : DeviceTracker.getInstance().freeAll()) {
+            CLog.logAndDisplay(LogLevel.INFO,
+                    "Freeing device %s no longer in use by remote tradefed",
+                            d.getSerialNumber());
             mDeviceManager.freeDevice(d, FreeDeviceState.AVAILABLE);
         }
-        mFilteredDeviceMap.clear();
     }
 
     private void sendAck(boolean result, PrintWriter out) {
@@ -238,7 +220,7 @@ public class RemoteManager extends Thread {
     public synchronized void cancel() {
         if (!mCancel) {
             mCancel  = true;
-            Log.logAndDisplay(LogLevel.INFO, "RemoteManager", "Closing remote manager");
+            CLog.logAndDisplay(LogLevel.INFO, "Closing remote manager");
         }
     }
 
