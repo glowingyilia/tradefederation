@@ -59,6 +59,10 @@ public class CommandOptions implements ICommandOptions {
             "fork this command to run on all connected devices.")
     private boolean mAllDevices = false;
 
+    @Option(name = "bugreport-on-invocation-ended", description =
+            "take a bugreport when the test invocation has ended")
+    private boolean mTakeBugreportOnInvocationEnded = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -159,5 +163,13 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean runOnAllDevices() {
         return mAllDevices;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean takeBugreportOnInvocationEnded() {
+        return mTakeBugreportOnInvocationEnded;
     }
 }

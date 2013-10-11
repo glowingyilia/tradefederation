@@ -70,6 +70,7 @@ public class TestInvocation implements ITestInvocation {
     static final String DEVICE_LOG_NAME = "device_logcat";
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
     static final String DEVICE_UNRESPONSIVE_BUGREPORT_NAME = "device_unresponsive_bugreport";
+    static final String INVOCATION_ENDED_BUGREPORT_NAME = "invocation_ended_bugreport";
 
     private String mStatus = "(not invoked)";
 
@@ -417,6 +418,9 @@ public class TestInvocation implements ITestInvocation {
         } finally {
             mStatus = "done running tests";
             try {
+                if (config.getCommandOptions().takeBugreportOnInvocationEnded()) {
+                    takeBugreport(device, listener, INVOCATION_ENDED_BUGREPORT_NAME);
+                }
                 reportLogs(device, listener, config.getLogOutput());
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
