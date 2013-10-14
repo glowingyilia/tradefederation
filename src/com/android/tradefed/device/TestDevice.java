@@ -1917,30 +1917,7 @@ class TestDevice implements IManagedTestDevice {
     }
 
     private void doAdbRebootBootloader() throws DeviceNotAvailableException {
-        try {
-            getIDevice().reboot("bootloader");
-            return;
-        } catch (IOException e) {
-            CLog.w("IOException '%s' when rebooting %s into bootloader", e.getMessage(),
-                    getSerialNumber());
-            recoverDeviceFromBootloader();
-            // no need to try multiple times - if recoverDeviceFromBootloader() succeeds device is
-            // successfully in bootloader mode
-
-        } catch (TimeoutException e) {
-            CLog.w("TimeoutException when rebooting %s into bootloader", getSerialNumber());
-            recoverDeviceFromBootloader();
-            // no need to try multiple times - if recoverDeviceFromBootloader() succeeds device is
-            // successfully in bootloader mode
-
-        } catch (AdbCommandRejectedException e) {
-            CLog.w("AdbCommandRejectedException '%s' when rebooting %s into bootloader",
-                    e.getMessage(), getSerialNumber());
-            recoverDeviceFromBootloader();
-            // no need to try multiple times - if recoverDeviceFromBootloader() succeeds device is
-            // successfully in bootloader mode
-
-        }
+        doAdbReboot("bootloader");
     }
 
     /**
@@ -2026,6 +2003,41 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
+     * Performs an reboot via framework power manager
+     *
+     * Must have root access, device must be API Level 18 or above
+     *
+     * @param into the mode to reboot into, currently supported: bootloader, recovery, leave it
+     *         null for a plain reboot
+     * @return <code>true</code> if the device rebooted, <code>false</code> if not successful or
+     *          unsupported
+     * @throws DeviceNotAvailableException
+     */
+    private boolean doAdbFrameworkReboot(final String into) throws DeviceNotAvailableException {
+        // use framework reboot when:
+        // 1. device API level >= 18
+        // 2. has adb root
+        // 3. framework is running
+        if (getApiLevel() >= 18 && isAdbRoot()) {
+            // check framework running
+            String output = executeShellCommand("pm path android");
+            if (output == null || !output.contains("package:")) {
+                CLog.v("framework reboot: can't detect framework running");
+                return false;
+            }
+            String command = "svc power reboot";
+            if (into != null && !into.isEmpty()) {
+                command = String.format("%s %s", command, into);
+            }
+            executeShellCommand(command);
+            return waitForDeviceNotAvailable(30 * 1000);
+        } else {
+            CLog.v("framework reboot: not supported");
+            return false;
+        }
+    }
+
+    /**
      * Perform a adb reboot.
      *
      * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
@@ -2033,14 +2045,17 @@ class TestDevice implements IManagedTestDevice {
      * @throws DeviceNotAvailableException
      */
     private void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        DeviceAction rebootAction = new DeviceAction() {
-            @Override
-            public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException {
-                getIDevice().reboot(into);
-                return true;
-            }
-        };
-        performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
+        if (!doAdbFrameworkReboot(into)) {
+            DeviceAction rebootAction = new DeviceAction() {
+                @Override
+                public boolean run() throws TimeoutException, IOException,
+                        AdbCommandRejectedException {
+                    getIDevice().reboot(into);
+                    return true;
+                }
+            };
+            performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
+        }
     }
 
     private void waitForDeviceNotAvailable(String operationDesc, long time) {
@@ -2598,5 +2613,20 @@ class TestDevice implements IManagedTestDevice {
     @Override
     public TestDeviceOptions getOptions() {
         return mOptions;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getApiLevel() throws DeviceNotAvailableException {
+        int apiLevel = UNKNOWN_API_LEVEL;
+        try {
+            String prop = getProperty("ro.build.version.sdk");
+            apiLevel = Integer.parseInt(prop);
+        } catch (NumberFormatException nfe) {
+            // ignore, return unknown instead
+        }
+        return apiLevel;
     }
 }
