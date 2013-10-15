@@ -39,6 +39,11 @@ import java.util.Set;
  */
 public interface ITestDevice {
 
+    /**
+     * Default value when API Level cannot be detected
+     */
+    public final static int UNKNOWN_API_LEVEL = -1;
+
     public enum RecoveryMode {
         /** don't attempt to recover device. */
         NONE,
@@ -976,4 +981,12 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public PackageInfo getAppPackageInfo(String packageName) throws DeviceNotAvailableException;
+
+    /**
+     * Get the device API Level. Defaults to {@link #UNKNOWN_API_LEVEL}.
+     *
+     * @return an integer indicating the API Level of device
+     * @throws DeviceNotAvailableException
+     */
+    public int getApiLevel() throws DeviceNotAvailableException;
 }

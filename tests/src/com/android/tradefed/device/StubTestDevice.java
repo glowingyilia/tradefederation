@@ -761,4 +761,12 @@ public class StubTestDevice implements IManagedTestDevice {
     public PackageInfo getAppPackageInfo(String packageName) throws DeviceNotAvailableException {
         return null;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getApiLevel() throws DeviceNotAvailableException {
+        return UNKNOWN_API_LEVEL;
+    }
 }
