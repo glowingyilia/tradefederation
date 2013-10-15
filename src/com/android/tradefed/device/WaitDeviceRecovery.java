@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
+import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -56,6 +57,11 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
     @Option(name="shell-wait-time",
             description="maximum time in ms to wait for device shell to be responsive.")
     protected long mShellWaitTime = 30 * 1000;
+
+    @Option(name = "min-battery-after-recovery",
+            description = "require a min battery level after successful recovery, " +
+                          "default to 0 for ignoring.")
+    protected int mRequiredMinBattery = 0;
 
     @Option(name = "disable-unresponsive-reboot",
             description = "If this is set, we will not attempt to reboot an unresponsive device" +
@@ -108,6 +114,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         IDevice device = monitor.waitForDeviceOnline();
         if (device == null) {
             handleDeviceNotAvailable(monitor, recoverUntilOnline);
+            // function returning implies that recovery is successful, check battery level here
+            checkMinBatteryLevel(device);
             return;
         }
         // occasionally device is erroneously reported as online - double check that we can shell
@@ -115,6 +123,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         if (!monitor.waitForDeviceShell(mShellWaitTime)) {
             // treat this as a not available device
             handleDeviceNotAvailable(monitor, recoverUntilOnline);
+            checkMinBatteryLevel(device);
             return;
         }
 
@@ -123,6 +132,43 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                 // device is online but not responsive
                 handleDeviceUnresponsive(device, monitor);
             }
+        }
+        // do a final check here when all previous if blocks are skipped or the last
+        // handleDeviceUnresponsive was successful
+        checkMinBatteryLevel(device);
+    }
+
+    /**
+     * Checks if device battery level meets min requirement
+     * @param device
+     * @throws DeviceNotAvailableException if battery level cannot be read or lower than min
+     */
+    protected void checkMinBatteryLevel(IDevice device) throws DeviceNotAvailableException {
+        if (mRequiredMinBattery <= 0) {
+            // don't do anything if check is not required
+            return;
+        }
+        try {
+            Integer level = device.getBatteryLevel();
+            if (level == null) {
+                // can't read battery level but we are requiring a min, reject
+                // device
+                throw new DeviceNotAvailableException(
+                        "Cannot read battery level but a min is required");
+            } else if (level < mRequiredMinBattery) {
+                throw new DeviceNotAvailableException(String.format(
+                        "After recovery, device battery level %d is lower than required minimum %d",
+                        level, mRequiredMinBattery));
+            }
+            return;
+        } catch (TimeoutException e) {
+            throw new DeviceNotAvailableException("exception while reading battery level", e);
+        } catch (AdbCommandRejectedException e) {
+            throw new DeviceNotAvailableException("exception while reading battery level", e);
+        } catch (IOException e) {
+            throw new DeviceNotAvailableException("exception while reading battery level", e);
+        } catch (ShellCommandUnresponsiveException e) {
+            throw new DeviceNotAvailableException("exception while reading battery level", e);
         }
     }
 
