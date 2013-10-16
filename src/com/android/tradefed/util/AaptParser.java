@@ -38,16 +38,17 @@ public class AaptParser {
     AaptParser() {
     }
 
-    void parse(String aaptOut) {
+    boolean parse(String aaptOut) {
         Matcher m = PKG_PATTERN.matcher(aaptOut);
         if (m.find()) {
             mPackageName = m.group(1);
             mVersionCode = m.group(2);
             mVersionName = m.group(3);
-        } else {
-            CLog.e("Failed to parse package and version info from 'aapt dump badging'");
-            CLog.e(aaptOut);
+            return true;
         }
+        CLog.e("Failed to parse package and version info from 'aapt dump badging'");
+        CLog.e(aaptOut);
+        return false;
     }
 
     /**
@@ -59,10 +60,17 @@ public class AaptParser {
     public static AaptParser parse(File apkFile) {
         CommandResult result = RunUtil.getDefault().runTimedCmd(5000, "aapt", "dump", "badging",
                 apkFile.getAbsolutePath());
+
+        String stderr = result.getStderr();
+        if (stderr != null && stderr.length() > 0) {
+            CLog.e("aapt dump badging stderr: %s", stderr);
+        }
+
         if (result.getStatus() == CommandStatus.SUCCESS) {
             AaptParser p = new AaptParser();
-            p.parse(result.getStdout());
-            return p;
+            if (p.parse(result.getStdout()))
+                return p;
+            return null;
         }
         CLog.e("Failed to run aapt on %s", apkFile.getAbsoluteFile());
         return null;
