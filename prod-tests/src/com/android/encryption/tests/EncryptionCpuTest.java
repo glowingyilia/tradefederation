@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Runs the encryption CPU benchmarks
@@ -334,7 +335,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
                         "com.android.mediaframeworktest", ".MediaPlayerStressTestRunner",
                         mTestDevice.getIDevice());
                 runner.setClassName("com.android.mediaframeworktest.stress.MediaPlayerStressTest");
-                runner.setMaxtimeToOutputResponse(TEST_TIMEOUT);
+                runner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
                 CLog.d("Running video playback instrumentation");
                 startLogging();
@@ -360,7 +361,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
                 IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                         mVideoRecordPackage, mVideoRecordTestRunner, mTestDevice.getIDevice());
                 runner.setMethodName(mVideoRecordClass, mVideoRecordMethod);
-                runner.setMaxtimeToOutputResponse(TEST_TIMEOUT);
+                runner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
                 runner.addInstrumentationArg("video_iterations", Integer.toString(1));
                 runner.addInstrumentationArg("video_duration", Integer.toString(3 * 60 * 1000));
 
@@ -535,7 +536,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         int timeout = size * 2 * 1000; // Timeout is 2 seconds per kB.
         mTestDevice.executeShellCommand(constructDdCommand(filePath, size),
-                receiver, timeout, 2);
+                receiver, timeout, TimeUnit.MILLISECONDS, 2);
         return (receiver.getOutput().contains(
                 String.format("%d bytes transferred", size * BLOCK_SIZE)));
     }

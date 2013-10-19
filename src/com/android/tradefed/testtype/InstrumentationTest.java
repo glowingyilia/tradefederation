@@ -39,6 +39,7 @@ import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A Test that runs an instrumentation test package on given device.
@@ -411,7 +412,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         if (mTestSize != null) {
             mRunner.setTestSize(TestSize.getTestSize(mTestSize));
         }
-        mRunner.setMaxtimeToOutputResponse(mTestTimeout);
+        mRunner.setMaxTimeToOutputResponse(mTestTimeout, TimeUnit.MILLISECONDS);
         if (mRunName != null) {
             mRunner.setRunName(mRunName);
         }
@@ -542,12 +543,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
                 runner.addInstrumentationArg(DELAY_MSEC_ARG, Integer.toString(mTestDelay));
             }
             // use a shorter timeout when collecting tests
-            runner.setMaxtimeToOutputResponse(mCollectTestsShellTimeout);
+            runner.setMaxTimeToOutputResponse(mCollectTestsShellTimeout, TimeUnit.MILLISECONDS);
             // try to collect tests multiple times, in case device is temporarily not available
             // on first attempt
             Collection<TestIdentifier>  tests = collectTestsAndRetry(runner);
             runner.setLogOnly(false);
-            runner.setMaxtimeToOutputResponse(mTestTimeout);
+            runner.setMaxTimeToOutputResponse(mTestTimeout, TimeUnit.MILLISECONDS);
             runner.removeInstrumentationArg(DELAY_MSEC_ARG);
             return tests;
         }

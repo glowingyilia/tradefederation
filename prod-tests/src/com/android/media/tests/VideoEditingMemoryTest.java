@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -103,7 +104,7 @@ public class VideoEditingMemoryTest implements IDeviceTest, IRemoteTest {
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.setClassName(TEST_CLASS_NAME);
-        runner.setMaxtimeToOutputResponse(MAX_TEST_TIMEOUT);
+        runner.setMaxTimeToOutputResponse(MAX_TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         if (mGetHeapDump) {
             runner.addInstrumentationArg("get_heap_dump", "getNativeHeap");
         }

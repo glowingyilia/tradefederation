@@ -37,6 +37,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Run radio outgoing call stress test. The test stresses the voice connection when making
@@ -105,7 +106,7 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
         runner.addInstrumentationArg("callduration", mCallDuration);
         runner.addInstrumentationArg("pausetime", mPauseTime);
         runner.addInstrumentationArg("phonenumber", mPhoneNumber);
-        runner.setMaxtimeToOutputResponse(TEST_TIMER);
+        runner.setMaxTimeToOutputResponse(TEST_TIMER, TimeUnit.MILLISECONDS);
 
         // Add bugreport listener for failed test
         BugreportCollector bugListener = new

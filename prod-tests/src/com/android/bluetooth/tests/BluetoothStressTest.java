@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -477,7 +478,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(mTestPackageName,
                 TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.setClassName(mTestClassName);
-        runner.setMaxtimeToOutputResponse(mTestTimeout);
+        runner.setMaxTimeToOutputResponse(mTestTimeout, TimeUnit.MILLISECONDS);
         BugreportCollector bugListener = new BugreportCollector(listener, mTestDevice);
         bugListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);
 

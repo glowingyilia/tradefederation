@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Runs the Camera latency testcases.
@@ -139,7 +140,7 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
         CollectingTestListener auxListener = new CollectingTestListener();
 
         runner.setClassName(test.mClassName);
-        runner.setMaxtimeToOutputResponse(MAX_TEST_TIMEOUT);
+        runner.setMaxTimeToOutputResponse(MAX_TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         mTestDevice.runInstrumentationTests(runner, listener, auxListener);
 
         // Grab a bugreport if warranted

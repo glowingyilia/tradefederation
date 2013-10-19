@@ -49,6 +49,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Run the OpenGl performance test. The OpenGl performance test benchmarks the performance
@@ -166,7 +167,7 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.addInstrumentationArg("iterations", Integer.toString(mIterations));
         runner.setClassName(TEST_CLASS);
-        runner.setMaxtimeToOutputResponse(TEST_TIMER);
+        runner.setMaxTimeToOutputResponse(TEST_TIMER, TimeUnit.MILLISECONDS);
         // Add bugreport listener for failed test
         BugreportCollector bugListener = new
             BugreportCollector(standardListener, mTestDevice);

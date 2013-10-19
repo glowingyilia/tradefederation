@@ -62,6 +62,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -471,7 +472,8 @@ class TestDevice implements IManagedTestDevice {
             @Override
             public boolean run() throws TimeoutException, IOException,
                     AdbCommandRejectedException, ShellCommandUnresponsiveException {
-                getIDevice().executeShellCommand(command, receiver, mCmdTimeout);
+                getIDevice().executeShellCommand(command, receiver,
+                        mCmdTimeout, TimeUnit.MILLISECONDS);
                 return true;
             }
         };
@@ -481,15 +483,28 @@ class TestDevice implements IManagedTestDevice {
     /**
      * {@inheritDoc}
      */
+    @Deprecated
     @Override
     public void executeShellCommand(final String command, final IShellOutputReceiver receiver,
             final int maxTimeToOutputShellResponse, int retryAttempts)
+            throws DeviceNotAvailableException {
+        executeShellCommand(command, receiver,
+                maxTimeToOutputShellResponse, TimeUnit.MILLISECONDS, retryAttempts);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void executeShellCommand(final String command, final IShellOutputReceiver receiver,
+            final long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
             throws DeviceNotAvailableException {
         DeviceAction action = new DeviceAction() {
             @Override
             public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException,
                     ShellCommandUnresponsiveException {
-                getIDevice().executeShellCommand(command, receiver, maxTimeToOutputShellResponse);
+                getIDevice().executeShellCommand(command, receiver,
+                        maxTimeToOutputShellResponse, TimeUnit.MILLISECONDS);
                 return true;
             }
         };

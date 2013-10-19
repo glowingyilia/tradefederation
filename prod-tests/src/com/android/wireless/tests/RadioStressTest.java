@@ -33,6 +33,7 @@ import junit.framework.Assert;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Run radio startup stress test. The test stresses the radio by run-time reboot a device
@@ -169,7 +170,7 @@ public class RadioStressTest implements IRemoteTest, IDeviceTest {
         runner.addInstrumentationArg("callduration", mCallDuration);
         runner.addInstrumentationArg("phonenumber", mPhoneNumber);
         runner.addInstrumentationArg("repeatcount", "1");
-        runner.setMaxtimeToOutputResponse(VOICE_TEST_TIMER);
+        runner.setMaxTimeToOutputResponse(VOICE_TEST_TIMER, TimeUnit.MILLISECONDS);
 
         // Add bugreport listener for failed test
         BugreportCollector bugListener = new

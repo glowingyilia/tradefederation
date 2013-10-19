@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -127,7 +128,7 @@ public class GeekbenchTest implements IDeviceTest, IRemoteTest {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         device.executeShellCommand(String.format("%s --no-upload --export-xml %s",
                 GEEKBENCH_BINARY_DEVICE_PATH, GEEKBENCH_RESULT_DEVICE_PATH), receiver,
-                TIMEOUT_MS, MAX_ATTEMPTS);
+                TIMEOUT_MS, TimeUnit.MILLISECONDS, MAX_ATTEMPTS);
         CLog.v(receiver.getOutput());
 
         // pull result from device

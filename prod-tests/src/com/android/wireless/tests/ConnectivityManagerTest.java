@@ -29,6 +29,8 @@ import com.android.tradefed.util.RunUtil;
 
 import junit.framework.Assert;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * Run the connectivity manager functional tests. This test verifies the
  * connectivity state transition and data connectivity when the device
@@ -95,7 +97,7 @@ public class ConnectivityManagerTest implements IRemoteTest, IDeviceTest {
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.addInstrumentationArg("ssid", mSsid);
-        runner.setMaxtimeToOutputResponse(TEST_TIMER);
+        runner.setMaxTimeToOutputResponse(TEST_TIMER, TimeUnit.MILLISECONDS);
         if (mTestMethodName != null) {
             runner.setMethodName(TEST_CLASS_NAME, mTestMethodName);
         }

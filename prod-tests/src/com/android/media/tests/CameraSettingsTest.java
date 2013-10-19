@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -85,7 +86,7 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
         if (mTestMethodName != null) {
             runner.setMethodName(TEST_CLASS_NAME, mTestMethodName);
         }
-        runner.setMaxtimeToOutputResponse(MAX_TIME_OUT);
+        runner.setMaxTimeToOutputResponse(MAX_TIME_OUT, TimeUnit.MILLISECONDS);
 
         BugreportCollector bugListener = new BugreportCollector(listener, mTestDevice);
         bugListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);

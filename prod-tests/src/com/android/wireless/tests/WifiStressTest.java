@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -263,7 +264,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
             CLog.d("TestInfo: " + testCase.toString());
             runner.setClassName(testCase.mTestClass);
             runner.setMethodName(testCase.mTestClass, testCase.mTestMethod);
-            runner.setMaxtimeToOutputResponse(testCase.mTestTimer);
+            runner.setMaxTimeToOutputResponse(testCase.mTestTimer, TimeUnit.MILLISECONDS);
             bugListener.setDescriptiveName(testCase.mTestName);
             mTestDevice.runInstrumentationTests(runner, bugListener);
             logOutputFile(testCase, bugListener);

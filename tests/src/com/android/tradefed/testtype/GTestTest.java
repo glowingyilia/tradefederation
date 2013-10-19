@@ -27,6 +27,8 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.util.concurrent.TimeUnit;
+
 
 /**
  * Unit tests for {@link GTestTest}.
@@ -82,10 +84,10 @@ public class GTestTest extends TestCase {
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("")
                 .times(2);
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test1),
-                EasyMock.same(mMockReceiver), EasyMock.anyInt(), EasyMock.anyInt());
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test2),
-                EasyMock.same(mMockReceiver), EasyMock.anyInt(), EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(EasyMock.contains(test1), EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(EasyMock.contains(test2), EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
 
         replayMocks();
 
@@ -108,7 +110,8 @@ public class GTestTest extends TestCase {
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(modulePath),
-                EasyMock.same(mMockReceiver), EasyMock.anyInt(), EasyMock.anyInt());
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
 
         replayMocks();
 
@@ -132,7 +135,8 @@ public class GTestTest extends TestCase {
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1Path),
-                EasyMock.same(mMockReceiver), EasyMock.anyInt(), EasyMock.anyInt());
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
 
         replayMocks();
 
@@ -153,7 +157,8 @@ public class GTestTest extends TestCase {
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                     .andReturn("");
             mMockITestDevice.executeShellCommand(EasyMock.contains(filterString),
-                    EasyMock.same(mMockReceiver), EasyMock.anyInt(), EasyMock.anyInt());
+                    EasyMock.same(mMockReceiver),
+                    EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
         replayMocks();
         mGTest.run(mMockInvocationListener);
 

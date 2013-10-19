@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -132,7 +133,7 @@ public class FrameworkPerfTest implements IRemoteTest, IDeviceTest {
         getRunUtil().sleep(PRE_TEST_SLEEP_MS);
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(TEST_PACKAGE_NAME,
                 TEST_RUNNER_NAME, mTestDevice.getIDevice());
-        runner.setMaxtimeToOutputResponse(PERF_TIMEOUT);
+        runner.setMaxTimeToOutputResponse(PERF_TIMEOUT, TimeUnit.MILLISECONDS);
 
         CollectingTestListener collectingListener = new CollectingTestListener();
         Assert.assertTrue(mTestDevice.runInstrumentationTests(runner, collectingListener));

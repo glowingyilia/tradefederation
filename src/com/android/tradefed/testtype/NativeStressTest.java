@@ -29,6 +29,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A Test that runs a native stress test executable on given device.
@@ -172,7 +173,8 @@ public class NativeStressTest implements IDeviceTest, IRemoteTest {
                     // use maxShellOutputResponseTime to enforce the max iteration time
                     // it won't be exact, but should be close
                     testDevice.executeShellCommand(String.format("%s -s %d -e %d", fullPath,
-                            startIteration, endIteration), resultParser, mMaxIterationTime, 0);
+                            startIteration, endIteration), resultParser,
+                            mMaxIterationTime, TimeUnit.MILLISECONDS, 0);
                     // iteration count is also used as a random seed value, so want use different
                     // values for each run
                     startIteration += mNumIterations;

@@ -47,6 +47,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Runs the Video Editing Framework Performance Test.The performance test result
@@ -136,7 +137,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.setClassName(TEST_CLASS_NAME);
-        runner.setMaxtimeToOutputResponse(MAX_TEST_TIMEOUT);
+        runner.setMaxTimeToOutputResponse(MAX_TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
         BugreportCollector bugListener = new BugreportCollector(listener,
                 mTestDevice);

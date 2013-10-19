@@ -26,6 +26,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Runs a command on a given device repeating as necessary until the action is canceled.
@@ -85,7 +86,8 @@ public class BackgroundDeviceAction extends Thread {
             }
             CLog.d("Starting %s for %s.", mDescriptor, mSerialNumber);
             try {
-                mTestDevice.getIDevice().executeShellCommand(mCommand, mReceiver, 0);
+                mTestDevice.getIDevice().executeShellCommand(mCommand, mReceiver,
+                        0, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
                 recoverDevice(e.getClass().getName());
             } catch (AdbCommandRejectedException e) {

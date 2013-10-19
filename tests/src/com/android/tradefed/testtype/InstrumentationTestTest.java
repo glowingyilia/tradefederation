@@ -31,6 +31,7 @@ import org.easymock.IAnswer;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Unit tests for {@link InstrumentationTest}
@@ -113,7 +114,7 @@ public class InstrumentationTestTest extends TestCase {
        mInstrumentationTest.setRerunMode(false);
        // default to no timeout for simplicity
        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
-       mMockRemoteRunner.setMaxtimeToOutputResponse(0);
+       mMockRemoteRunner.setMaxTimeToOutputResponse(0, TimeUnit.MILLISECONDS);
        mInstrumentationTest.setCollectsTestsShellTimeout(COLLECT_TESTS_SHELL_TIMEOUT);
     }
 
@@ -230,8 +231,8 @@ public class InstrumentationTestTest extends TestCase {
         mMockRemoteRunner.setLogOnly(true);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.DELAY_MSEC_ARG,
                 Long.toString(mInstrumentationTest.getTestDelay()));
-        mMockRemoteRunner.setMaxtimeToOutputResponse(
-                COLLECT_TESTS_SHELL_TIMEOUT);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(
+                COLLECT_TESTS_SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
         // collect tests run
         CollectTestAnswer collectTestResponse = new CollectTestAnswer() {
             @Override
@@ -245,7 +246,7 @@ public class InstrumentationTestTest extends TestCase {
         // expect normal mode to be turned back on
         mMockRemoteRunner.setLogOnly(false);
         mMockRemoteRunner.removeInstrumentationArg(InstrumentationTest.DELAY_MSEC_ARG);
-        mMockRemoteRunner.setMaxtimeToOutputResponse(0);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(0, TimeUnit.MILLISECONDS);
 
         // note: expect run to not be reported
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
@@ -295,7 +296,7 @@ public class InstrumentationTestTest extends TestCase {
             }
         };
         setRerunExpectations(firstRunResponse);
-        mMockRemoteRunner.setMaxtimeToOutputResponse(0);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(0, TimeUnit.MILLISECONDS);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
         try {
             mInstrumentationTest.run(mMockListener);
@@ -322,7 +323,8 @@ public class InstrumentationTestTest extends TestCase {
         mMockRemoteRunner.setLogOnly(true);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.DELAY_MSEC_ARG,
                 Long.toString(mInstrumentationTest.getTestDelay()));
-        mMockRemoteRunner.setMaxtimeToOutputResponse(COLLECT_TESTS_SHELL_TIMEOUT);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(
+                COLLECT_TESTS_SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
         CollectTestAnswer collectTestAnswer = new CollectTestAnswer() {
             @Override
             public Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) {
@@ -341,7 +343,7 @@ public class InstrumentationTestTest extends TestCase {
         // now expect second run with log only mode off
         mMockRemoteRunner.setLogOnly(false);
         mMockRemoteRunner.removeInstrumentationArg(InstrumentationTest.DELAY_MSEC_ARG);
-        mMockRemoteRunner.setMaxtimeToOutputResponse(TEST_TIMEOUT);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         setRunTestExpectations(firstRunAnswer);
 
         // now expect second run to run remaining test

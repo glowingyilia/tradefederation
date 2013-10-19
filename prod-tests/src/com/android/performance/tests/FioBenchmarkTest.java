@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Runs the FIO benchmarks.
@@ -765,7 +766,8 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
             String cmd = String.format("dd if=/dev/urandom of=%s bs=1024 count=%d", file.mFileName,
                     file.mSize);
             int timeout = file.mSize * 2 * 1000; // Timeout is 2 seconds per kB.
-            mTestDevice.executeShellCommand(cmd, new NullOutputReceiver(), timeout, 2);
+            mTestDevice.executeShellCommand(cmd, new NullOutputReceiver(),
+                    timeout, TimeUnit.MILLISECONDS, 2);
         }
 
         CLog.i("Creating config");
@@ -781,7 +783,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         FioParser output = new FioParser();
         // Run FIO with a timeout of 1 hour.
         mTestDevice.executeShellCommand(String.format("%s --minimal %s", mFioBin, mFioConfig),
-                output, 60 * 60 * 1000, 2);
+                output, 60 * 60 * 1000, TimeUnit.MILLISECONDS, 2);
 
         collectLogs(test, listener, "after");
 

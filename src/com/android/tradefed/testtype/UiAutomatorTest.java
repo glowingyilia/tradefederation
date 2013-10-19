@@ -38,6 +38,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
 
@@ -169,7 +170,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         getTestRunner().setRunName(mRunName);
         preTestSetup();
         getRunUtil().sleep(getSyncTime());
-        getTestRunner().setMaxtimeToOutputResponse(mTestTimeout);
+        getTestRunner().setMaxTimeToOutputResponse(mTestTimeout, TimeUnit.MILLISECONDS);
         for (Map.Entry<String, String> entry : getTestRunArgMap().entrySet()) {
             getTestRunner().addInstrumentationArg(entry.getKey(), entry.getValue());
         }

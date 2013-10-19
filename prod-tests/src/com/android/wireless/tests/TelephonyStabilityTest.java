@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -154,7 +155,7 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
         runner.addInstrumentationArg("callduration", mCallDuration);
         runner.addInstrumentationArg("phonenumber", mPhoneNumber);
         runner.addInstrumentationArg("idletime", Integer.toString(mIdleTime));
-        runner.setMaxtimeToOutputResponse(TEST_TIMER);
+        runner.setMaxTimeToOutputResponse(TEST_TIMER, TimeUnit.MILLISECONDS);
 
         // Add bugreport listener for failed test
         BugreportCollector bugListener = new

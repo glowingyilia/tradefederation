@@ -23,8 +23,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class MediaSyncPreparer implements ITargetPreparer {
     @Option(name = "command-timeout", description = "Custom timeout for media sync command")
@@ -44,8 +43,8 @@ public class MediaSyncPreparer implements ITargetPreparer {
         // trigger media rescan
         CLog.d("About to broadcast media rescan intent on device %s", device.getSerialNumber());
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
-        device.executeShellCommand(MEDIA_RESCAN_INTENT, receiver, mCommandTimeout,
-                MAX_RETRY_ATTEMPTS);
+        device.executeShellCommand(MEDIA_RESCAN_INTENT, receiver,
+                mCommandTimeout, TimeUnit.MILLISECONDS, MAX_RETRY_ATTEMPTS);
         String output = receiver.getOutput();
         CLog.v("Media rescan intent on %s returned %s", MEDIA_RESCAN_INTENT,
                 device.getSerialNumber(), output);

@@ -27,6 +27,8 @@ import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * A Test that runs a native test package on given device.
  */
@@ -264,6 +266,7 @@ public class GTest implements IDeviceTest, IRemoteTest {
             String cmd = getGTestCmdLine(fullPath, flags);
             testDevice.executeShellCommand(cmd, resultParser,
                     mMaxTestTimeMs /* maxTimeToShellOutputResponse */,
+                    TimeUnit.MILLISECONDS,
                     0 /* retryAttempts */);
         } catch (DeviceNotAvailableException e) {
             // TODO: consider moving the flush of parser data on exceptions to TestDevice or

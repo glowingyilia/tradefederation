@@ -23,6 +23,7 @@ import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.TimeUtil;
 
 import java.io.File;
 import java.io.InputStream;
@@ -30,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Provides an reliable and slightly higher level API to a ddmlib {@link IDevice}.
@@ -271,13 +273,34 @@ public interface ITestDevice {
      * @param command the adb shell command to run
      * @param receiver the {@link IShellOutputReceiver} to direct shell output to.
      * @param maxTimeToOutputShellResponse the maximum amount of time during which the command is
-     *            allowed to not output any response.
+     *            allowed to not output any response; unit as specified in <code>timeUnit</code>
+     * @param timeUnit unit for <code>maxTimeToOutputShellResponse</code>, see {@link TimeUtil}
      * @param retryAttempts the maximum number of times to retry command if it fails due to a
      *            exception. DeviceNotResponsiveException will be thrown if <var>retryAttempts</var>
      *            are performed without success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *             recovered.
      */
+    public void executeShellCommand(String command, IShellOutputReceiver receiver,
+            long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+                    throws DeviceNotAvailableException;
+
+    /**
+     * Executes a adb shell command, with more parameters to control command behavior.
+     *
+     * @see {@link IDevice#executeShellCommand(String, IShellOutputReceiver, int)}
+     * @param command the adb shell command to run
+     * @param receiver the {@link IShellOutputReceiver} to direct shell output to.
+     * @param maxTimeToOutputShellResponse the maximum amount of time during which the command is
+     *            allowed to not output any response.
+     * @param retryAttempts the maximum number of times to retry command if it fails due to a
+     *            exception. DeviceNotResponsiveException will be thrown if <var>retryAttempts</var>
+     *            are performed without success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *             recovered.
+     * @deprecated Use {@link #executeShellCommand(String, IShellOutputReceiver, long, TimeUnit, int)}
+     */
+    @Deprecated
     public void executeShellCommand(String command, IShellOutputReceiver receiver,
             int maxTimeToOutputShellResponse, int retryAttempts) throws DeviceNotAvailableException;
 

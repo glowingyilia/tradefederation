@@ -43,6 +43,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -100,7 +101,8 @@ public class UserActionBenchmark implements IDeviceTest, IRemoteTest {
             // Start the scripted monkey command
             mTestDevice.executeShellCommand(String.format(
                 "monkey -f /%s/%s.txt --throttle %d %d", scriptFullPath,
-                testCase, mThrottle, mIteration), new NullOutputReceiver(), CMD_TIMEOUT, 2);
+                testCase, mThrottle, mIteration), new NullOutputReceiver(),
+                CMD_TIMEOUT, TimeUnit.MILLISECONDS, 2);
             logOutputFiles(listener);
             cleanResultFile();
         }

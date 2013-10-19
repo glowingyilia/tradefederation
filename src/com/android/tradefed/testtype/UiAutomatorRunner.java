@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Runs UI Automator test on device and reports results.
@@ -59,7 +60,7 @@ public class UiAutomatorRunner implements IRemoteAndroidTestRunner {
     private String[] mJarPaths;
     private String mPackageName;
     // default to no timeout
-    private int mMaxTimeToOutputResponse = 0;
+    private long mMaxTimeToOutputResponse = 0;
     private IDevice mRemoteDevice;
     private String mRunName;
     private InstrumentationResultParser mParser;
@@ -256,9 +257,18 @@ public class UiAutomatorRunner implements IRemoteAndroidTestRunner {
     /**
      * {@inheritDoc}
      */
+    @Deprecated
     @Override
     public void setMaxtimeToOutputResponse(int maxTimeToOutputResponse) {
-        mMaxTimeToOutputResponse = maxTimeToOutputResponse;
+        setMaxTimeToOutputResponse(maxTimeToOutputResponse, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setMaxTimeToOutputResponse(long timeout, TimeUnit unit) {
+        mMaxTimeToOutputResponse = unit.toMillis(timeout);
     }
 
     /**
@@ -290,7 +300,8 @@ public class UiAutomatorRunner implements IRemoteAndroidTestRunner {
         mParser = new InstrumentationResultParser(runName, listeners);
 
         try {
-            mRemoteDevice.executeShellCommand(cmdLine, mParser, mMaxTimeToOutputResponse);
+            mRemoteDevice.executeShellCommand(cmdLine,
+                    mParser, mMaxTimeToOutputResponse, TimeUnit.MILLISECONDS);
         } catch (IOException e) {
             CLog.w(String.format("IOException %1$s when running tests %2$s on %3$s",
                     e.toString(), getPackageName(), mRemoteDevice.getSerialNumber()));

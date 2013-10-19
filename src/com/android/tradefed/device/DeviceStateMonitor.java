@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Helper class for monitoring the state of a {@link IDevice}.
@@ -160,7 +161,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
             final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
             final String cmd = "ls";
             try {
-                getIDevice().executeShellCommand(cmd, receiver, MAX_OP_TIME);
+                getIDevice().executeShellCommand(cmd, receiver, MAX_OP_TIME, TimeUnit.MILLISECONDS);
                 String output = receiver.getOutput();
                 if (output.contains("system")) {
                     return true;
@@ -269,7 +270,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
             final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
             final String cmd = "pm path android";
             try {
-                getIDevice().executeShellCommand(cmd, receiver, MAX_OP_TIME);
+                getIDevice().executeShellCommand(cmd, receiver, MAX_OP_TIME, TimeUnit.MILLISECONDS);
                 String output = receiver.getOutput();
                 Log.v(LOG_TAG, String.format("%s returned %s", cmd, output));
                 if (output.contains("package:")) {
@@ -317,11 +318,14 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
             if (externalStore != null) {
                 try {
                     cmd = writeCmd;
-                    getIDevice().executeShellCommand(writeCmd, bitBucket, MAX_OP_TIME);
+                    getIDevice().executeShellCommand(writeCmd, bitBucket,
+                            MAX_OP_TIME, TimeUnit.MILLISECONDS);
                     cmd = checkCmd;
-                    getIDevice().executeShellCommand(checkCmd, receiver, MAX_OP_TIME);
+                    getIDevice().executeShellCommand(checkCmd, receiver,
+                            MAX_OP_TIME, TimeUnit.MILLISECONDS);
                     cmd = cleanupCmd;
-                    getIDevice().executeShellCommand(cleanupCmd, bitBucket, MAX_OP_TIME);
+                    getIDevice().executeShellCommand(cleanupCmd, bitBucket,
+                            MAX_OP_TIME, TimeUnit.MILLISECONDS);
 
                     String output = receiver.getOutput();
                     Log.v(LOG_TAG, String.format("%s returned %s", checkCmd, output));

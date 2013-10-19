@@ -32,6 +32,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Base test harness class for browser site load test.
@@ -96,7 +97,8 @@ public class BrowserSiteLoadTest implements IRemoteTest, IDeviceTest {
         runner.setClassName(mTestClass);
         runner.setMethodName(mTestClass, mTestMethod);
         // max timeout is the smaller of: 8 hrs or 1 minute per site
-        runner.setMaxtimeToOutputResponse(Math.min(MAX_TIMEOUT_MS, 60 * 1000 * mTotalSites));
+        runner.setMaxTimeToOutputResponse(Math.min(MAX_TIMEOUT_MS, 60 * 1000 * mTotalSites),
+                TimeUnit.MILLISECONDS);
 
         CollectingTestListener collectingTestListener = new CollectingTestListener();
         failCounter = runStabilityTest(runner, collectingTestListener);

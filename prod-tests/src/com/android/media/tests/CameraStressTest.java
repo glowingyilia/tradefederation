@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Runs the Camera stress testcases.
@@ -171,7 +172,7 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
         CollectingTestListener auxListener = new CollectingTestListener();
 
         runner.setClassName(test.mClassName);
-        runner.setMaxtimeToOutputResponse(MAX_TEST_TIMEOUT);
+        runner.setMaxTimeToOutputResponse(MAX_TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
         Set<String> argumentKeys = test.mInstrumentationArgs.keySet();
         for (String s : argumentKeys) {

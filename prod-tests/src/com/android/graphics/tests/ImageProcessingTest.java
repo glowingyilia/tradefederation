@@ -36,6 +36,7 @@ import junit.framework.Assert;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Run the ImageProcessing test. The test provides benchmark for image processing
@@ -73,7 +74,7 @@ public class ImageProcessingTest implements IDeviceTest, IRemoteTest {
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.setClassName(TEST_CLASS);
-        runner.setMaxtimeToOutputResponse(MAX_TEST_TIMEOUT);
+        runner.setMaxTimeToOutputResponse(MAX_TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         // Add bugreport listener for failed test
         BugreportCollector bugListener = new
             BugreportCollector(standardListener, mTestDevice);

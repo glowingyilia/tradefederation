@@ -30,6 +30,7 @@ import com.android.ddmlib.log.LogReceiver;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Stub placeholder implementation of a {@link IDevice}.
@@ -70,6 +71,7 @@ class StubDevice implements IDevice {
     /**
      * {@inheritDoc}
      */
+    @Deprecated
     @Override
     public void executeShellCommand(String command, IShellOutputReceiver receiver,
             int maxTimeToOutputResponse) throws TimeoutException, AdbCommandRejectedException,
@@ -390,5 +392,16 @@ class StubDevice implements IDevice {
     @Override
     public String getName() {
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void executeShellCommand(String command, IShellOutputReceiver receiver,
+            long maxTimeToOutputResponse, TimeUnit maxTimeUnits)
+            throws TimeoutException, AdbCommandRejectedException,
+            ShellCommandUnresponsiveException, IOException {
+        throw new IOException("stub");
     }
 }

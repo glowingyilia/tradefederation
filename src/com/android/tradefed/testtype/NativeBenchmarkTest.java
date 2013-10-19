@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A Test that runs a native benchmark test executable on given device.
@@ -198,7 +199,8 @@ public class NativeBenchmarkTest implements IDeviceTest, IRemoteTest {
                             mNumIterations, delayFloat, mClientCpu, mServerCpu);
                     Log.i(LOG_TAG, String.format("Running native benchmark test on %s: %s",
                             mDevice.getSerialNumber(), cmd));
-                    testDevice.executeShellCommand(cmd, resultParser, mMaxRunTime, 0);
+                    testDevice.executeShellCommand(cmd, resultParser,
+                            mMaxRunTime, TimeUnit.MILLISECONDS, 0);
                     addMetric(metricMap, resultParser, delay);
                 }
                 // TODO: is catching exceptions, and reporting testRunFailed necessary?

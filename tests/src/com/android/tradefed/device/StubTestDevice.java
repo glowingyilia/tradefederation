@@ -28,6 +28,7 @@ import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Empty implementation of {@link ITestDevice}.
@@ -516,11 +517,23 @@ public class StubTestDevice implements IManagedTestDevice {
     /**
      * {@inheritDoc}
      */
+    @Deprecated
     @Override
     public void executeShellCommand(String command, IShellOutputReceiver receiver,
             int maxTimeToOutputShellResponse, int retryAttempts)
             throws DeviceNotAvailableException {
         // ignore
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void executeShellCommand(String command, IShellOutputReceiver receiver,
+            long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+            throws DeviceNotAvailableException {
+        // TODO Auto-generated method stub
+
     }
 
     /**
