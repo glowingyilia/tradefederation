@@ -19,6 +19,7 @@ package com.android.media.tests;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -72,6 +73,11 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
      */
     private List<TestInfo> mTestCases = new ArrayList<TestInfo>();
 
+    // Options for the running the gCam test
+    @Option(name = "gCam", description = "Run gCam startup test")
+    private boolean mGcam = false;
+
+
     /**
      * A struct that contains useful info about the tests to run
      */
@@ -91,39 +97,51 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
     /**
      * Set up the configurations for the test cases we want to run
      */
-    public CameraLatencyTest() {
+    private void testInfoSetup() {
         // Startup tests
         TestInfo t = new TestInfo();
-        t.mTestName = "startup";
-        t.mClassName = "com.android.camera.stress.CameraStartUp";
-        t.mTestMetricsName = "CameraVideoRecorderStartup";
-        RegexTrie<String> map = t.mPatternMap;
-        map = t.mPatternMap;
-        map.put("FirstCameraStartup", "^First Camera Startup: (\\d+)");
-        map.put("CameraStartup", "^Camera average startup time: (\\d+) ms");
-        map.put("FirstVideoStartup", "^First Video Startup: (\\d+)");
-        map.put("VideoStartup", "^Video average startup time: (\\d+) ms");
-        mTestCases.add(t);
 
-        // Latency tests
-        t = new TestInfo();
-        t.mTestName = "latency";
-        t.mClassName = "com.android.camera.stress.CameraLatency";
-        t.mTestMetricsName = "CameraLatency";
-        map = t.mPatternMap;
-        map.put("AutoFocus", "^Avg AutoFocus = (\\d+)");
-        map.put("ShutterLag", "^Avg mShutterLag = (\\d+)");
-        map.put("Preview", "^Avg mShutterToPictureDisplayedTime = (\\d+)");
-        map.put("RawPictureGeneration", "^Avg mPictureDisplayedToJpegCallbackTime = (\\d+)");
-        map.put("GenTimeDiffOverJPEGAndRaw", "^Avg mJpegCallbackFinishTime = (\\d+)");
-        mTestCases.add(t);
+        if (mGcam) {
+            t.mTestName = "testLaunchCamera";
+            t.mClassName = "com.android.camera.stress.CameraStartUp";
+            t.mTestMetricsName = "GCameraStartup";
+            RegexTrie<String> map = t.mPatternMap;
+            map = t.mPatternMap;
+            map.put("FirstCameraStartup", "^First Camera Startup: (\\d+)");
+            map.put("CameraStartup", "^Camera average startup time: (\\d+) ms");
+            mTestCases.add(t);
+        } else {
+            t.mTestName = "startup";
+            t.mClassName = "com.android.camera.stress.CameraStartUp";
+            t.mTestMetricsName = "CameraVideoRecorderStartup";
+            RegexTrie<String> map = t.mPatternMap;
+            map = t.mPatternMap;
+            map.put("FirstCameraStartup", "^First Camera Startup: (\\d+)");
+            map.put("CameraStartup", "^Camera average startup time: (\\d+) ms");
+            map.put("FirstVideoStartup", "^First Video Startup: (\\d+)");
+            map.put("VideoStartup", "^Video average startup time: (\\d+) ms");
+            mTestCases.add(t);
+
+            // Latency tests
+            t = new TestInfo();
+            t.mTestName = "latency";
+            t.mClassName = "com.android.camera.stress.CameraLatency";
+            t.mTestMetricsName = "CameraLatency";
+            map = t.mPatternMap;
+            map.put("AutoFocus", "^Avg AutoFocus = (\\d+)");
+            map.put("ShutterLag", "^Avg mShutterLag = (\\d+)");
+            map.put("Preview", "^Avg mShutterToPictureDisplayedTime = (\\d+)");
+            map.put("RawPictureGeneration", "^Avg mPictureDisplayedToJpegCallbackTime = (\\d+)");
+            map.put("GenTimeDiffOverJPEGAndRaw", "^Avg mJpegCallbackFinishTime = (\\d+)");
+            mTestCases.add(t);
+        }
 
     }
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
-
+        testInfoSetup();
         for (TestInfo test : mTestCases) {
             cleanTmpFiles();
             executeTest(test, listener);
@@ -141,6 +159,9 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
 
         runner.setClassName(test.mClassName);
         runner.setMaxTimeToOutputResponse(MAX_TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        if (mGcam) {
+            runner.setMethodName(test.mClassName, test.mTestName);
+        }
         mTestDevice.runInstrumentationTests(runner, listener, auxListener);
 
         // Grab a bugreport if warranted

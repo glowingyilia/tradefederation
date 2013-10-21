@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.CollectingTestListener;
@@ -76,6 +77,10 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
      */
     private List<TestInfo> mTestCases = new ArrayList<TestInfo>();
 
+    // Options for the running the gCam test
+    @Option(name = "gCam", description = "Run gCam back image capture test")
+    private boolean mGcam = false;
+
     /**
      * A struct that contains useful info about the tests to run
      */
@@ -122,40 +127,51 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
     /**
      * Set up the configurations for the test cases we want to run
      */
-    public CameraStressTest() {
+    private void testInfoSetup() {
         RegexTrie<String> patMap = getPatternMap();
-
-        // Image capture stress test
         TestInfo t = new TestInfo();
-        t.mTestName = "imagecap";
-        t.mClassName = "com.android.camera.stress.ImageCapture";
-        t.mTestMetricsName = "CameraApplicationStress";
-        t.mInstrumentationArgs.put("image_iterations", Integer.toString(100));
-        t.mPatternMap = patMap;
-        mTestCases.add(t);
 
-        // Image capture stress test
-        t = new TestInfo();
-        t.mTestName = "videocap";
-        t.mClassName = "com.android.camera.stress.VideoCapture";
-        t.mTestMetricsName = "CameraApplicationStress";
-        t.mInstrumentationArgs.put("video_iterations", Integer.toString(100));
-        t.mPatternMap = patMap;
-        mTestCases.add(t);
+        if (mGcam) {
+            // Back Image capture stress test for gCam
+            t.mTestName = "testBackImageCapture";
+            t.mClassName = "com.android.camera.stress.ImageCapture";
+            t.mTestMetricsName = "GCamApplicationStress";
+            t.mInstrumentationArgs.put("image_iterations", Integer.toString(100));
+            t.mPatternMap = patMap;
+            mTestCases.add(t);
 
-        // "SwitchPreview" stress test
-        t = new TestInfo();
-        t.mTestName = "switch";
-        t.mClassName = "com.android.camera.stress.SwitchPreview";
-        t.mTestMetricsName = "CameraApplicationStress";
-        t.mPatternMap = patMap;
-        mTestCases.add(t);
+        } else {
+            // Image capture stress test
+            t.mTestName = "imagecap";
+            t.mClassName = "com.android.camera.stress.ImageCapture";
+            t.mTestMetricsName = "CameraApplicationStress";
+            t.mInstrumentationArgs.put("image_iterations", Integer.toString(100));
+            t.mPatternMap = patMap;
+            mTestCases.add(t);
+
+            // Image capture stress test
+            t = new TestInfo();
+            t.mTestName = "videocap";
+            t.mClassName = "com.android.camera.stress.VideoCapture";
+            t.mTestMetricsName = "CameraApplicationStress";
+            t.mInstrumentationArgs.put("video_iterations", Integer.toString(100));
+            t.mPatternMap = patMap;
+            mTestCases.add(t);
+
+            // "SwitchPreview" stress test
+            t = new TestInfo();
+            t.mTestName = "switch";
+            t.mClassName = "com.android.camera.stress.SwitchPreview";
+            t.mTestMetricsName = "CameraApplicationStress";
+            t.mPatternMap = patMap;
+            mTestCases.add(t);
+        }
     }
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
-
+        testInfoSetup();
         for (TestInfo test : mTestCases) {
             cleanTmpFiles();
             executeTest(test, listener);
@@ -173,6 +189,9 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
 
         runner.setClassName(test.mClassName);
         runner.setMaxTimeToOutputResponse(MAX_TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        if (mGcam){
+            runner.setMethodName(test.mClassName, test.mTestName);
+        }
 
         Set<String> argumentKeys = test.mInstrumentationArgs.keySet();
         for (String s : argumentKeys) {
