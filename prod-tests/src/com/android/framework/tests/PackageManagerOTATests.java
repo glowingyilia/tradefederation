@@ -53,10 +53,13 @@ public class PackageManagerOTATests extends DeviceTestCase {
     private static final String VERSION_1_APK = "FrameworkCoreTests_version_1.apk";
     private static final String VERSION_2_APK = "FrameworkCoreTests_version_2.apk";
     private static final String VERSION_3_APK = "FrameworkCoreTests_version_3.apk";
+    private static final String VERSION_1_NO_SYS_PERMISSION_APK =
+            "FrameworkCoreTests_version_1_nosys.apk";
     private static final String DATA_APP_DIRECTORY = "/data/app/";
     private static final String PACKAGE_NAME = "com.android.frameworks.coretests.version_test";
     private static final String VIBRATE_PERMISSION = "android.permission.VIBRATE";
     private static final String CACHE_PERMISSION = "android.permission.ACCESS_CACHE_FILESYSTEM";
+
 
     // Temporary file used when examine the packages xml file from the device.
     private File mPackageXml = null;
@@ -72,9 +75,12 @@ public class PackageManagerOTATests extends DeviceTestCase {
         }
 
         // Clean up any potential old files from previous tests.
+        getDevice().uninstallPackage(PACKAGE_NAME);
+        getDevice().enableAdbRoot();
+        mUtils.removeSystemApp(mSystemAppPath, false);
         mUtils.removeSystemApp(mDiffSystemAppPath, false);
-        mUtils.removeAndWipe(mSystemAppPath);
-        getDevice().waitForDeviceAvailable();
+        mUtils.restartSystem();
+
         mPackageXml = mUtils.pullPackagesXML();
         assertNotNull("Failed to pull packages xml file from device", mPackageXml);
         assertFalse("Package should not be installed before test",
@@ -251,7 +257,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
-        getDevice().reboot();
+        mUtils.restartSystem();
         mPackageXml = mUtils.pullPackagesXML();
         assertFalse("After system app upgrade, the path should be the upgraded app on /data",
                 mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
@@ -265,7 +271,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
-        getDevice().reboot();
+        mUtils.restartSystem();
         mPackageXml = mUtils.pullPackagesXML();
         assertFalse("After system app upgrade, the path should be the upgraded app on /data",
                 mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
@@ -318,7 +324,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
-        getDevice().reboot();
+        mUtils.restartSystem();
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the path should be the be installed",
                 mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
@@ -332,7 +338,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
-        getDevice().reboot();
+        mUtils.restartSystem();
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the path should be the be installed",
                 mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
@@ -383,7 +389,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
-        getDevice().reboot();
+        mUtils.restartSystem();
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the path should be the be installed",
                 mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
@@ -397,7 +403,7 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
 
-        getDevice().reboot();
+        mUtils.restartSystem();
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("After reboot, the path should be the be installed",
                 mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
@@ -498,6 +504,76 @@ public class PackageManagerOTATests extends DeviceTestCase {
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
+                mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
+    }
+
+    /**
+     * Test when system app is updated with a new permission. Specifically:
+     * <ol>
+     * <li>system app FOO is present, does not declare system permission</li>
+     * <li>FOO is overlain by an installed update that declares new permission</li>
+     * <li>FOO is replaced during an OTA, but installed update still has higher version number</li>
+     * <li>Verify permission is granted</li>
+     * </ol>
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public void testSystemAppUpdatedNewPermission() throws DeviceNotAvailableException {
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_1_NO_SYS_PERMISSION_APK), mSystemAppPath);
+        mPackageXml = mUtils.pullPackagesXML();
+        assertTrue("The package should be installed",
+                mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
+        assertTrue("Package version should be 1",
+                mUtils.expectEquals(mPackageXml, VERSION_XPATH, "1"));
+        assertFalse("Updated-package should not be present",
+                mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
+        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("VIBRATE permission should be granted",
+                mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
+        assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
+                mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
+
+        mUtils.installFile(getTestAppFilePath(VERSION_3_APK), true);
+        mPackageXml = mUtils.pullPackagesXML();
+        assertFalse("After system app upgrade, the path should be the upgraded app on /data",
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
+        assertTrue("Package version should be 3",
+                mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
+        assertTrue("Updated-package should be present",
+                mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
+        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("VIBRATE permission should be granted",
+                mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
+        assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
+                mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
+
+        mUtils.pushSystemApp(getTestAppFilePath(VERSION_2_APK), mSystemAppPath);
+        mUtils.restartSystem();
+        mPackageXml = mUtils.pullPackagesXML();
+        assertFalse("After reboot, the path should be the data app",
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
+        assertTrue("Package version should be 3",
+                mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
+        assertTrue("Updated-package should be present",
+                mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
+        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("VIBRATE permission should be granted",
+                mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
+        assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
+                mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
+
+        mUtils.restartSystem();
+        mPackageXml = mUtils.pullPackagesXML();
+        assertFalse("After reboot, the path should be the data app",
+                mUtils.expectEquals(mPackageXml, CODE_PATH_XPATH, mSystemAppPath));
+        assertTrue("Package version should be 3",
+                mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
+        assertTrue("Updated-package should be present",
+                mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
+        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("VIBRATE permission should be granted",
+                mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
+        assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, CACHE_PERMISSION));
     }
 }
