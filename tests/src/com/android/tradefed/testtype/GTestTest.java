@@ -85,9 +85,9 @@ public class GTestTest extends TestCase {
                 .andReturn("")
                 .times(2);
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1), EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         mMockITestDevice.executeShellCommand(EasyMock.contains(test2), EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
 
         replayMocks();
 
@@ -111,7 +111,7 @@ public class GTestTest extends TestCase {
                 .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(modulePath),
                 EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
 
         replayMocks();
 
@@ -136,7 +136,7 @@ public class GTestTest extends TestCase {
                 .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1Path),
                 EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
 
         replayMocks();
 
@@ -158,7 +158,7 @@ public class GTestTest extends TestCase {
                     .andReturn("");
             mMockITestDevice.executeShellCommand(EasyMock.contains(filterString),
                     EasyMock.same(mMockReceiver),
-                    EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                    EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         replayMocks();
         mGTest.run(mMockInvocationListener);
 

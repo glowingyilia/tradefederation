@@ -84,7 +84,8 @@ public class NativeStressTestTest extends TestCase {
     public void testRun() throws DeviceNotAvailableException {
         mNativeTest.setNumIterations(100);
         mMockDevice.executeShellCommand(EasyMock.contains("-s 0 -e 99"), (IShellOutputReceiver)
-                EasyMock.anyObject(), EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                EasyMock.anyObject(), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
+                EasyMock.anyInt());
         replayMocks();
         mNativeTest.run(mMockListener);
         verifyMocks();
@@ -97,9 +98,11 @@ public class NativeStressTestTest extends TestCase {
         mNativeTest.setNumIterations(100);
         mNativeTest.setNumRuns(2);
         mMockDevice.executeShellCommand(EasyMock.contains("-s 0 -e 99"), (IShellOutputReceiver)
-                EasyMock.anyObject(), EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                EasyMock.anyObject(), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
+                EasyMock.anyInt());
         mMockDevice.executeShellCommand(EasyMock.contains("-s 100 -e 199"), (IShellOutputReceiver)
-                EasyMock.anyObject(), EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                EasyMock.anyObject(), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
+                EasyMock.anyInt());
 
         replayMocks();
         mNativeTest.run(mMockListener);
@@ -112,7 +115,8 @@ public class NativeStressTestTest extends TestCase {
     public void testRun_deviceNotAvailable() throws DeviceNotAvailableException {
         mNativeTest.setNumIterations(100);
         mMockDevice.executeShellCommand(EasyMock.contains("-s 0 -e 99"), (IShellOutputReceiver)
-                EasyMock.anyObject(), EasyMock.anyLong(), TimeUnit.MILLISECONDS, EasyMock.anyInt());
+                EasyMock.anyObject(), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
+                EasyMock.anyInt());
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
 
         replayMocks();

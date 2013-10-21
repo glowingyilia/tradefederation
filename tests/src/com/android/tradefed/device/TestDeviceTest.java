@@ -324,7 +324,7 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse(null, fourErrors);
         mMockIDevice.executeShellCommand((String)EasyMock.anyObject(),
                 (IShellOutputReceiver)EasyMock.anyObject(),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         // expect 4 key events to be sent - one for each dialog
         // and expect another dialog query - but return nothing
         EasyMock.expectLastCall().times(5);
@@ -358,7 +358,7 @@ public class TestDeviceTest extends TestCase {
         final String testCommand = "simple command";
         // expect shell command to be called
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.replay(mMockIDevice);
         mTestDevice.executeShellCommand(testCommand, mMockReceiver);
     }
@@ -387,7 +387,7 @@ public class TestDeviceTest extends TestCase {
         final String testCommand = "simple command";
         // expect shell command to be called
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new IOException());
         mMockRecovery.recoverDevice(EasyMock.eq(mMockMonitor), EasyMock.eq(false));
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
@@ -412,12 +412,12 @@ public class TestDeviceTest extends TestCase {
         // expect shell command to be called
         mRecoveryTestDevice.setRecoveryMode(RecoveryMode.ONLINE);
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new IOException());
         mMockRecovery.recoverDevice(EasyMock.eq(mMockMonitor), EasyMock.eq(true));
         setEnableAdbRootExpectations();
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.replay(mMockIDevice, mMockRecovery, mMockRunUtil, mMockMonitor);
         mRecoveryTestDevice.executeShellCommand(testCommand, mMockReceiver);
     }
@@ -432,11 +432,11 @@ public class TestDeviceTest extends TestCase {
         final String testCommand = "simple command";
         // expect shell command to be called
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new IOException());
         assertRecoverySuccess();
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         replayMocks();
         mTestDevice.executeShellCommand(testCommand, mMockReceiver);
     }
@@ -449,7 +449,7 @@ public class TestDeviceTest extends TestCase {
         // expect post boot up steps
         mMockIDevice.executeShellCommand(EasyMock.eq(mTestDevice.getDisableKeyguardCmd()),
                 (IShellOutputReceiver)EasyMock.anyObject(),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
     }
 
     /**
@@ -462,12 +462,12 @@ public class TestDeviceTest extends TestCase {
         final String testCommand = "simple command";
         // expect shell command to be called - and never return from that call
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new TimeoutException());
         assertRecoverySuccess();
         // now expect shellCommand to be executed again, and succeed
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         replayMocks();
         mTestDevice.executeShellCommand(testCommand, mMockReceiver);
     }
@@ -482,7 +482,7 @@ public class TestDeviceTest extends TestCase {
         final String testCommand = "simple command";
         // expect shell command to be called
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
-                EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new IOException()).times(
                 TestDevice.MAX_RETRY_ATTEMPTS+1);
         for (int i=0; i <= TestDevice.MAX_RETRY_ATTEMPTS; i++) {
@@ -583,7 +583,7 @@ public class TestDeviceTest extends TestCase {
         IRemoteAndroidTestRunner mockRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
         EasyMock.expect(mockRunner.getPackageName()).andStubReturn("com.example");
         Collection<ITestRunListener> listeners = new ArrayList<ITestRunListener>(0);
-        mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+        mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         // expect runner.run command to be called
         mockRunner.run(listeners);
         EasyMock.replay(mockRunner);
@@ -599,7 +599,7 @@ public class TestDeviceTest extends TestCase {
         Collection<ITestRunListener> listeners = new ArrayList<ITestRunListener>(1);
         ITestRunListener listener = EasyMock.createMock(ITestRunListener.class);
         listeners.add(listener);
-        mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+        mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         mockRunner.run(listeners);
         EasyMock.expectLastCall().andThrow(new IOException());
         EasyMock.expect(mockRunner.getPackageName()).andReturn("foo");
@@ -624,7 +624,7 @@ public class TestDeviceTest extends TestCase {
         Collection<ITestRunListener> listeners = new ArrayList<ITestRunListener>(1);
         ITestRunListener listener = EasyMock.createMock(ITestRunListener.class);
         listeners.add(listener);
-        mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+        mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         mockRunner.run(listeners);
         EasyMock.expectLastCall().andThrow(new IOException());
         EasyMock.expect(mockRunner.getPackageName()).andReturn("foo");
@@ -878,11 +878,11 @@ public class TestDeviceTest extends TestCase {
         if (expectedCommand != null) {
             mMockIDevice.executeShellCommand(EasyMock.eq(expectedCommand),
                     (IShellOutputReceiver)EasyMock.anyObject(),
-                    EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                    EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         } else {
             mMockIDevice.executeShellCommand((String)EasyMock.anyObject(),
                     (IShellOutputReceiver)EasyMock.anyObject(),
-                    EasyMock.anyLong(), TimeUnit.MILLISECONDS);
+                    EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
 
         }
         if (asStub) {
