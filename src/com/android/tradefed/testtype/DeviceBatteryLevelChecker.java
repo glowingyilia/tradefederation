@@ -89,11 +89,19 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
         }
     }
 
-    private void turnScreenOff(ITestDevice device) throws DeviceNotAvailableException {
-        String output = getDevice().executeShellCommand("dumpsys power");
-        if (output.contains("mScreenOn=true")) {
-            // KEYCODE_POWER = 26
-            getDevice().executeShellCommand("input keyevent 26");
+    private void turnScreenOffOrStopRuntime(ITestDevice device) throws DeviceNotAvailableException {
+        String output = getDevice().executeShellCommand("pm path android");
+        if (output == null || !output.contains("package:")) {
+            CLog.d("framework does not seem to be running, trying to stop it.");
+            // stop framework in case it's running some sort of runtime restart loop, and we can
+            // still charge the device
+            getDevice().executeShellCommand("stop");
+        } else {
+            output = getDevice().executeShellCommand("dumpsys power");
+            if (output.contains("mScreenOn=true")) {
+                // KEYCODE_POWER = 26
+                getDevice().executeShellCommand("input keyevent 26");
+            }
         }
     }
 
@@ -128,7 +136,7 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
             mTestDevice.reboot();
         }
 
-        turnScreenOff(mTestDevice);
+        turnScreenOffOrStopRuntime(mTestDevice);
 
         // If we're down here, it's time to hold the device until it reaches mResumeLevel
         Long lastReportTime = System.currentTimeMillis();
