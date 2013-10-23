@@ -275,6 +275,16 @@ public class PackageManagerOTATestUtils {
     }
 
     /**
+     * Convenience method to stop, then start the runtime.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public void restartSystem() throws DeviceNotAvailableException {
+        stopSystem();
+        startSystem();
+    }
+
+    /**
      * Push apk to system app directory on the device.
      *
      * @param localFile {@link File} the local file to install
@@ -288,7 +298,6 @@ public class PackageManagerOTATestUtils {
         stopSystem();
         mDevice.pushFile(localFile, deviceFilePath);
         startSystem();
-        mDevice.reboot();
     }
 
     /**
