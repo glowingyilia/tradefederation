@@ -17,5 +17,6 @@
     description="test for global configurations">
 
     <device_monitor class="com.android.tradefed.device.StubDeviceMonitor" />
+    <wtf_handler class="com.android.tradefed.log.StubTerribleFailureHandler" />
 
 </configuration>

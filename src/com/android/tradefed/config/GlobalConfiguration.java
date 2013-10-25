@@ -21,6 +21,7 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
+import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
 
 import java.io.File;
@@ -40,6 +41,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     // type names for built in configuration objects
     public static final String DEVICE_MONITOR_TYPE_NAME = "device_monitor";
     public static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
+    public static final String WTF_HANDLER_TYPE_NAME = "wtf_handler";
     public static final String HOST_OPTIONS_TYPE_NAME = "host_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
 
@@ -180,6 +182,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             sObjTypeMap.put(DEVICE_MANAGER_TYPE_NAME, new ObjTypeInfo(IDeviceManager.class, false));
             sObjTypeMap.put(DEVICE_REQUIREMENTS_TYPE_NAME, new ObjTypeInfo(IDeviceSelection.class,
                     false));
+            sObjTypeMap.put(WTF_HANDLER_TYPE_NAME,
+                    new ObjTypeInfo(ITerribleFailureHandler.class, false));
         }
         return sObjTypeMap;
     }
@@ -223,6 +227,15 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public IDeviceMonitor getDeviceMonitor() {
         return (IDeviceMonitor)getConfigurationObject(DEVICE_MONITOR_TYPE_NAME);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ITerribleFailureHandler getWtfHandler() {
+        return (ITerribleFailureHandler) getConfigurationObject(WTF_HANDLER_TYPE_NAME);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -308,6 +321,15 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public void setDeviceMonitor(IDeviceMonitor monitor) {
         setConfigurationObjectNoThrow(DEVICE_MONITOR_TYPE_NAME, monitor);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setWtfHandler(ITerribleFailureHandler wtfHandler) {
+        setConfigurationObjectNoThrow(WTF_HANDLER_TYPE_NAME, wtfHandler);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -474,4 +496,3 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
     }
 }
-

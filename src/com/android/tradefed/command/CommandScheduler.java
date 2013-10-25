@@ -370,11 +370,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                         e.getMessage());
                 deviceState = FreeDeviceState.UNAVAILABLE;
             } catch (FatalHostError e) {
-                CLog.logAndDisplay(LogLevel.ERROR, "Fatal error occurred: %s, shutting down",
-                        e.getMessage());
-                if (e.getCause() != null) {
-                    CLog.e(e.getCause());
-                }
+                CLog.wtf(String.format("Fatal error occurred: %s, shutting down", e.getMessage()),
+                        e);
                 shutdown();
             } catch (Throwable e) {
                 CLog.e(e);

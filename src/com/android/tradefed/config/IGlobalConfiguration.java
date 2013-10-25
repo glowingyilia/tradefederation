@@ -20,6 +20,7 @@ import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
+import com.android.tradefed.log.ITerribleFailureHandler;
 
 import java.util.List;
 
@@ -43,6 +44,15 @@ public interface IGlobalConfiguration {
      * @throws ConfigurationException if an {@link IDeviceMonitor} has already been set.
      */
     public void setDeviceMonitor(IDeviceMonitor deviceMonitor) throws ConfigurationException;
+
+    /**
+     * Set the {@link ITerribleFailureHandler}.
+     *
+     * @param wtfHandler the WTF handler
+     * @throws ConfigurationException if an {@link ITerribleFailureHandler} has
+     *             already been set.
+     */
+    public void setWtfHandler(ITerribleFailureHandler wtfHandler) throws ConfigurationException;
 
     /**
      * Generic method to set the config object list for the given name, replacing any existing
@@ -116,7 +126,17 @@ public interface IGlobalConfiguration {
     public IDeviceManager getDeviceManager();
 
     /**
-     * Set the {@link IDeviceManager}, replacing any existing values.  This sets the manager
+     * Gets the {@link ITerribleFailureHandler} to use from the configuration.
+     * Handles what to do in the event that a WTF (What a Terrible Failure)
+     * occurs.
+     *
+     * @return the {@link ITerribleFailureHandler} provided in the
+     *         configuration, or null if no handler is set
+     */
+    public ITerribleFailureHandler getWtfHandler();
+
+    /**
+     * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager
      * for the test devices
      *
      * @param deviceManager

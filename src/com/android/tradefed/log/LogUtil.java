@@ -18,9 +18,15 @@ package com.android.tradefed.log;
 
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.IGlobalConfiguration;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 /**
  * A logging utility class.  Useful for code that needs to override static methods from {@link Log}
@@ -62,6 +68,11 @@ public class LogUtil {
      * the log tag
      */
     public static class CLog {
+
+        protected static final String CLASS_NAME = CLog.class.getName();
+        private static IGlobalConfiguration sGlobalConfig = null;
+        private static Pattern sSimpleClassNamePattern = Pattern.compile(".*[.$](.*)");
+
         /**
          * The shim version of {@link Log#v(String, String)}.
          *
@@ -195,6 +206,105 @@ public class LogUtil {
         }
 
         /**
+         * What a Terrible Failure: Report a condition that should never happen.
+         * The error will always be logged at level ASSERT with the call stack.
+         *
+         * @param message The message you would like logged.
+         */
+        public static void wtf(String message) {
+            wtf(message, (Throwable) null);
+        }
+
+        /**
+         * What a Terrible Failure: Report a condition that should never happen.
+         * The error will always be logged at level ASSERT with the call stack.
+         *
+         * @param t (Optional) An exception to log. If null, only message will be logged.
+         */
+        public static void wtf(Throwable t) {
+            wtf(t.getMessage(), t);
+        }
+
+        /**
+         * What a Terrible Failure: Report a condition that should never happen.
+         * The error will always be logged at level ASSERT with the call stack.
+         * Also calls String.format for convenience.
+         *
+         * @param format A format string for the message to log
+         * @param args The format string arguments
+         */
+        public static void wtf(String format, Object... args) {
+            wtf(String.format(format, args), (Throwable) null);
+        }
+
+        /**
+         * What a Terrible Failure: Report a condition that should never happen.
+         * The error will always be logged at level ASSERT with the call stack.
+         *
+         * @param message The message you would like logged.
+         * @param t (Optional) An exception to log. If null, only message will be logged.
+         */
+        public static void wtf(String message, Throwable t) {
+            ITerribleFailureHandler wtfHandler = getGlobalConfigInstance().getWtfHandler();
+
+            /* since wtf(String, Throwable) can be called directly or through an overloaded
+             * method, ie wtf(String), the stack trace frame of the external class name that
+             * called CLog can vary, so we use findCallerClassName to find it */
+            String tag = findCallerClassName();
+            String logMessage = "WTF - " + message;
+            String stackTrace = getStackTraceString(t);
+            if (stackTrace.length() > 0) {
+               logMessage += "\n" + stackTrace;
+            }
+
+            Log.logAndDisplay(LogLevel.ASSERT, tag, logMessage);
+            if (wtfHandler != null) {
+                wtfHandler.onTerribleFailure(message, t);
+            }
+        }
+
+        /**
+         * Sets the GlobalConfiguration instance for CLog to use - exposed for unit testing
+         *
+         * @param globalConfig the GlobalConfiguration object for CLog to use
+         */
+        // @VisibleForTesting
+        static void setGlobalConfigInstance(IGlobalConfiguration globalConfig) {
+            sGlobalConfig = globalConfig;
+        }
+
+        /**
+         * Gets the GlobalConfiguration instance, useful for unit testing
+         *
+         * @return the GlobalConfiguration singleton instance
+         */
+        private static IGlobalConfiguration getGlobalConfigInstance() {
+            if (sGlobalConfig == null) {
+                sGlobalConfig = GlobalConfiguration.getInstance();
+            }
+            return sGlobalConfig;
+        }
+
+        /**
+         * A helper method that parses the stack trace string out of the
+         * throwable.
+         *
+         * @param t contains the stack trace information
+         * @return A {@link String} containing the stack trace of the throwable.
+         */
+        private static String getStackTraceString(Throwable t) {
+            if (t == null) {
+                return "";
+            }
+
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            t.printStackTrace(pw);
+            pw.flush();
+            return sw.toString();
+        }
+
+        /**
          * Return the simple classname from the {@code frame}th stack frame in the call path.
          * Note: this method does <emph>not</emph> check array bounds for the stack trace length.
          *
@@ -204,22 +314,67 @@ public class LogUtil {
          */
         public static String getClassName(int frame) {
             StackTraceElement[] frames = (new Throwable()).getStackTrace();
-            String fullName = frames[frame].getClassName();
-            @SuppressWarnings("rawtypes")
-            Class klass = null;
-            try {
-                klass = Class.forName(fullName);
-            } catch (ClassNotFoundException e) {
-                // oops; not much we can do.
-                // Intentionally fall through so we hit the null check below
+            return parseClassName(frames[frame].getClassName());
+        }
+
+        /**
+         * Finds the external class name that directly called a CLog method.
+         *
+         * @return The simple class name (or full-qualified if an error occurs getting a ref to
+         *         the class) of the external class that called a CLog method, or "Unknown" if
+         *         the stack trace is empty or only contains CLog class names.
+         */
+        public static String findCallerClassName() {
+            return findCallerClassName(null);
+        }
+
+        /**
+         * Finds the external class name that directly called a CLog method.
+         *
+         * @param t (Optional) the stack trace to search within, exposed for unit testing
+         * @return The simple class name (or full-qualified if an error occurs getting a ref to
+         *         the class) of the external class that called a CLog method, or "Unknown" if
+         *         the stack trace is empty or only contains CLog class names.
+         */
+        public static String findCallerClassName(Throwable t) {
+            String className = "Unknown";
+
+            if (t == null) {
+                t = new Throwable();
+            }
+            StackTraceElement[] frames = t.getStackTrace();
+            if (frames.length == 0) {
+                return className;
             }
 
-            if (klass == null) {
-                return fullName;
-            } else {
-                return klass.getSimpleName();
+            // starting with the first frame's class name (this CLog class)
+            // keep iterating until a frame of a different class name is found
+            int f;
+            for (f = 0; f < frames.length; f++) {
+                className = frames[f].getClassName();
+                if (!className.equals(CLASS_NAME)) {
+                    break;
+                }
             }
+
+            return parseClassName(className);
+        }
+
+        /**
+         * Parses the simple class name out of the full class name. If the formatting already
+         * looks like a simple class name, then just returns that.
+         *
+         * @param fullName the full class name to parse
+         * @return The simple class name (or full-qualified if an error occurs getting a ref to
+         *         the class)
+         */
+        // @VisibleForTesting
+        static String parseClassName(String fullName) {
+            Matcher m = sSimpleClassNamePattern.matcher(fullName);
+            if (m.matches()) {
+                return m.group(1);
+            }
+            return fullName;
         }
     }
 }
-

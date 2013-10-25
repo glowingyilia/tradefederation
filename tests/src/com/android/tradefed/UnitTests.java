@@ -47,6 +47,7 @@ import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
+import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
 import com.android.tradefed.result.EmailResultReporterTest;
@@ -152,6 +153,7 @@ public class UnitTests extends DeviceTestSuite {
         // log
         addTestSuite(FileLoggerTest.class);
         addTestSuite(LogRegistryTest.class);
+        addTestSuite(TerribleFailureEmailHandlerTest.class);
 
         // result
         addTestSuite(BugreportCollectorTest.class);
