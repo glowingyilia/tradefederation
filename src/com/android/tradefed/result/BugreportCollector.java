@@ -202,7 +202,7 @@ public class BugreportCollector implements ITestInvocationListener {
      * How long to potentially wait for the device to be Online before we try to capture a
      * bugreport.  If negative, no check will be performed
      */
-    private int mDeviceWaitTimeSecs = -1;
+    private int mDeviceWaitTimeSecs = 40; // default to 40s
     private String mDescriptiveName = null;
     // FIXME: Add support for minimum wait time between successive bugreports
     // FIXME: get rid of reset() method
