@@ -43,23 +43,4 @@ public class BandwidthMicroBenchMarkTestTest extends TestCase {
        assertEquals("red", result.get("blue"));
        assertEquals("google", result.get("android"));
     }
-
-    /**
-     * Test method for {@link BandwidthMicroBenchMarkTest#calculatePercentageDifference()}.
-     */
-    public void testCalculatePercentageDifference() throws Exception {
-      double actual = BandwidthMicroBenchMarkTest.calculatePercentageDifference(2.0, 2.0);
-      assertEquals(0.0, actual);
-      actual = BandwidthMicroBenchMarkTest.calculatePercentageDifference(5.0, 3.0);
-      assertEquals(50.0, actual);
-      actual= BandwidthMicroBenchMarkTest.calculatePercentageDifference(3.0, 2.0);
-      double actual2 = BandwidthMicroBenchMarkTest.calculatePercentageDifference(2.0, 3.0);
-      assertEquals(actual2, actual);
-      actual = BandwidthMicroBenchMarkTest.calculatePercentageDifference(0.0, 0.0);
-      assertEquals(0.0, actual);
-      actual = BandwidthMicroBenchMarkTest.calculatePercentageDifference(-1.0, 4.0);
-      assertEquals(0.0, actual);
-      actual = BandwidthMicroBenchMarkTest.calculatePercentageDifference(0.0, -3.0);
-      assertEquals(0.0, actual);
-    }
 }
