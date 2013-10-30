@@ -409,7 +409,8 @@ public class TestInvocation implements ITestInvocation {
             throw e;
         } catch (RuntimeException e) {
             // log a warning here so its captured before reportLogs is called
-            CLog.w("Unexpected exception when running invocation: %s", e.toString());
+            CLog.e("Unexpected exception when running invocation: %s", e.toString());
+            CLog.e(e);
             reportFailure(e, listener, config, info, rescheduler);
             throw e;
         } catch (AssertionError e) {
