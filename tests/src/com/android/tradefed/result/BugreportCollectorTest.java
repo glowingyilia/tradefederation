@@ -157,6 +157,8 @@ public class BugreportCollectorTest extends TestCase {
     public void testTestFailed() throws Exception {
         Predicate pred = new Predicate(Relation.AFTER, Freq.EACH, Noun.FAILED_TESTCASE);
         mCollector.addPredicate(pred);
+        mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
+        EasyMock.expectLastCall().times(2);
         setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value",
                 true /*failed*/);
         mMockListener.testLog(EasyMock.contains("bug-FAILED-FooTest__testName1."),
@@ -174,6 +176,8 @@ public class BugreportCollectorTest extends TestCase {
     public void testTestEnded() throws Exception {
         Predicate pred = new Predicate(Relation.AFTER, Freq.EACH, Noun.TESTCASE);
         mCollector.addPredicate(pred);
+        mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
+        EasyMock.expectLastCall().times(2);
         setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value");
         mMockListener.testLog(EasyMock.contains("bug-FooTest__testName1."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
@@ -208,6 +212,8 @@ public class BugreportCollectorTest extends TestCase {
     public void testTestEnded_firstCase() throws Exception {
         Predicate pred = new Predicate(Relation.AFTER, Freq.FIRST, Noun.TESTCASE);
         mCollector.addPredicate(pred);
+        mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
+        EasyMock.expectLastCall().times(2);
         setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value");
         mMockListener.testLog(EasyMock.contains("bug-FooTest__testName1."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
@@ -223,6 +229,7 @@ public class BugreportCollectorTest extends TestCase {
     public void testTestEnded_firstRun() throws Exception {
         Predicate pred = new Predicate(Relation.AFTER, Freq.FIRST, Noun.TESTRUN);
         mCollector.addPredicate(pred);
+        mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
         // Note: only one testLog
         setListenerTestRunExpectations(mMockListener, "runName", "testName", "value");
         mMockListener.testLog(EasyMock.contains(pred.toString()),
@@ -237,6 +244,7 @@ public class BugreportCollectorTest extends TestCase {
     public void testTestRunEnded() throws Exception {
         Predicate pred = new Predicate(Relation.AFTER, Freq.EACH, Noun.TESTRUN);
         mCollector.addPredicate(pred);
+        mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
         setListenerTestRunExpectations(mMockListener, "runName", "testName", "value");
         mMockListener.testLog(EasyMock.contains(pred.toString()),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
@@ -248,6 +256,8 @@ public class BugreportCollectorTest extends TestCase {
     public void testDescriptiveName() throws Exception {
         final String normalName = "AT_START_OF_FIRST_TESTCASE";
         final String descName = "custom_descriptive_name";
+        mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
+        EasyMock.expectLastCall().times(2);
         mMockListener.testLog(EasyMock.contains(normalName), EasyMock.eq(LogDataType.BUGREPORT),
                 EasyMock.eq(mBugreportISS));
         mMockListener.testLog(EasyMock.contains(descName), EasyMock.eq(LogDataType.BUGREPORT),
