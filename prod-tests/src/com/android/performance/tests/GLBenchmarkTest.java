@@ -53,7 +53,6 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
     private static final String RUN_KEY = "glbenchmark";
     private static final long TIMEOUT_MS = 30 * 60 * 1000;
     private static final long POLLING_INTERVAL_MS = 5 * 1000;
-    private static final int MAX_ATTEMPTS = 3;
     private static final Map<String, String> METRICS_KEY_MAP = createMetricsKeyMap();
 
     private ITestDevice mDevice;
@@ -146,7 +145,6 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
 
         long testStartTime = System.currentTimeMillis();
         boolean isRunningBenchmark;
-        int attempts = 0;
 
         boolean isTimedOut = false;
         boolean isResultGenerated = false;
@@ -155,32 +153,25 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
 
         String deviceModel = device.executeShellCommand("getprop ro.product.model");
         String resultExcelXmlPath = String.format(mGlbenchmarkExcelResultXmlPath,
-                deviceModel.trim().replaceAll(" ", "_").toLowerCase());
+                deviceModel.trim().replaceAll("[ -]", "_").toLowerCase());
         CLog.i("Result excel xml path:" + resultExcelXmlPath);
 
         // start glbenchmark and wait for test to complete
-        while (!isResultGenerated && attempts < MAX_ATTEMPTS) {
-            device.clearErrorDialogs();
-            isTimedOut = false;
-            long benchmarkStartTime = System.currentTimeMillis();
+        isTimedOut = false;
+        long benchmarkStartTime = System.currentTimeMillis();
 
-            device.executeShellCommand("am start -a android.intent.action.MAIN " +
-                    "-n com.glbenchmark.glbenchmark25/com.glbenchmark.activities.MainActivity " +
-                    "--ez custom true");
-            isRunningBenchmark = true;
-            while (isRunningBenchmark && !isResultGenerated && !isTimedOut) {
-                RunUtil.getDefault().sleep(POLLING_INTERVAL_MS);
-                isTimedOut = (System.currentTimeMillis() - benchmarkStartTime >= TIMEOUT_MS);
-                isResultGenerated = device.doesFileExist(resultExcelXmlPath);
-                isRunningBenchmark = device.executeShellCommand("ps").contains(
-                        "glbenchmark");
-            }
-            attempts++;
+        device.executeShellCommand("am start -a android.intent.action.MAIN "
+                + "-n com.glbenchmark.glbenchmark25/com.glbenchmark.activities.MainActivity "
+                + "--ez custom true");
+        isRunningBenchmark = true;
+        while (isRunningBenchmark && !isResultGenerated && !isTimedOut) {
+            RunUtil.getDefault().sleep(POLLING_INTERVAL_MS);
+            isTimedOut = (System.currentTimeMillis() - benchmarkStartTime >= TIMEOUT_MS);
+            isResultGenerated = device.doesFileExist(resultExcelXmlPath);
+            isRunningBenchmark = device.executeShellCommand("ps").contains("glbenchmark");
         }
 
-        if (attempts >= MAX_ATTEMPTS) {
-            errMsg = String.format("GLBenchmark failed after %d attempts.", MAX_ATTEMPTS);
-        } else if (isTimedOut) {
+        if (isTimedOut) {
             errMsg = "GLBenchmark timed out.";
         } else {
             // pull result from device
