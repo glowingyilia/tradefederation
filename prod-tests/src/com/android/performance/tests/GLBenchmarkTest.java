@@ -68,7 +68,7 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
     private String mGlbenchmarkVersion = "2.5.1_b306a5";
 
     private String mGlbenchmarkCacheDir =
-            "/sdcard/android/data/" + mGlbenchmarkPackageName + "/cache/";
+            "${EXTERNAL_STORAGE}/Android/data/" + mGlbenchmarkPackageName + "/cache/";
     private String mGlbenchmarkCustomXmlPath =
             mGlbenchmarkCacheDir + "custom.xml";
     private String mGlbenchmarkResultXmlPath =
