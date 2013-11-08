@@ -168,7 +168,7 @@ public class LogUtilFuncTest extends TestCase {
      * stack trace frames
      */
     public void testCLog_parseClassName() {
-        assertEquals("InnerClass", CLog.parseClassName(
+        assertEquals("OuterClass$InnerClass", CLog.parseClassName(
                 "com.android.tradefed.log.OuterClass$InnerClass"));
         assertEquals("OuterClass", CLog.parseClassName("com.android.tradefed.log.OuterClass"));
         assertEquals("SimpleClassNameOnly", CLog.parseClassName("SimpleClassNameOnly"));

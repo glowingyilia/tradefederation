@@ -71,7 +71,7 @@ public class LogUtil {
 
         protected static final String CLASS_NAME = CLog.class.getName();
         private static IGlobalConfiguration sGlobalConfig = null;
-        private static Pattern sSimpleClassNamePattern = Pattern.compile(".*[.$](.*)");
+        private static Pattern sSimpleClassNamePattern = Pattern.compile(".*\\.(.*)");
 
         /**
          * The shim version of {@link Log#v(String, String)}.
