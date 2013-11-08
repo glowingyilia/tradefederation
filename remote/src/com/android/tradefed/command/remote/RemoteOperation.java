@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.command.remote;
 
-import com.android.tradefed.log.LogUtil.CLog;
+import com.android.ddmlib.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -27,6 +27,7 @@ abstract class RemoteOperation {
     private static final String TYPE = "type";
     private static final String VERSION = "version";
     static final int CURRENT_PROTOCOL_VERSION = 1;
+    private static final String TAG = RemoteOperation.class.getSimpleName();
 
     @SuppressWarnings("serial")
     static class RemoteException extends Exception {
@@ -109,7 +110,8 @@ abstract class RemoteOperation {
              j.put(TYPE, getType().toString());
              packIntoJson(j);
          } catch (JSONException e) {
-             CLog.e("Failed to serialize RemoteOperation", e);
+             Log.e(TAG, "Failed to serialize RemoteOperation");
+             Log.e(TAG,  e);
          }
          return j.toString();
      }

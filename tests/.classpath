@@ -7,5 +7,6 @@
 	<classpathentry kind="src" path="res"/>
 	<classpathentry exported="true" kind="var" path="TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/easymock_intermediates/javalib.jar" sourcepath="/TRADEFED_ROOT/external/easymock/src"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/tf-remote-client"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

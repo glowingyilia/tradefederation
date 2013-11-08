@@ -15,9 +15,8 @@
  */
 package com.android.tradefed.command.remote;
 
+import com.android.ddmlib.Log;
 import com.android.tradefed.command.remote.RemoteOperation.RemoteException;
-import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.util.StreamUtil;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -34,6 +33,7 @@ import java.net.UnknownHostException;
  */
 public class RemoteClient {
 
+    private static final String TAG = RemoteClient.class.getSimpleName();
     private final Socket mSocket;
     private final PrintWriter mWriter;
     private final BufferedReader mReader;
@@ -47,7 +47,18 @@ public class RemoteClient {
      * @throws UnknownHostException
      */
     RemoteClient(int port) throws UnknownHostException, IOException {
-        String hostName = InetAddress.getLocalHost().getHostName();
+        this(InetAddress.getLocalHost().getHostName(), port);
+    }
+
+    /**
+     * Initialize the {@RemoteClient}, and instruct it to connect to the given hostname and port.
+     *
+     * @param hostname to connect to
+     * @param port the tcp/ip port number
+     * @throws IOException
+     * @throws UnknownHostException
+     */
+    RemoteClient(String hostName, int port) throws UnknownHostException, IOException {
         mSocket = new Socket(hostName, port);
         mWriter = new PrintWriter(mSocket.getOutputStream(), true);
         mReader = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
@@ -65,9 +76,12 @@ public class RemoteClient {
            String response = mReader.readLine();
            return response != null && Boolean.parseBoolean(response);
        } catch (RemoteException e) {
-           CLog.e("Failed to send remote commmand", e);
+           // TODO: convert to CLog once we have tf-common
+          Log.e(TAG, "Failed to send remote commmand");
+          Log.e(TAG, e);
        } catch (IOException e) {
-           CLog.e("Failed to send remote commmand", e);
+           Log.e(TAG, "Failed to send remote commmand");
+           Log.e(TAG, e);
        }
        return false;
     }
@@ -129,10 +143,12 @@ public class RemoteClient {
              try {
                 mSocket.close();
             } catch (IOException e) {
-                // ignore
+                Log.w(TAG, String.format("exception closing socket: %s", e.toString()));
             }
         }
-        StreamUtil.close(mWriter);
+        if (mWriter != null) {
+            mWriter.close();
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2010 The Android Open Source Project
+# Copyright (C) 2013 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,26 +19,21 @@ include $(CLEAR_VARS)
 # Only compile source java files in this lib.
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
-LOCAL_JAVA_RESOURCE_DIRS := res
-
 LOCAL_JAVACFLAGS += -g -Xlint
 
-LOCAL_MODULE := tradefed-tests
+LOCAL_MODULE := tf-remote-client
+
 LOCAL_MODULE_TAGS := optional
-LOCAL_STATIC_JAVA_LIBRARIES := easymock
-LOCAL_JAVA_LIBRARIES := tradefed ddmlib-prebuilt tf-remote-client
+# only depend on ddmlib for the Log class
+LOCAL_JAVA_LIBRARIES := json-prebuilt ddmlib-prebuilt
 
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # makefile rules to copy jars to HOST_OUT/tradefed
 # so tradefed.sh can automatically add to classpath
-
 DEST_JAR := $(HOST_OUT)/tradefed/$(LOCAL_MODULE).jar
 $(DEST_JAR): $(LOCAL_BUILT_MODULE)
 	$(copy-file-to-new-target)
 
-# this dependency ensure the above rule will be executed if module is built
+# this dependency ensure the above rule will be executed if jar is built
 $(LOCAL_INSTALLED_MODULE) : $(DEST_JAR)
-
-# Build all sub-directories
-include $(call all-makefiles-under,$(LOCAL_PATH))
