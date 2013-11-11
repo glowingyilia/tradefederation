@@ -25,8 +25,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 
 /**
  * A logging utility class.  Useful for code that needs to override static methods from {@link Log}
@@ -71,7 +69,6 @@ public class LogUtil {
 
         protected static final String CLASS_NAME = CLog.class.getName();
         private static IGlobalConfiguration sGlobalConfig = null;
-        private static Pattern sSimpleClassNamePattern = Pattern.compile(".*\\.(.*)");
 
         /**
          * The shim version of {@link Log#v(String, String)}.
@@ -365,16 +362,21 @@ public class LogUtil {
          * looks like a simple class name, then just returns that.
          *
          * @param fullName the full class name to parse
-         * @return The simple class name (or full-qualified if an error occurs getting a ref to
-         *         the class)
+         * @return The simple class name
          */
         // @VisibleForTesting
         static String parseClassName(String fullName) {
-            Matcher m = sSimpleClassNamePattern.matcher(fullName);
-            if (m.matches()) {
-                return m.group(1);
+            int lastdot = fullName.lastIndexOf('.');
+            String simpleName = fullName;
+            if (lastdot != -1) {
+                simpleName = fullName.substring(lastdot + 1);
             }
-            return fullName;
+            // handle inner class names
+            int lastdollar = simpleName.lastIndexOf('$');
+            if (lastdollar != -1) {
+                simpleName = simpleName.substring(0, lastdollar);
+            }
+            return simpleName;
         }
     }
 }
