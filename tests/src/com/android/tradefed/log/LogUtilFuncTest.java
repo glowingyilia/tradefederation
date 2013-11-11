@@ -22,11 +22,12 @@ import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import junit.framework.TestCase;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 import org.easymock.EasyMock;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * A set of functional testcases for {@link LogUtil}
@@ -168,7 +169,7 @@ public class LogUtilFuncTest extends TestCase {
      * stack trace frames
      */
     public void testCLog_parseClassName() {
-        assertEquals("OuterClass$InnerClass", CLog.parseClassName(
+        assertEquals("OuterClass", CLog.parseClassName(
                 "com.android.tradefed.log.OuterClass$InnerClass"));
         assertEquals("OuterClass", CLog.parseClassName("com.android.tradefed.log.OuterClass"));
         assertEquals("SimpleClassNameOnly", CLog.parseClassName("SimpleClassNameOnly"));
