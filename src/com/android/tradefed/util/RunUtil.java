@@ -214,8 +214,8 @@ public class RunUtil implements IRunUtil {
     @Override
     public boolean runFixedTimedRetry(final long opTimeout, final long pollInterval,
             final long maxTime, final IRunUtil.IRunnableResult runnable) {
-        final long initialTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() < (initialTime + maxTime)) {
+        final long initialTime = getCurrentTime();
+        while (getCurrentTime() < (initialTime + maxTime)) {
             if (runTimed(opTimeout, runnable, true) == CommandStatus.SUCCESS) {
                 return true;
             }
@@ -234,10 +234,18 @@ public class RunUtil implements IRunUtil {
             final IRunUtil.IRunnableResult runnable) {
         // wait an initial time provided
         long pollInterval = initialPollInterval;
-        final long initialTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() < (initialTime + maxTime)) {
+        final long initialTime = getCurrentTime();
+        while (true) {
             if (runTimed(opTimeout, runnable, true) == CommandStatus.SUCCESS) {
                 return true;
+            }
+            long remainingTime = maxTime - (getCurrentTime() - initialTime);
+            if (remainingTime <= 0) {
+                CLog.d("operation is still failing after retrying for %d ms", maxTime);
+                return false;
+            } else if (remainingTime < pollInterval) {
+                // cap pollInterval to a max of remainingTime
+                pollInterval = remainingTime;
             }
             CLog.d("operation failed, waiting for %d ms", pollInterval);
             sleep(pollInterval);
@@ -248,7 +256,15 @@ public class RunUtil implements IRunUtil {
                 pollInterval = maxPollInterval;
             }
         }
-        return false;
+    }
+
+    /**
+     * Retrieves the current system clock time.
+     * <p/>
+     * Exposed so it can be mocked for unit testing
+     */
+    long getCurrentTime() {
+        return System.currentTimeMillis();
     }
 
     /**
