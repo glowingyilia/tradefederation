@@ -331,9 +331,9 @@ class CommandFileParser {
          */
         Bitmask inputBitmask = new Bitmask(mLines.size(), true);
 
-        // Do a maximum of 10 iterations of expansion
+        // Do a maximum of 20 iterations of expansion
         // FIXME: make this configurable
-        for (int iCount = 0; iCount < 10 && inputBitmask.getSetCount() > 0; ++iCount) {
+        for (int iCount = 0; iCount < 20 && inputBitmask.getSetCount() > 0; ++iCount) {
             CLog.d("### Expansion iteration %d", iCount);
 
             int inputIdx = 0;
