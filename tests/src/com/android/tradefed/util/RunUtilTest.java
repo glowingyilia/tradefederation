@@ -29,6 +29,7 @@ import java.io.File;
 public class RunUtilTest extends TestCase {
 
     private RunUtil mRunUtil;
+    private long mSleepTime = 0;
 
     @Override
     protected void setUp() throws Exception {
@@ -114,5 +115,47 @@ public class RunUtilTest extends TestCase {
         } catch (RuntimeException e) {
             // expected
         }
+    }
+
+    /**
+     * Test that {@link RunUtil#runEscalatingTimedRetry()} fails when operation continually fails,
+     * and that the maxTime variable is respected.
+     */
+    public void testRunEscalatingTimedRetry_timeout() throws Exception {
+        // create a RunUtil fixture with methods mocked out for
+        // fast execution
+
+        RunUtil runUtil = new RunUtil() {
+            @Override
+            public void sleep(long time) {
+                mSleepTime += time;
+            }
+
+            @Override
+            long getCurrentTime() {
+                return mSleepTime;
+            }
+
+            @Override
+            public CommandStatus runTimed(long timeout, IRunUtil.IRunnableResult runnable,
+                    boolean logErrors) {
+                try {
+                    // override parent with simple version that doesn't create a thread
+                    return runnable.run() ? CommandStatus.SUCCESS : CommandStatus.FAILED;
+                } catch (Exception e) {
+                    return CommandStatus.EXCEPTION;
+                }
+            }
+        };
+
+        IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
+                IRunUtil.IRunnableResult.class);
+        // expect a call 4 times, at sleep time 0, 1, 4 and 10 ms
+        EasyMock.expect(mockRunnable.run()).andReturn(Boolean.FALSE).times(4);
+        EasyMock.replay(mockRunnable);
+        long maxTime = 10;
+        assertFalse(runUtil.runEscalatingTimedRetry(1, 1, 512, maxTime, mockRunnable));
+        assertEquals(maxTime, mSleepTime);
+        EasyMock.verify(mockRunnable);
     }
 }
