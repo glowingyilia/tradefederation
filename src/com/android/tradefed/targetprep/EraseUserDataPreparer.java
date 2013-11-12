@@ -36,6 +36,10 @@ public class EraseUserDataPreparer implements ITargetPreparer {
             "Retain data, don't erase anything, effectively disables this preparer")
     private boolean mRetainData = false;
 
+    @Option(name="wait-for-available",
+            description="Wait until device is available for testing before performing erase")
+    private boolean mWaitForAvailable = false;
+
     private ITestsZipInstaller mTestsZipInstaller = null;
 
     /**
@@ -44,6 +48,9 @@ public class EraseUserDataPreparer implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
+        if (mWaitForAvailable) {
+            device.waitForDeviceAvailable();
+        }
         device.enableAdbRoot();
         if (mRetainData) return;
         if (mTestsZipInstaller == null) {
