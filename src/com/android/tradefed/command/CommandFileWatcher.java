@@ -166,11 +166,9 @@ class CommandFileWatcher extends Thread {
                     createCommandFileParser().parseFile(file, mScheduler, extraArgs);
                 }
             } catch (IOException e) {
-                // FIXME: Change this to WTF
-                CLog.e("Failed to automatically reload cmdfile", e);
+                CLog.wtf("Failed to automatically reload cmdfile", e);
             } catch (ConfigurationException e) {
-                // FIXME: Change this to WTF
-                CLog.e("Failed to automatically reload cmdfile", e);
+                CLog.wtf("Failed to automatically reload cmdfile", e);
             }
         }
     }
