@@ -16,6 +16,7 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.invoker.ITestInvocation;
 
@@ -31,16 +32,17 @@ public interface ICommandScheduler {
      * <p/>
      * A command is essentially an instance of a configuration to run and its associated arguments.
      * <p/>
-     * If "--help" argument is specified, or the config arguments are invalid, the help text for
+     * If "--help" argument is specified the help text for
      * the config will be outputed to stdout. Otherwise, the config will be added to the queue to
      * run.
      *
      * @param args the config arguments.
      * @return <code>true</code> if command was added successfully
+     * @throws ConfigurationException if command could not be parsed
      *
      * @see {@link IConfigurationFactory#createConfigurationFromArgs(String[])}
      */
-    public boolean addCommand(String[] args);
+    public boolean addCommand(String[] args) throws ConfigurationException;
 
     /**
      * An alternate {@link #addCommand(String[])} that accepts an initial total
@@ -51,8 +53,9 @@ public interface ICommandScheduler {
      * @param args the config arguments.
      * @param totalExecTime the accumulated elapsed execution time of the command
      * @return <code>true</code> if command was added successfully
+     * @throws ConfigurationException if command was invalid
      */
-    public boolean addCommand(String[] args, long totalExecTime);
+    public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException;
 
     /**
      * Remove all commands from scheduler
