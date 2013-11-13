@@ -96,12 +96,10 @@ public class RunUtilFuncTest extends TestCase {
     public void testRunTimed_repeatedOutput() {
         for (int i=0; i < 1000; i++) {
             final long timeOut = 200;
-            // FIXME: this test case is not ideal, as it will only work on platforms that support
-            // printf command.
-            CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "printf", "hello");
+            CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "echo", "hello");
             assertTrue(result.getStatus() == CommandStatus.SUCCESS);
             CLog.d(result.getStdout());
-            assertTrue(result.getStdout().equalsIgnoreCase("hello"));
+            assertTrue(result.getStdout().trim().equals("hello"));
         }
     }
 
@@ -111,14 +109,14 @@ public class RunUtilFuncTest extends TestCase {
      * @throws IOException
      */
     public void testRunTimed_largeOutput() throws IOException {
-        // 1 MB output
-        int dataSize = 1024 * 1024;
+        // 1M  chars
+        int dataSize = 1000000;
         File f = FileUtil.createTempFile("foo", ".txt");
         Writer s = null;
         try {
             s = new BufferedWriter(new FileWriter(f));
             for (int i=0; i < dataSize; i++) {
-                s.write(i);
+                s.write('a');
             }
             s.close();
 
