@@ -24,6 +24,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -354,21 +355,20 @@ public class RunUtil implements IRunUtil {
             }
             // Redirect IO, so that the buffer for the spawn process does not fill up and cause
             // deadlock.
-            ByteArrayOutputStream baStdOut = new ByteArrayOutputStream();
-            ByteArrayOutputStream baStdErr = new ByteArrayOutputStream();
-            BufferedOutputStream stdOut = new BufferedOutputStream(baStdOut);
-            BufferedOutputStream stdErr = new BufferedOutputStream(baStdErr);
-            inheritIO(mProcess.getInputStream(), stdOut);
-            inheritIO(mProcess.getErrorStream(), stdErr);
+            ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+            ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
+            Thread stdoutThread = inheritIO(mProcess.getInputStream(), stdOut);
+            Thread stderrThread = inheritIO(mProcess.getErrorStream(), stdErr);
             // Wait for process to complete.
             int rc = mProcess.waitFor();
             synchronized (this) {
                 if (mProcess != null) {
-                    stdOut.flush();
-                    stdErr.flush();
+                    // wait for stdout and stderr to be read
+                    stdoutThread.join();
+                    stderrThread.join();
                     // Write out the streams to the result.
-                    mCommandResult.setStdout(baStdOut.toString("UTF-8"));
-                    mCommandResult.setStderr(baStdErr.toString("UTF-8"));
+                    mCommandResult.setStdout(stdOut.toString("UTF-8"));
+                    mCommandResult.setStderr(stdErr.toString("UTF-8"));
                     stdOut.close();
                     stdErr.close();
                 }
@@ -398,8 +398,8 @@ public class RunUtil implements IRunUtil {
      * @param src {@link InputStream} to inherit/redirect from
      * @param dest {@link BufferedOutputStream} to inherit/redirect to
      */
-    private static void inheritIO(final InputStream src, final BufferedOutputStream dest) {
-        new Thread(new Runnable() {
+    private static Thread inheritIO(final InputStream src, final OutputStream dest) {
+        Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
                 // Buffer the input stream.
@@ -419,6 +419,8 @@ public class RunUtil implements IRunUtil {
                      }
                  }
             }
-        }).start();
+        });
+        t.start();
+        return t;
     }
 }

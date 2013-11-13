@@ -20,6 +20,12 @@ import com.android.tradefed.util.IRunUtil.IRunnableResult;
 
 import junit.framework.TestCase;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+
 /**
  * Longer running tests for {@link RunUtilFuncTest}
  */
@@ -83,18 +89,49 @@ public class RunUtilFuncTest extends TestCase {
                 expectedPollTime <= actualTime && actualTime <= (2 * expectedPollTime));
     }
 
+    /**
+     * Test timeout case for {@link RunUtil#runTimed(long, IRunnableResult)} and ensure we
+     * consistently get the right stdout for a fast running command.
+     */
+    public void testRunTimed_repeatedOutput() {
+        for (int i=0; i < 1000; i++) {
+            final long timeOut = 200;
+            // FIXME: this test case is not ideal, as it will only work on platforms that support
+            // printf command.
+            CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "printf", "hello");
+            assertTrue(result.getStatus() == CommandStatus.SUCCESS);
+            CLog.d(result.getStdout());
+            assertTrue(result.getStdout().equalsIgnoreCase("hello"));
+        }
+    }
 
     /**
-     * Test timeout case for {@link RunUtil#runTimed(long, IRunnableResult)} and ensure we get the
-     * right stdout.
+     * Test case for {@link RunUtil#runTimed(long, IRunnableResult)} for a command that produces
+     * a large amount of output
+     * @throws IOException
      */
-    public void testRunTimedOutput() {
-        final long timeOut = 200;
-        // FIXME: this test case is not ideal, as it will only work on platforms that support printf
-        // command.
-        CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "printf", "hello");
-        assertTrue(result.getStatus() == CommandStatus.SUCCESS);
-        CLog.d(result.getStdout());
-        assertTrue(result.getStdout().equalsIgnoreCase("hello"));
+    public void testRunTimed_largeOutput() throws IOException {
+        // 1 MB output
+        int dataSize = 1024 * 1024;
+        File f = FileUtil.createTempFile("foo", ".txt");
+        Writer s = null;
+        try {
+            s = new BufferedWriter(new FileWriter(f));
+            for (int i=0; i < dataSize; i++) {
+                s.write(i);
+            }
+            s.close();
+
+            final long timeOut = 5000;
+            // FIXME: this test case is not ideal, as it will only work on platforms that support
+            // cat command.
+            CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "cat",
+                    f.getAbsolutePath());
+            assertTrue(result.getStatus() == CommandStatus.SUCCESS);
+            assertTrue(result.getStdout().length() == dataSize);
+        } finally {
+            f.delete();
+            StreamUtil.close(s);
+        }
     }
 }

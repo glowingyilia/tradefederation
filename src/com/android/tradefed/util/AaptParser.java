@@ -46,8 +46,8 @@ public class AaptParser {
             mVersionName = m.group(3);
             return true;
         }
-        CLog.e("Failed to parse package and version info from 'aapt dump badging'");
-        CLog.e(aaptOut);
+        CLog.e("Failed to parse package and version info from 'aapt dump badging'. stdout: '%s'",
+                aaptOut);
         return false;
     }
 
