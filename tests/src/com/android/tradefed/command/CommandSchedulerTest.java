@@ -281,27 +281,31 @@ public class CommandSchedulerTest extends TestCase {
      * Verify that scheduler goes into shutdown mode when a {@link FatalHostError} is thrown.
      */
     public void testRun_fatalError() throws Throwable {
-
         mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
                 (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new FatalHostError("error"));
         // set up a mock global config and wtfhandler to handle CLog.wtf when FatalHostError occurs
         IGlobalConfiguration mockGc = EasyMock.createMock(IGlobalConfiguration.class);
         CLog.setGlobalConfigInstance(mockGc);
-        ITerribleFailureHandler mockWtf = EasyMock.createMock(ITerribleFailureHandler.class);
-        EasyMock.expect(mockGc.getWtfHandler()).andReturn(mockWtf).anyTimes();
-        EasyMock.expect(mockWtf.onTerribleFailure((String)EasyMock.anyObject(),
-                (Throwable)EasyMock.anyObject())).andReturn(Boolean.TRUE);
-        String[] args = new String[] {};
-        mMockManager.setNumDevices(2);
-        setCreateConfigExpectations(args, 1);
-        mMockConfiguration.validateOptions();
-        replayMocks(mockGc, mockWtf);
-        mScheduler.addCommand(args);
-        mScheduler.start();
-        // no need to call shutdown explicitly - scheduler should shutdown by itself
-        mScheduler.join();
-        verifyMocks(mockGc, mockWtf);
+        try {
+            ITerribleFailureHandler mockWtf = EasyMock.createMock(ITerribleFailureHandler.class);
+            EasyMock.expect(mockGc.getWtfHandler()).andReturn(mockWtf).anyTimes();
+            EasyMock.expect(mockWtf.onTerribleFailure((String)EasyMock.anyObject(),
+                    (Throwable)EasyMock.anyObject())).andReturn(Boolean.TRUE);
+            String[] args = new String[] {};
+            mMockManager.setNumDevices(2);
+            setCreateConfigExpectations(args, 1);
+            mMockConfiguration.validateOptions();
+            replayMocks(mockGc, mockWtf);
+            mScheduler.addCommand(args);
+            mScheduler.start();
+            // no need to call shutdown explicitly - scheduler should shutdown by itself
+            mScheduler.join();
+            verifyMocks(mockGc, mockWtf);
+        } finally {
+            // reset global config to null, which means 'not overloaded/use default'
+            CLog.setGlobalConfigInstance(null);
+        }
     }
 
     /**
