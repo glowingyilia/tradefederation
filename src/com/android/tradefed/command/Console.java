@@ -540,7 +540,11 @@ public class Console extends Thread {
                 for (int i = startIdx; i < args.size(); i++) {
                     flatArgs[i - startIdx] = args.get(i).get(0);
                 }
-                mScheduler.addCommand(flatArgs);
+                try {
+                    mScheduler.addCommand(flatArgs);
+                } catch (ConfigurationException e) {
+                    printLine("Failed to run command: " + e.toString());
+                }
             }
         };
         trie.put(runRunCommand, RUN_PATTERN, "c(?:ommand)?", null);
@@ -565,8 +569,12 @@ public class Console extends Thread {
                 for (int i = 2; i < args.size(); i++) {
                     flatArgs[i - 2] = args.get(i).get(0);
                 }
-                if (mScheduler.addCommand(flatArgs)) {
-                    mScheduler.shutdownOnEmpty();
+                try {
+                    if (mScheduler.addCommand(flatArgs)) {
+                        mScheduler.shutdownOnEmpty();
+                    }
+                } catch (ConfigurationException e) {
+                    printLine("Failed to run command: " + e.toString());
                 }
 
                 // Intentionally kill the console before CommandScheduler finishes

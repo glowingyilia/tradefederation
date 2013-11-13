@@ -18,6 +18,7 @@ package com.android.tradefed.command.remote;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.command.remote.RemoteOperation.RemoteException;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
@@ -193,7 +194,13 @@ public class RemoteManager extends Thread {
     boolean processAdd(AddCommandOp c) {
         CLog.logAndDisplay(LogLevel.INFO, "Adding command '%s'", ArrayUtil.join(" ",
                 c.mCommandArgs));
-        return mScheduler.addCommand(c.mCommandArgs, c.mTotalTime);
+        try {
+            return mScheduler.addCommand(c.mCommandArgs, c.mTotalTime);
+        } catch (ConfigurationException e) {
+            CLog.e("Failed to add command");
+            CLog.e(e);
+            return false;
+        }
     }
 
     private boolean processClose(CloseOp rc) {

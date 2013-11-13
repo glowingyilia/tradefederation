@@ -562,7 +562,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      * {@inheritDoc}
      */
     @Override
-    public boolean addCommand(String[] args) {
+    public boolean addCommand(String[] args) throws ConfigurationException {
         return addCommand(args, 0);
     }
 
@@ -570,39 +570,30 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      * {@inheritDoc}
      */
     @Override
-    public boolean addCommand(String[] args, long totalExecTime) {
-        try {
-            IConfiguration config = getConfigFactory().createConfigurationFromArgs(args);
-            if (config.getCommandOptions().isHelpMode()) {
-                getConfigFactory().printHelpForConfig(args, true, System.out);
-            } else if (config.getCommandOptions().isFullHelpMode()) {
-                getConfigFactory().printHelpForConfig(args, false, System.out);
-            } else if (config.getCommandOptions().isDryRunMode()) {
-                if (config.getCommandOptions().isNoisyDryRunMode()) {
-                    CLog.logAndDisplay(LogLevel.DEBUG, "DRY RUN: %s", Arrays.toString(args));
-                } else {
-                    CLog.d("Dry run mode; skipping adding command: %s", Arrays.toString(args));
-                }
+    public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException {
+        IConfiguration config = getConfigFactory().createConfigurationFromArgs(args);
+        if (config.getCommandOptions().isHelpMode()) {
+            getConfigFactory().printHelpForConfig(args, true, System.out);
+        } else if (config.getCommandOptions().isFullHelpMode()) {
+            getConfigFactory().printHelpForConfig(args, false, System.out);
+        } else if (config.getCommandOptions().isDryRunMode()) {
+            if (config.getCommandOptions().isNoisyDryRunMode()) {
+                CLog.logAndDisplay(LogLevel.DEBUG, "DRY RUN: %s", Arrays.toString(args));
             } else {
-                config.validateOptions();
-
-                if (config.getCommandOptions().runOnAllDevices()) {
-                    addCommandForAllDevices(totalExecTime, args);
-                } else {
-                    CommandTracker cmdTracker = createCommandTracker(args);
-                    cmdTracker.incrementExecTime(totalExecTime);
-                    ExecutableCommand cmdInstance = createExecutableCommand(cmdTracker, config, false);
-                    addExecCommandToQueue(cmdInstance, 0);
-                }
-                return true;
+                CLog.d("Dry run mode; skipping adding command: %s", Arrays.toString(args));
             }
-        } catch (ConfigurationException e) {
-            // FIXME: do this with jline somehow for ANSI support
-            // note: make sure not to log (aka record) this line, as (args) may contain passwords.
-            System.out.println(String.format("Error while processing args: %s",
-                    Arrays.toString(args)));
-            System.out.println(e.getMessage());
-            System.out.println();
+        } else {
+            config.validateOptions();
+
+            if (config.getCommandOptions().runOnAllDevices()) {
+                addCommandForAllDevices(totalExecTime, args);
+            } else {
+                CommandTracker cmdTracker = createCommandTracker(args);
+                cmdTracker.incrementExecTime(totalExecTime);
+                ExecutableCommand cmdInstance = createExecutableCommand(cmdTracker, config, false);
+                addExecCommandToQueue(cmdInstance, 0);
+            }
+            return true;
         }
         return false;
     }

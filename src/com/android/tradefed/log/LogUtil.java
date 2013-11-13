@@ -266,7 +266,7 @@ public class LogUtil {
          * @param globalConfig the GlobalConfiguration object for CLog to use
          */
         // @VisibleForTesting
-        static void setGlobalConfigInstance(IGlobalConfiguration globalConfig) {
+        public static void setGlobalConfigInstance(IGlobalConfiguration globalConfig) {
             sGlobalConfig = globalConfig;
         }
 

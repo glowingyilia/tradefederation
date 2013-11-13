@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.command;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
@@ -150,7 +151,7 @@ class CommandFileWatcher extends Thread {
      * about them ourselves, and then finally reloading everything.
      */
     private void reloadCmdFiles() {
-        CLog.w("Auto-reloading all command files");
+        CLog.logAndDisplay(LogLevel.INFO, "Removing all commands");
         mScheduler.removeAllCommands();
 
         final List<CommandFile> cmdFilesCopy = new ArrayList<CommandFile>(mCmdFiles);
@@ -160,15 +161,18 @@ class CommandFileWatcher extends Thread {
             final File file = cmd.file;
             final List<String> extraArgs = cmd.extraArgs;
             try {
+                CLog.logAndDisplay(LogLevel.INFO, "running cmdfile %s", file.getAbsolutePath());
                 if (extraArgs.isEmpty()) {
                     createCommandFileParser().parseFile(file, mScheduler);
                 } else {
                     createCommandFileParser().parseFile(file, mScheduler, extraArgs);
                 }
             } catch (IOException e) {
-                CLog.wtf("Failed to automatically reload cmdfile", e);
+                CLog.wtf(String.format("Failed to automatically reload cmdfile %s",
+                        file.getAbsolutePath()), e);
             } catch (ConfigurationException e) {
-                CLog.wtf("Failed to automatically reload cmdfile", e);
+                CLog.wtf(String.format("Failed to automatically reload cmdfile %s",
+                        file.getAbsolutePath()), e);
             }
         }
     }
@@ -184,6 +188,8 @@ class CommandFileWatcher extends Thread {
 
         for (CommandFile cmd : mCmdFiles) {
             if (checkCommandFileForUpdate(cmd, checkedFiles)) {
+                CLog.logAndDisplay(LogLevel.INFO, "Detected update for cmdfile '%s'",
+                        cmd.file.getAbsolutePath());
                 // The command file or one of its dependencies has been updated
                 return true;
             }
