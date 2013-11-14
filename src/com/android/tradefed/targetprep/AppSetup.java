@@ -63,7 +63,7 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
      */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            DeviceNotAvailableException {
+            DeviceNotAvailableException, BuildError {
         if (!(buildInfo instanceof IAppBuildInfo)) {
             throw new IllegalArgumentException("Provided buildInfo is not a AppBuildInfo");
         }
@@ -83,7 +83,10 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             for (VersionedFile apkFile : appBuild.getAppPackageFiles()) {
                 String result = device.installPackage(apkFile.getFile(), true);
                 if (result != null) {
-                    throw new TargetSetupError(String.format(
+                    // typically install failures means something is wrong with apk.
+                    // TODO: in future add more logic to throw targetsetup vs build vs
+                    // devicenotavail depending on error code
+                    throw new BuildError(String.format(
                             "Failed to install %s on %s. Reason: %s",
                             apkFile.getFile().getName(), device.getSerialNumber(), result));
                 }
