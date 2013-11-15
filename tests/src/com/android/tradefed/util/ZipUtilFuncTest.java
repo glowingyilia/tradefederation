@@ -19,6 +19,7 @@ import junit.framework.TestCase;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.zip.ZipFile;
@@ -41,6 +42,39 @@ public class ZipUtilFuncTest extends TestCase {
                 }
             }
         }
+    }
+
+    private File getTestDataFile(String name) throws IOException {
+        final InputStream inputStream =
+                getClass().getResourceAsStream(String.format("/util/%s.zip", name));
+        final File zipFile = createTempFile(name, ".zip");
+        FileUtil.writeToFile(inputStream, zipFile);
+        return zipFile;
+    }
+
+    /**
+     * Test that our _simple_ corrupt zip detection heuristics work properly.  It is expected
+     * that this check will _fail_ to detect a corrupt but well-formed Zip archive.
+     */
+    public void testSimpleCorruptZipCheck() throws Exception {
+        assertTrue("Falsely detected 'normal.zip' test file as corrupt!",
+                ZipUtil.isZipFileValid(getTestDataFile("normal"), false));
+        assertFalse("Failed to detect 'truncated.zip' test file as corrupt!",
+                ZipUtil.isZipFileValid(getTestDataFile("truncated"), false));
+        assertTrue("Unexpectedly detected 'normal.zip' test file as corrupt!  Hope?",
+                ZipUtil.isZipFileValid(getTestDataFile("corrupt"), false));
+    }
+
+    /**
+     * Test that our _thorough_ corrupt zip detection heuristics work properly.
+     */
+    public void testThoroughCorruptZipCheck() throws Exception {
+        assertTrue("Falsely detected 'normal.zip' test file as corrupt with thorough check!",
+                ZipUtil.isZipFileValid(getTestDataFile("normal"), true));
+        assertFalse("Failed to detect 'truncated.zip' test file as corrupt with thorough check!",
+                ZipUtil.isZipFileValid(getTestDataFile("truncated"), true));
+        assertFalse("Failed to detect 'normal.zip' test file as corrupt with thorough check!",
+                ZipUtil.isZipFileValid(getTestDataFile("corrupt"), true));
     }
 
     /**
@@ -110,5 +144,17 @@ public class ZipUtilFuncTest extends TestCase {
         File tempDir = FileUtil.createTempDir(prefix, parentDir);
         mTempFiles.add(tempDir);
         return tempDir;
+    }
+
+    private File createTempFile(String prefix, String suffix) throws IOException {
+        File tempFile = FileUtil.createTempFile(prefix, suffix);
+        mTempFiles.add(tempFile);
+        return tempFile;
+    }
+
+    private File createTempFile(String prefix, String suffix, File parentDir) throws IOException {
+        File tempFile = FileUtil.createTempFile(prefix, suffix, parentDir);
+        mTempFiles.add(tempFile);
+        return tempFile;
     }
 }
