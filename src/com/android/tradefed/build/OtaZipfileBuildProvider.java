@@ -18,7 +18,7 @@ package com.android.tradefed.build;
 
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
-import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -86,7 +86,7 @@ public class OtaZipfileBuildProvider implements IBuildProvider {
         } catch (IOException e) {
             throw new BuildRetrievalError("Failure while getting build.prop from OTA zipfile", e);
         } finally {
-            FileUtil.closeZip(otaZip);
+            ZipUtil.closeZip(otaZip);
         }
     }
 

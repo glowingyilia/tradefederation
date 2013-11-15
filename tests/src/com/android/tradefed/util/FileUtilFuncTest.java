@@ -25,7 +25,6 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.zip.ZipFile;
 
 /**
  * Functional tests for {@link FileUtil}
@@ -180,64 +179,6 @@ public class FileUtilFuncTest extends TestCase {
         assertFalse(subFile.exists());
         assertFalse(childDir.exists());
         assertFalse(tmpParentDir.exists());
-    }
-
-    /**
-     * Test creating then extracting a zip file
-     *
-     * @throws IOException
-     */
-    public void testCreateAndExtractZip() throws IOException {
-        File tmpParentDir = createTempDir("foo");
-        File zipFile = null;
-        File extractedDir = createTempDir("extract-foo");
-        try {
-            File childDir = new File(tmpParentDir, "foochild");
-            assertTrue(childDir.mkdir());
-            File subFile = new File(childDir, "foo.txt");
-            FileUtil.writeToFile("contents", subFile);
-            zipFile = FileUtil.createZip(tmpParentDir);
-            FileUtil.extractZip(new ZipFile(zipFile), extractedDir);
-
-            // assert all contents of original zipped dir are extracted
-            File extractedParentDir = new File(extractedDir, tmpParentDir.getName());
-            File extractedChildDir = new File(extractedParentDir, childDir.getName());
-            File extractedSubFile = new File(extractedChildDir, subFile.getName());
-            assertTrue(extractedParentDir.exists());
-            assertTrue(extractedChildDir.exists());
-            assertTrue(extractedSubFile.exists());
-            assertTrue(FileUtil.compareFileContents(subFile, extractedSubFile));
-        } finally {
-            if (zipFile != null) {
-                zipFile.delete();
-            }
-        }
-    }
-
-    /**
-     * Test creating then extracting a a single file from zip file
-     *
-     * @throws IOException
-     */
-    public void testCreateAndExtractFileFromZip() throws IOException {
-        File tmpParentDir = createTempDir("foo");
-        File zipFile = null;
-        File extractedSubFile = null;
-        try {
-            File childDir = new File(tmpParentDir, "foochild");
-            assertTrue(childDir.mkdir());
-            File subFile = new File(childDir, "foo.txt");
-            FileUtil.writeToFile("contents", subFile);
-            zipFile = FileUtil.createZip(tmpParentDir);
-
-            extractedSubFile = FileUtil.extractFileFromZip(new ZipFile(zipFile),
-                    tmpParentDir.getName() + "/foochild/foo.txt");
-            assertNotNull(extractedSubFile);
-            assertTrue(FileUtil.compareFileContents(subFile, extractedSubFile));
-        } finally {
-            FileUtil.deleteFile(zipFile);
-            FileUtil.deleteFile(extractedSubFile);
-        }
     }
 
     public void testRecursiveCopy() throws IOException {

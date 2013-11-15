@@ -27,6 +27,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
@@ -192,7 +193,7 @@ public class CodeCoverageReporter extends StubTestInvocationListener {
         try {
             mLocalTmpDir = FileUtil.createTempDir("emma-meta");
             ZipFile zipFile = new ZipFile(coverageZipFile);
-            FileUtil.extractZip(zipFile, mLocalTmpDir);
+            ZipUtil.extractZip(zipFile, mLocalTmpDir);
             File coverageMetaFile;
             if (mCoverageMetaFilePath == null) {
                 coverageMetaFile = FileUtil.findFile(mLocalTmpDir, "coverage.em");
