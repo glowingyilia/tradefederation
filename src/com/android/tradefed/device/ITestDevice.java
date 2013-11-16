@@ -911,6 +911,14 @@ public interface ITestDevice {
     public boolean waitForDeviceNotAvailable(final long waitTime);
 
     /**
+     * Waits for device to be responsive to a basic adb shell command.
+     *
+     * @param waitTime the time in ms to wait
+     * @return <code>true</code> if device becomes responsive before <var>waitTime</var> elapses.
+     */
+    public boolean waitForDeviceShell(final long waitTime);
+
+    /**
      * Blocks for the device to be in the 'adb recovery' state (note this is distinct from
      * {@link IDeviceRecovery}).
      *

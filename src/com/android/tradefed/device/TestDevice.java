@@ -2644,4 +2644,12 @@ class TestDevice implements IManagedTestDevice {
         }
         return apiLevel;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean waitForDeviceShell(long waitTime) {
+        return mMonitor.waitForDeviceShell(waitTime);
+    }
 }
