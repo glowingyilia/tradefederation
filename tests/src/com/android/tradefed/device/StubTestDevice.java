@@ -782,4 +782,12 @@ public class StubTestDevice implements IManagedTestDevice {
     public int getApiLevel() throws DeviceNotAvailableException {
         return UNKNOWN_API_LEVEL;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean waitForDeviceShell(long waitTime) {
+        return false;
+    }
 }
