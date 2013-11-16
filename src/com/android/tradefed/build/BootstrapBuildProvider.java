@@ -54,6 +54,11 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Option(name="build-target", description="build target name to supply.")
     private String mBuildTargetName = "bootstrapped";
 
+    @Option(name="shell-available-timeout",
+            description="Time to wait in seconds for device shell to become available. " +
+            "Default to 300 seconds.")
+    private long mShellAvailableTimeout = 5 * 60;
+
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         throw new UnsupportedOperationException("Call getBuild(ITestDevice)");
@@ -74,6 +79,11 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
         IBuildInfo info = new BuildInfo(device.getBuildId(), mTestTag, mBuildTargetName);
+        if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
+            throw new DeviceNotAvailableException(
+                    String.format("Shell did not become available in %d seconds",
+                            mShellAvailableTimeout));
+        }
         info.setBuildBranch(String.format("%s-%s-%s-%s",
                 device.getProperty("ro.product.brand"),
                 device.getProperty("ro.product.name"),
