@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -28,6 +30,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -35,6 +38,37 @@ import java.util.zip.ZipOutputStream;
  * A helper class for compression-related operations
  */
 public class ZipUtil {
+
+    /**
+     * Utility method to verify that a zip file is not corrupt.
+     *
+     * @param zipFile the {@link File} to check
+     * @param thorough Whether to attempt to fully extract the archive.  If {@code false}, this
+     *        method will fail to detect CRC errors in a well-formed archive.
+     * @throws IOException if the file could not be opened or read
+     * @return {@code false} if the file appears to be corrupt; {@code true} otherwise
+     */
+    public static boolean isZipFileValid(File zipFile, boolean thorough) throws IOException {
+        try {
+            final ZipFile z = new ZipFile(zipFile);
+
+            if (thorough) {
+                // Reading the entire file is the only way to detect CRC errors within the archive
+                final File extractDir = FileUtil.createTempDir("extract-" + zipFile.getName());
+                try {
+                    extractZip(z, extractDir);
+                } finally {
+                    FileUtil.recursiveDelete(extractDir);
+                }
+            }
+        } catch (ZipException e) {
+            // File is likely corrupt
+            CLog.d("Detected corrupt zip file %s: %s", zipFile.getCanonicalPath(), e.getMessage());
+            return false;
+        }
+
+        return true;
+    }
 
     /**
      * Utility method to extract entire contents of zip file into given directory

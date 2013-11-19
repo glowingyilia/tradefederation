@@ -23,6 +23,7 @@ import com.android.tradefed.testtype.DeviceTestSuite;
 import com.android.tradefed.testtype.InstrumentationTestFuncTest;
 import com.android.tradefed.util.FileUtilFuncTest;
 import com.android.tradefed.util.RunUtilFuncTest;
+import com.android.tradefed.util.ZipUtilFuncTest;
 import com.android.tradefed.util.net.HttpHelperFuncTest;
 
 import junit.framework.Test;
@@ -36,16 +37,23 @@ public class FuncTests extends DeviceTestSuite {
 
     public FuncTests() {
         super();
-        this.addTestSuite(CommandSchedulerFuncTest.class);
-        this.addTestSuite(DeviceSetupFuncTest.class);
+        // build
         this.addTestSuite(FileDownloadCacheFuncTest.class);
+        // command
+        this.addTestSuite(CommandSchedulerFuncTest.class);
+        // device
+        this.addTestSuite(TestDeviceFuncTest.class);
+        // targetprep
+        this.addTestSuite(DeviceSetupFuncTest.class);
+        // testtype
+        this.addTestSuite(InstrumentationTestFuncTest.class);
+        // util
         this.addTestSuite(FileUtilFuncTest.class);
         // TODO: temporarily remove from suite until we figure out how to install gtest data
         //this.addTestSuite(GTestFuncTest.class);
-        this.addTestSuite(InstrumentationTestFuncTest.class);
-        this.addTestSuite(RunUtilFuncTest.class);
-        this.addTestSuite(TestDeviceFuncTest.class);
         this.addTestSuite(HttpHelperFuncTest.class);
+        this.addTestSuite(RunUtilFuncTest.class);
+        this.addTestSuite(ZipUtilFuncTest.class);
     }
 
     public static Test suite() {
