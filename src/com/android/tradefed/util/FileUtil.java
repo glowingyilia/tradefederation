@@ -24,7 +24,6 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -32,15 +31,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.zip.GZIPOutputStream;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
 /**
  * A helper class for file related operations
@@ -429,196 +423,6 @@ public class FileUtil {
     }
 
     /**
-     * Utility method to extract entire contents of zip file into given directory
-     *
-     * @param zipFile the {@link ZipFile} to extract
-     * @param destDir the local dir to extract file to
-     * @throws IOException if failed to extract file
-     */
-    public static void extractZip(ZipFile zipFile, File destDir) throws IOException {
-        Enumeration<? extends ZipEntry> entries = zipFile.entries();
-        while (entries.hasMoreElements()) {
-
-            ZipEntry entry = entries.nextElement();
-            File childFile = new File(destDir, entry.getName());
-            childFile.getParentFile().mkdirs();
-            if (entry.isDirectory()) {
-                continue;
-            } else {
-                FileUtil.writeToFile(zipFile.getInputStream(entry), childFile);
-            }
-        }
-    }
-
-
-    /**
-     * Utility method to extract one specific file from zip file into a tmp file
-     *
-     * @param zipFile the {@link ZipFile} to extract
-     * @param filePath the filePath of to extract
-     * @throws IOException if failed to extract file
-     * @return the {@link File} or null if not found
-     */
-    public static File extractFileFromZip(ZipFile zipFile, String filePath) throws IOException {
-        ZipEntry entry = zipFile.getEntry(filePath);
-        if (entry == null) {
-            return null;
-        }
-        File createdFile = FileUtil.createTempFile("extracted",
-                FileUtil.getExtension(filePath));
-        FileUtil.writeToFile(zipFile.getInputStream(entry), createdFile);
-        return createdFile;
-    }
-
-    /**
-     * Utility method to create a temporary zip file containing the given directory and
-     * all its contents.
-     *
-     * @param dir the directory to zip
-     * @return a temporary zip {@link File} containing directory contents
-     * @throws IOException if failed to create zip file
-     */
-    public static File createZip(File dir) throws IOException {
-        File zipFile = FileUtil.createTempFile("dir", ".zip");
-        createZip(dir, zipFile);
-        return zipFile;
-    }
-
-    /**
-     * Utility method to create a zip file containing the given directory and
-     * all its contents.
-     *
-     * @param dir the directory to zip
-     * @param zipFile the zip file to create - it should not already exist
-     * @throws IOException if failed to create zip file
-     */
-    public static void createZip(File dir, File zipFile) throws IOException {
-        ZipOutputStream out = null;
-        try {
-            FileOutputStream fileStream = new FileOutputStream(zipFile);
-            out = new ZipOutputStream(new BufferedOutputStream(fileStream));
-            addToZip(out, dir, new LinkedList<String>());
-        } catch (IOException e) {
-            zipFile.delete();
-            throw e;
-        } catch (RuntimeException e) {
-            zipFile.delete();
-            throw e;
-        } finally {
-            StreamUtil.close(out);
-        }
-    }
-
-    /**
-     * Recursively adds given file and its contents to ZipOutputStream
-     *
-     * @param out the {@link ZipOutputStream}
-     * @param file the {@link File} to add to the stream
-     * @param relativePathSegs the relative path of file, including separators
-     * @throws IOException if failed to add file to zip
-     */
-    private static void addToZip(ZipOutputStream out, File file, List<String> relativePathSegs)
-            throws IOException {
-        relativePathSegs.add(file.getName());
-        if (file.isDirectory()) {
-            // note: it appears even on windows, ZipEntry expects '/' as a path separator
-            relativePathSegs.add("/");
-        }
-        ZipEntry zipEntry = new ZipEntry(buildPath(relativePathSegs));
-        out.putNextEntry(zipEntry);
-        if (file.isFile()) {
-            writeToStream(file, out);
-        }
-        out.closeEntry();
-        if (file.isDirectory()) {
-            // recursively add contents
-            File[] subFiles = file.listFiles();
-            if (subFiles == null) {
-                throw new IOException(String.format("Could not read directory %s",
-                        file.getAbsolutePath()));
-            }
-            for (File subFile : subFiles) {
-                addToZip(out, subFile, relativePathSegs);
-            }
-            // remove the path separator
-            relativePathSegs.remove(relativePathSegs.size()-1);
-        }
-        // remove the last segment, added at beginning of method
-        relativePathSegs.remove(relativePathSegs.size()-1);
-    }
-
-    /**
-     * Close an open {@link ZipFile}, ignoring any exceptions.
-     *
-     * @param otaZip the file to close
-     */
-    public static void closeZip(ZipFile otaZip) {
-        if (otaZip != null) {
-            try {
-                otaZip.close();
-            } catch (IOException e) {
-                // ignore
-            }
-        }
-    }
-
-    /**
-     * Helper method to create a gzipped version of a single file.
-     *
-     * @param file the original file
-     * @param gzipFile the file to place compressed contents in
-     * @throws IOException
-     */
-    public static void gzipFile(File file, File gzipFile) throws IOException {
-        GZIPOutputStream out = null;
-        try {
-            FileOutputStream fileStream = new FileOutputStream(gzipFile);
-            out = new GZIPOutputStream(new BufferedOutputStream(fileStream, 64 * 1024));
-            writeToStream(file, out);
-        } catch (IOException e) {
-            gzipFile.delete();
-            throw e;
-        } catch (RuntimeException e) {
-            gzipFile.delete();
-            throw e;
-        } finally {
-            StreamUtil.close(out);
-        }
-    }
-
-    /**
-     * Helper method to write input file contents to output stream.
-     *
-     * @param file the input {@link File}
-     * @param out the {@link OutputStream}
-     *
-     * @throws IOException
-     */
-    private static void writeToStream(File file, OutputStream out) throws IOException {
-        InputStream inputStream = null;
-        try {
-            inputStream = new BufferedInputStream(new FileInputStream(file));
-            StreamUtil.copyStreams(inputStream, out);
-        } finally {
-            StreamUtil.close(inputStream);
-        }
-    }
-
-    /**
-     * Builds a file system path from a stack of relative path segments
-     *
-     * @param relativePathSegs the list of relative paths
-     * @return a {@link String} containing all relativePathSegs
-     */
-    private static String buildPath(List<String> relativePathSegs) {
-        StringBuilder pathBuilder = new StringBuilder();
-        for (String segment : relativePathSegs) {
-            pathBuilder.append(segment);
-        }
-        return pathBuilder.toString();
-    }
-
-    /**
      * Gets the extension for given file name.
      *
      * @param fileName
@@ -877,5 +681,86 @@ public class FileUtil {
         public boolean accept(File dir, String name) {
            return name.endsWith(".jar");
         }
+    }
+
+
+    // Backwards-compatibility section
+    /**
+     * Utility method to extract entire contents of zip file into given directory
+     *
+     * @param zipFile the {@link ZipFile} to extract
+     * @param destDir the local dir to extract file to
+     * @throws IOException if failed to extract file
+     * @deprecated Moved to {@link ZipUtil.extractZip(ZipFile, File)}.
+     */
+    @Deprecated
+    public static void extractZip(ZipFile zipFile, File destDir) throws IOException {
+        ZipUtil.extractZip(zipFile, destDir);
+    }
+
+    /**
+     * Utility method to extract one specific file from zip file into a tmp file
+     *
+     * @param zipFile the {@link ZipFile} to extract
+     * @param filePath the filePath of to extract
+     * @throws IOException if failed to extract file
+     * @return the {@link File} or null if not found
+     * @deprecated Moved to {@link ZipUtil.extractFileFromZip(ZipFile, String)}.
+     */
+    @Deprecated
+    public static File extractFileFromZip(ZipFile zipFile, String filePath) throws IOException {
+        return ZipUtil.extractFileFromZip(zipFile, filePath);
+    }
+
+    /**
+     * Utility method to create a temporary zip file containing the given directory and
+     * all its contents.
+     *
+     * @param dir the directory to zip
+     * @return a temporary zip {@link File} containing directory contents
+     * @throws IOException if failed to create zip file
+     * @deprecated Moved to {@link ZipUtil.createZip(File)}.
+     */
+    @Deprecated
+    public static File createZip(File dir) throws IOException {
+        return ZipUtil.createZip(dir);
+    }
+
+    /**
+     * Utility method to create a zip file containing the given directory and
+     * all its contents.
+     *
+     * @param dir the directory to zip
+     * @param zipFile the zip file to create - it should not already exist
+     * @throws IOException if failed to create zip file
+     * @deprecated Moved to {@link ZipUtil.createZip(File, File)}.
+     */
+    @Deprecated
+    public static void createZip(File dir, File zipFile) throws IOException {
+        ZipUtil.createZip(dir, zipFile);
+    }
+
+    /**
+     * Close an open {@link ZipFile}, ignoring any exceptions.
+     *
+     * @param zipFile the file to close
+     * @deprecated Moved to {@link ZipUtil.closeZip(ZipFile)}.
+     */
+    @Deprecated
+    public static void closeZip(ZipFile zipFile) {
+        ZipUtil.closeZip(zipFile);
+    }
+
+    /**
+     * Helper method to create a gzipped version of a single file.
+     *
+     * @param file the original file
+     * @param gzipFile the file to place compressed contents in
+     * @throws IOException
+     * @deprecated Moved to {@link ZipUtil.gzipFile(File, File)}.
+     */
+    @Deprecated
+    public static void gzipFile(File file, File gzipFile) throws IOException {
+        ZipUtil.gzipFile(file, gzipFile);
     }
 }

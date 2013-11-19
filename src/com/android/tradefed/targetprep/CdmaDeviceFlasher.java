@@ -23,6 +23,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -140,7 +141,7 @@ public class CdmaDeviceFlasher extends FastbootDeviceFlasher {
     protected File extractSystemZip(IDeviceBuildInfo deviceBuild) throws IOException {
         File updateDir = FileUtil.createTempDir(LOG_TAG);
         ZipFile updater = new ZipFile(deviceBuild.getDeviceImageFile().getAbsolutePath());
-        FileUtil.extractZip(updater, updateDir);
+        ZipUtil.extractZip(updater, updateDir);
         return updateDir;
     }
 
