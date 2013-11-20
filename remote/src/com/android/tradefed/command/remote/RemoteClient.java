@@ -136,6 +136,17 @@ public class RemoteClient {
     }
 
     /**
+     * Send a 'handover close connection' command
+     *
+     * @param port of the remote manager to establish a connection with.
+     * @return true if the command was accepted and completed, false otherwise.
+     * @throws IOException
+     */
+    public boolean sendHandoverClose(int port) throws IOException {
+        return sendCommand(new HandoverCloseOp(port));
+    }
+
+    /**
      * Close the connection to the {@link RemoteManager}.
      */
     public synchronized void close() {

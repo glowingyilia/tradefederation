@@ -26,7 +26,7 @@ import org.json.JSONObject;
 abstract class RemoteOperation {
     private static final String TYPE = "type";
     private static final String VERSION = "version";
-    static final int CURRENT_PROTOCOL_VERSION = 1;
+    static final int CURRENT_PROTOCOL_VERSION = 2;
     private static final String TAG = RemoteOperation.class.getSimpleName();
 
     @SuppressWarnings("serial")
@@ -44,7 +44,7 @@ abstract class RemoteOperation {
      * Represents all types of remote operations that can be performed
      */
     enum OperationType {
-        ALLOCATE_DEVICE, FREE_DEVICE, CLOSE, ADD_COMMAND
+        ALLOCATE_DEVICE, FREE_DEVICE, CLOSE, ADD_COMMAND, HANDOVER_CLOSE
     }
 
     /**
@@ -77,6 +77,9 @@ abstract class RemoteOperation {
                     break;
                 case ADD_COMMAND:
                     rc = new AddCommandOp();
+                    break;
+                case HANDOVER_CLOSE:
+                    rc = new HandoverCloseOp();
                     break;
                 default:
                     throw new RemoteException(String.format("unknown remote command '%s'", data));

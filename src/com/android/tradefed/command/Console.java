@@ -439,11 +439,6 @@ public class Console extends Thread {
         commandHelp.put(SET_PATTERN, String.format(
                 "%s help:" + LINE_SEPARATOR +
                 "\tlog-level-display <level>  Sets the global display log level to <level>" +
-                LINE_SEPARATOR +
-                "\tenable-handover-server     Starts a handover server. Used to handover control " +
-                "from another TF process running on same machine." +
-                LINE_SEPARATOR +
-                "\tdisable-handover-server    Force shutdown of the handover server." +
                 LINE_SEPARATOR,
                 SET_PATTERN));
 
@@ -665,21 +660,6 @@ public class Console extends Thread {
             }
         };
         trie.put(runSetLog, SET_PATTERN, "log-level-display", "(.*)");
-
-        trie.put(new Runnable() {
-                    @Override
-                    public void run() {
-                        startRemoteManager();
-                    }
-                }, SET_PATTERN, "enable-handover-server");
-
-        trie.put(new Runnable() {
-                    @Override
-                    public void run() {
-                        mScheduler.stopRemoteManager();
-                    }
-                }, SET_PATTERN, "disable-handover-server");
-
 
         // Debug commands
         trie.put(new Runnable() {
@@ -908,18 +888,6 @@ public class Console extends Thread {
 
     private void dumpLogs() {
         LogRegistry.getLogRegistry().dumpLogs();
-    }
-
-    private void startRemoteManager() {
-        int port = mScheduler.startRemoteManager();
-        if (port != -1) {
-            printLine(String.format("Started remote manager on port %d.", port));
-            printLine(String.format(
-                    "Provide this port to other tradefed host via 'exit --handover-port %d' " +
-                    "to initiate handover.", port));
-        } else {
-            printLine("Failed to start remote manager to handle handover");
-        }
     }
 
     /**

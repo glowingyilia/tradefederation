@@ -19,6 +19,8 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.command.remote.RemoteOperation.RemoteException;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
@@ -31,6 +33,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 /**
  * Class that receives {@link RemoteOperation}s via a socket.
@@ -41,17 +45,65 @@ import java.net.Socket;
  * Usage:
  * <pre>
  * RemoteManager r = new RemoteManager(deviceMgr, scheduler);
+ * r.connect();
  * r.start();
  * int port = r.getPort();
  * ... inform client of port to use. Shuts down when instructed by client or on #cancel()
  * </pre>
  */
+@OptionClass(alias = "remote-manager")
 public class RemoteManager extends Thread {
 
     private ServerSocket mServerSocket = null;
     private boolean mCancel = false;
     private final IDeviceManager mDeviceManager;
     private final ICommandScheduler mScheduler;
+
+    // choose an arbitrary default port that according to the interweb is not used by another
+    // popular program
+    public static final int DEFAULT_PORT = 30103;
+
+    @Option(name = "start-remote-mgr",
+            description = "Whether or not to start a remote manager on boot.")
+    private static boolean mStartRemoteManagerOnBoot = false;
+
+    @Option(name = "auto-handover",
+            description = "Whether or not to start handover if there is another instance of " +
+                          "Tradefederation running on the machine")
+    private static boolean mAutoHandover = false;
+
+    @Option(name = "remote-mgr-port",
+            description = "The remote manager port to use.")
+    private static int mRemoteManagerPort = DEFAULT_PORT;
+
+    @Option(name = "remote-mgr-socket-timeout-ms",
+            description = "Timeout for when accepting connections with the remote manager socket.")
+    private static int mSocketTimeout = 5000;
+
+    public boolean getStartRemoteMgrOnBoot() {
+        return mStartRemoteManagerOnBoot;
+    }
+
+    public int getRemoteManagerPort() {
+        return mRemoteManagerPort;
+    }
+
+    public void setRemoteManagerPort(int port) {
+        mRemoteManagerPort = port;
+    }
+
+    public void setRemoteManagerTimeout(int timeout) {
+        mSocketTimeout = timeout;
+    }
+
+    public boolean getAutoHandover() {
+        return mAutoHandover;
+    }
+
+    public RemoteManager() {
+        mDeviceManager = null;
+        mScheduler = null;
+    }
 
     /**
      * Creates a {@link RemoteManager}.
@@ -65,25 +117,64 @@ public class RemoteManager extends Thread {
     }
 
     /**
+     * Attempts to init server and connect it to a port.
+     * @return true if we successfully connect the server to the default port.
+     */
+    public boolean connect() {
+        return connect(mRemoteManagerPort);
+    }
+
+    /**
+     * Attemps to connect to any free port.
+     * @return true if we successfully connected to the port, false otherwise.
+     */
+    public boolean connectAnyPort() {
+        return connect(0);
+    }
+
+    /**
+     * Attempts to connect server to a given port.
+     * @return true if we successfully connect to the port, false otherwise.
+     */
+    protected boolean connect(int port) {
+        mServerSocket = openSocket(port);
+        return mServerSocket != null;
+    }
+
+    /**
+     * Attempts to open server socket at given port.
+     * @param port to open the socket at.
+     * @return the ServerSocket or null if attempt failed.
+     */
+    private ServerSocket openSocket(int port) {
+        try {
+            return new ServerSocket(port);
+        } catch (IOException e) {
+            CLog.e("Failed to open server socket: %s", e);
+            return null;
+        }
+    }
+
+
+    /**
      * The main thread body of the remote manager.
      * <p/>
      * Creates a server socket, and waits for client connections.
      */
     @Override
     public void run() {
-        synchronized (this) {
-            try {
-                mServerSocket = new ServerSocket(0);
-            } catch (IOException e) {
-                CLog.e("Failed to open server socket: %s", e);
-                return;
-            } finally {
-                // notify any listeners that the socket has been created
-                notifyAll();
-            }
+        if (mServerSocket == null) {
+            CLog.e("Started remote manager thread without connecting");
+            return;
         }
         try {
+            // Set a timeout as we don't want to be blocked listening for connections,
+            // we could receive a request for cancel().
+            mServerSocket.setSoTimeout(mSocketTimeout);
             processClientConnections(mServerSocket);
+        } catch (SocketException e) {
+            // TODO Auto-generated catch block
+            CLog.e("Error when setting socket timeout :%s", e);
         } finally {
             freeAllDevices();
             closeSocket(mServerSocket);
@@ -121,6 +212,8 @@ public class RemoteManager extends Thread {
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 out = new PrintWriter(clientSocket.getOutputStream(), true);
                 processClientOperations(in, out);
+            } catch (SocketTimeoutException e) {
+                // ignore.
             } catch (IOException e) {
                 CLog.e("Failed to accept connection: %s", e);
             } finally {
@@ -151,6 +244,9 @@ public class RemoteManager extends Thread {
                     case FREE_DEVICE:
                         result = processFree((FreeDeviceOp)rc);
                         break;
+                    case HANDOVER_CLOSE:
+                        result = processHandoverClose((HandoverCloseOp)rc);
+                        break;
                 }
             } catch (RemoteException e) {
                 CLog.e("Failed to handle remote command", e);
@@ -158,6 +254,17 @@ public class RemoteManager extends Thread {
             sendAck(result, out);
         }
     }
+
+    private boolean processHandoverClose(HandoverCloseOp c) {
+        int port = c.mPort;
+        CLog.logAndDisplay(LogLevel.INFO, "Handling Handover Close OP with port %d", port);
+        boolean success = false;
+        if (port > 0) {
+            success = mScheduler.handoverShutdown(port);
+        }
+        return success;
+    }
+
 
     private boolean processAllocate(AllocateDeviceOp c) {
         ITestDevice allocatedDevice = mDeviceManager.forceAllocateDevice(c.mDeviceSerial);
@@ -227,7 +334,7 @@ public class RemoteManager extends Thread {
     public synchronized void cancel() {
         if (!mCancel) {
             mCancel  = true;
-            CLog.logAndDisplay(LogLevel.INFO, "Closing remote manager");
+            CLog.logAndDisplay(LogLevel.INFO, "Closing remote manager at port %d", getPort());
         }
     }
 
@@ -236,7 +343,7 @@ public class RemoteManager extends Thread {
             try {
                 serverSocket.close();
             } catch (IOException e) {
-                // ignore
+                CLog.e("Failed to close socket: %s", e);
             }
         }
     }

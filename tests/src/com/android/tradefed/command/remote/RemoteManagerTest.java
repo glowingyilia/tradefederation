@@ -16,6 +16,7 @@
 package com.android.tradefed.command.remote;
 
 import com.android.tradefed.command.ICommandScheduler;
+import com.android.tradefed.command.remote.RemoteManager;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
@@ -36,10 +37,13 @@ public class RemoteManagerTest extends TestCase {
 
     @Override
     protected void setUp() throws Exception {
+
         super.setUp();
         mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
         mMockScheduler = EasyMock.createMock(ICommandScheduler.class);
         mRemoteMgr = new RemoteManager(mMockDeviceManager, mMockScheduler);
+        // Extra short timeout for testing.
+        mRemoteMgr.setRemoteManagerTimeout(100);
     }
 
     @Override
@@ -49,6 +53,9 @@ public class RemoteManagerTest extends TestCase {
         }
         if (mRemoteMgr != null) {
             mRemoteMgr.cancel();
+            // We want to make sure we completely close down the remotemanager before moving on to
+            // to the next test.
+            mRemoteMgr.join();
         }
         super.tearDown();
     }
@@ -64,6 +71,7 @@ public class RemoteManagerTest extends TestCase {
                 EasyMock.eq(FreeDeviceState.AVAILABLE));
 
         EasyMock.replay(mMockDeviceManager, device);
+        mRemoteMgr.connect();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -82,6 +90,7 @@ public class RemoteManagerTest extends TestCase {
         }), EasyMock.anyInt())).andReturn(true);
 
         EasyMock.replay(mMockScheduler);
+        mRemoteMgr.connect();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -102,6 +111,7 @@ public class RemoteManagerTest extends TestCase {
                 EasyMock.eq(FreeDeviceState.AVAILABLE));
 
         EasyMock.replay(mMockDeviceManager, device);
+        mRemoteMgr.connect();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -125,6 +135,7 @@ public class RemoteManagerTest extends TestCase {
                 EasyMock.eq(FreeDeviceState.AVAILABLE));
 
         EasyMock.replay(mMockDeviceManager, device);
+        mRemoteMgr.connect();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);

@@ -151,20 +151,6 @@ public interface ICommandScheduler {
     public void displayCommandQueue(PrintWriter printWriter);
 
     /**
-     * Starts a socket to listen to remote commands.
-     * <p/>
-     * Used to handle handover communication. @see {@link #handoverShutdown(int)}.
-     *
-     * @return the TCP port of the socket or -1 if it failed to start.
-     */
-    public int startRemoteManager();
-
-    /**
-     * Cancels the currently running remote manager.
-     */
-    public void stopRemoteManager();
-
-    /**
      * Get the appropriate {@link CommandFileWatcher} for this scheduler
      */
     public CommandFileWatcher getCommandFileWatcher();

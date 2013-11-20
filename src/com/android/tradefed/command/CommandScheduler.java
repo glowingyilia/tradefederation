@@ -26,6 +26,7 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.IDeviceManager;
@@ -65,6 +66,7 @@ import java.util.concurrent.TimeUnit;
  * Runs forever in background until shutdown.
  */
 public class CommandScheduler extends Thread implements ICommandScheduler {
+
 
     /** the queue of commands ready to be executed. */
     private ConditionPriorityBlockingQueue<ExecutableCommand> mCommandQueue;
@@ -477,6 +479,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             mRunLatch.countDown();
 
             IDeviceManager manager = getDeviceManager();
+
+            if(startRemoteManager()) {
+                CLog.logAndDisplay(LogLevel.INFO, "Remote Manager is up and running at port %d",
+                        mRemoteManager.getPort());
+            }
+
             while (!isShutdown()) {
                 ExecutableCommand cmd = dequeueConfigCommand();
                 if (cmd != null) {
@@ -832,7 +840,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         }
         try {
             mRemoteClient = RemoteClient.connect(handoverPort);
-            CLog.d("connected to remote manager at %d", handoverPort);
+            CLog.d("Connected to remote manager at %d", handoverPort);
             // inform remote manager of the devices we are still using
             for (String deviceInUse : getDeviceManager().getAllocatedDevices()) {
                 if (!mRemoteClient.sendAllocateDevice(deviceInUse)) {
@@ -848,6 +856,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             for (CommandTracker cmd : cmdCopy) {
                 mRemoteClient.sendAddCommand(cmd.getTotalExecTime(), cmd.mArgs);
             }
+            mRemoteClient.close();
             shutdown();
             return true;
 
@@ -865,6 +874,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         List<ExecutableCommand> cmdCopy = new ArrayList<ExecutableCommand>(mAllCommands);
         Set<CommandTracker> cmdTrackers = new LinkedHashSet<CommandTracker>();
         for (ExecutableCommand cmd : cmdCopy) {
+            CLog.d("command to copy");
             cmdTrackers.add(cmd.getCommandTracker());
         }
         return new ArrayList<CommandTracker>(cmdTrackers);
@@ -1008,30 +1018,104 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     }
 
     /**
-     * {@inheritDoc}
+     * Starts remote manager to listen to remote commands.
+     * <p/>
+     * @return true if the remote manager is started up successfully, false otherwise.
      */
-    @Override
-    public int startRemoteManager() {
+    private boolean startRemoteManager() {
         if (mRemoteManager != null && !mRemoteManager.isCanceled()) {
-            CLog.logAndDisplay(LogLevel.INFO, "A remote manager is already running at port %d",
+            String error = String.format("A remote manager is already running at port %d",
                     mRemoteManager.getPort());
-            return -1;
+            throw new IllegalStateException(error);
         }
         mRemoteManager = new RemoteManager(getDeviceManager(), this);
-        mRemoteManager.start();
-        int port = mRemoteManager.getPort();
-        if (port == -1) {
-            // set mRemoteManager to null so it can be started again if necessary
+        // Read the args that were set by the global config.
+        boolean startRmtMgrOnBoot = mRemoteManager.getStartRemoteMgrOnBoot();
+        int defaultRmtMgrPort = mRemoteManager.getRemoteManagerPort();
+        boolean autoHandover = mRemoteManager.getAutoHandover();
+
+        if (!startRmtMgrOnBoot) {
             mRemoteManager = null;
+            return false;
         }
-        return port;
+        if (mRemoteManager.connect()) {
+            mRemoteManager.start();
+            CLog.logAndDisplay(LogLevel.INFO, "Started remote manager at port %d",
+                    mRemoteManager.getPort());
+            return true;
+        }
+        CLog.logAndDisplay(LogLevel.INFO, "Failed to start remote manager at port %d",
+                defaultRmtMgrPort);
+        if (!autoHandover) {
+           if (mRemoteManager.connectAnyPort()) {
+               mRemoteManager.start();
+               CLog.logAndDisplay(LogLevel.INFO,
+                       "Started remote manager at port %d with no handover",
+                       mRemoteManager.getPort());
+               return true;
+           } else {
+               CLog.logAndDisplay(LogLevel.ERROR, "Failed to auto start a remote manager on boot.");
+               return false;
+           }
+        }
+        boolean ok = forceHandover(defaultRmtMgrPort);
+        mRemoteClient.close();
+        mRemoteClient = null;
+        mRemoteManager.cancel();
+        mRemoteManager = null;
+        if (!ok) {
+            CLog.logAndDisplay(LogLevel.ERROR,
+                    "Tried to do auto handover with remote TF instance at port %d, but failed.",
+                    defaultRmtMgrPort);
+            return false;
+        }
+
+        // Start a new remote manager and attempt to capture the original default port.
+        mRemoteManager = new RemoteManager(getDeviceManager(), this);
+        CLog.logAndDisplay(LogLevel.INFO, "Sucessfully auto handover with remote TF instance!");
+        while (!mRemoteManager.connect()) {
+            try {
+                sleep(2000);
+            } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                    return false;
+            }
+        }
+
+        mRemoteManager.start();
+        CLog.logAndDisplay(LogLevel.INFO,
+                "Sucessfully started remote manager after handover on port %d",
+                mRemoteManager.getPort());
+        return true;
+    }
+
+
+    private boolean forceHandover(int port) {
+        try {
+            mRemoteClient = RemoteClient.connect(port);
+            CLog.logAndDisplay(LogLevel.INFO,
+                    "Connecting local client with existing remote TF at %d - Attempting takeover",
+                    port);
+            // Start up a temporary local remote manager for handover.
+            if (mRemoteManager.connectAnyPort()) {
+                mRemoteManager.start();
+                CLog.logAndDisplay(LogLevel.INFO,
+                        "Started local tmp remote manager for handover at %d",
+                        mRemoteManager.getPort());
+                return (mRemoteClient.sendHandoverClose(mRemoteManager.getPort()));
+            }
+        } catch (IOException e) {
+            CLog.logAndDisplay(LogLevel.INFO,
+                    "Failed auto handover with remote manager at port %d", port);
+        }
+        return false;
     }
 
     /**
-     * {@inheritDoc}
+     * Stops the remote manager
      */
-    @Override
-    public void stopRemoteManager() {
+    private void stopRemoteManager() {
         if (mRemoteManager == null) {
             CLog.logAndDisplay(LogLevel.INFO, "A remote manager is not running");
             return;
