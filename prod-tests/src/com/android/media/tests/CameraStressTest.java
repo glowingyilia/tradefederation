@@ -219,7 +219,7 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
      */
     private void cleanTmpFiles() throws DeviceNotAvailableException {
         String extStore = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        mTestDevice.executeShellCommand(String.format("rm -r %s/DCIM", extStore));
+        mTestDevice.executeShellCommand(String.format("rm -r %s/DCIM/Camera", extStore));
         mTestDevice.executeShellCommand(String.format("rm %s/%s", extStore, mOutputPath));
     }
 
