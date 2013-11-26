@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.util.ZipUtil;
+
 import junit.framework.TestCase;
 
 import java.io.File;
@@ -107,6 +109,17 @@ public class ZipUtilFuncTest extends TestCase {
                 zipFile.delete();
             }
         }
+    }
+
+    /**
+     * Test that isZipFileValid returns false if calling with a file that does not exist.
+     *
+     * @throws IOException
+     */
+    public void testZipFileDoesNotExist() throws IOException {
+        File file = new File("/tmp/this-file-does-not-exist.zip");
+        assertFalse(ZipUtil.isZipFileValid(file, true));
+        assertFalse(ZipUtil.isZipFileValid(file, false));
     }
 
     /**
