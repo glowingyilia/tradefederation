@@ -17,6 +17,8 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.AndroidDebugBridge;
+import com.android.tradefed.command.remote.DeviceAllocationState;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.util.IRunUtil;
 
 import java.io.PrintWriter;
@@ -202,14 +204,18 @@ public interface IDeviceManager {
      * Diagnostic method that returns a list of the devices available for allocation.
      *
      * @return a {@link Collection} of device serials
+     * @deprecated use {@link #listAllDevices()}
      */
+    @Deprecated
     public Collection<String> getAvailableDevices();
 
     /**
      * Diagnostic method that returns a list of the devices currently allocated for testing.
      *
      * @return a {@link Collection} of device serials
+     * @deprecated use {@link #listAllDevices()}
      */
+    @Deprecated
     public Collection<String> getAllocatedDevices();
 
     /**
@@ -217,8 +223,16 @@ public interface IDeviceManager {
      * deemed available for allocation.
      *
      * @return a {@link Collection} of device serials
+     * @deprecated use {@link #listAllDevices()}
      */
+    @Deprecated
     public Collection<String> getUnavailableDevices();
+
+    /**
+     * Returns a map of all known devices and their state
+     * @return a list of device serials and their {@link DeviceAllocationState}
+     */
+    public List<DeviceDescriptor> listAllDevices();
 
     /**
      * Output a user-friendly description containing list of known devices, their state, and

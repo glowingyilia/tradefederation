@@ -17,6 +17,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.command.remote.DeviceAllocationState;
 
 import java.util.Map;
 
@@ -38,7 +39,7 @@ public interface IDeviceMonitor {
      * should avoid deadlocks that may occur while listing devices.
      */
     public static abstract class DeviceLister {
-        public abstract Map<IDevice, String> listDevices();
+        public abstract Map<IDevice, DeviceAllocationState> listDevices();
     }
 
     /**

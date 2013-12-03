@@ -18,6 +18,8 @@ package com.android.tradefed.command.remote;
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.remote.RemoteOperation.RemoteException;
 
+import org.json.JSONException;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -25,6 +27,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.List;
 
 /**
  * Class for sending remote commands to another TF process.
@@ -74,13 +77,22 @@ public class RemoteClient {
        try {
            mWriter.println(cmd.pack());
            String response = mReader.readLine();
-           return response != null && Boolean.parseBoolean(response);
+           cmd.unpackResponseFromString(response);
+           if (cmd.hasError()) {
+               Log.e(TAG, "remote command failed: " + cmd.getErrorMsg());
+               return false;
+           } else {
+               return true;
+           }
        } catch (RemoteException e) {
            // TODO: convert to CLog once we have tf-common
-          Log.e(TAG, "Failed to send remote commmand");
+          Log.e(TAG, "Failed to send remote command");
           Log.e(TAG, e);
        } catch (IOException e) {
-           Log.e(TAG, "Failed to send remote commmand");
+           Log.e(TAG, "Failed to send remote command");
+           Log.e(TAG, e);
+       } catch (JSONException e) {
+           Log.e(TAG, "Failed to parse remote command response");
            Log.e(TAG, e);
        }
        return false;
@@ -144,6 +156,18 @@ public class RemoteClient {
      */
     public boolean sendHandoverClose(int port) throws IOException {
         return sendCommand(new HandoverCloseOp(port));
+    }
+
+    /**
+     * Send a 'list devices' request to remote TF
+     * @return a list of device serials and their state. Returns <code>null</code> if command failed.
+     */
+    public List<DeviceDescriptor> sendListDevices() {
+        ListDevicesOp op = new ListDevicesOp();
+        if (sendCommand(op)) {
+            return op.getDeviceStateMap();
+        }
+        return null;
     }
 
     /**

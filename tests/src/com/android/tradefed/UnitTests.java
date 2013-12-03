@@ -92,6 +92,7 @@ import com.android.tradefed.util.EmailTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NullUtilTest;
+import com.android.tradefed.util.PairTest;
 import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
@@ -208,6 +209,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(HttpMultipartPostTest.class);
         addTestSuite(MultiMapTest.class);
         addTestSuite(NullUtilTest.class);
+        addTestSuite(PairTest.class);
         addTestSuite(QuotationAwareTokenizerTest.class);
         addTestSuite(RegexTrieTest.class);
         addTestSuite(RunUtilTest.class);
