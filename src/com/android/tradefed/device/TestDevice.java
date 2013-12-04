@@ -2034,17 +2034,22 @@ class TestDevice implements IManagedTestDevice {
         // 2. has adb root
         // 3. framework is running
         if (getApiLevel() >= 18 && isAdbRoot()) {
-            // check framework running
-            String output = executeShellCommand("pm path android");
-            if (output == null || !output.contains("package:")) {
-                CLog.v("framework reboot: can't detect framework running");
+            try {
+                // check framework running
+                String output = executeShellCommand("pm path android");
+                if (output == null || !output.contains("package:")) {
+                    CLog.v("framework reboot: can't detect framework running");
+                    return false;
+                }
+                String command = "svc power reboot";
+                if (into != null && !into.isEmpty()) {
+                    command = String.format("%s %s", command, into);
+                }
+                executeShellCommand(command);
+            } catch (DeviceUnresponsiveException due) {
+                CLog.v("framework reboot: device unresponsive to shell command, using fallback");
                 return false;
             }
-            String command = "svc power reboot";
-            if (into != null && !into.isEmpty()) {
-                command = String.format("%s %s", command, into);
-            }
-            executeShellCommand(command);
             return waitForDeviceNotAvailable(30 * 1000);
         } else {
             CLog.v("framework reboot: not supported");
