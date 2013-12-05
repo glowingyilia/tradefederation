@@ -241,7 +241,7 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
                 String testName = String.format("%s - %s", testTitle, testType);
                 if (METRICS_KEY_MAP.containsKey(testName)) {
                     if (testName.contains("Fill") || testName.contains("Triangle")) {
-                        // Use Mtexels/sec as unit
+                        // Use Mtexels/sec or MTriangles/sec as unit
                         score = String.valueOf((long)(Double.parseDouble(score) / 1.0E6));
                     }
                     CLog.i(String.format("%s: %s (fps=%s)", testName, score, fps));
