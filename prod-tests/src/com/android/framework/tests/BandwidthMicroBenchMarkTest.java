@@ -23,20 +23,29 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
 import com.android.tradefed.util.net.IHttpHelper.DataSizeException;
 
 import junit.framework.Assert;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -85,22 +94,25 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
 
     @Option(name="difference-threshold",
             description="The maximum allowed difference between network stats in percent")
-    private int mDifferenceThreshold = 1;
+    private int mDifferenceThreshold = 5;
+
+    @Option(name="server-difference-threshold",
+            description="The maximum difference between the stats reported by the " +
+            "server and the device in percent")
+    private int mServerDifferenceThreshold = 5;
 
     @Option(name = "compact-ru-key",
             description = "Name of the reporting unit for pass/fail results")
     private String mCompactRuKey;
 
+    @Option(name = "iface", description="Network interface on the device to use for stats",
+            importance = Option.Importance.ALWAYS)
+    private String mIface;
+
     private static final String TEST_RUNNER = "com.android.bandwidthtest.BandwidthTestRunner";
     private static final String TEST_SERVER_QUERY = "query";
     private static final String DEVICE_ID_LABEL = "device_id";
     private static final String TIMESTAMP_LABEL = "timestamp";
-    private static final String DOWNLOAD_LABEL = "download";
-    private static final String PROF_LABEL = "PROF_";
-    private static final String PROC_LABEL = "PROC_";
-    private static final String RX_LABEL = "rx";
-    private static final String TX_LABEL = "tx";
-    private static final String SIZE_LABEL = "size";
 
 
     @Override
@@ -109,6 +121,8 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
 
         Assert.assertNotNull("Need a test server, specify it using --bandwidth-test-server",
                 mTestServer);
+
+        // Run test
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(mTestPackageName,
                 TEST_RUNNER, mTestDevice.getIDevice());
         runner.setMethodName(mTestClassName, mTestMethodName);
@@ -139,24 +153,30 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         Assert.assertNotNull("Failed to fetch timestamp from server", timestamp);
         Map<String, String> serverData = fetchDataFromTestServer(deviceId, timestamp);
 
-        // Parse results and calculate differences.
-        if (serverData != null) {
-            calculateDifferences(bandwidthTestMetrics, serverData);
-        } else {
-            CLog.w("Missing server data");
-        }
         // Calculate additional network sanity stats - pre-framework logic network stats
-        BandwidthUtils bw = new BandwidthUtils(mTestDevice);
-        Map<String, String> stats = bw.calculateStats();
-        bandwidthTestMetrics.putAll(stats);
-        reportPassFail(listener, bw.getAccountingDifferences(), mCompactRuKey);
+        BandwidthUtils bw = new BandwidthUtils(mTestDevice, mIface);
+        reportPassFail(listener, mCompactRuKey, bw, serverData, bandwidthTestMetrics);
 
-        // Calculate event log network stats - post-framework logic network stats
-        Map<String, String> eventLogStats = fetchEventLogStats();
-        bandwidthTestMetrics.putAll(eventLogStats);
+        saveFile("/proc/net/dev", "proc_net_dev", listener);
+        saveFile("/proc/net/xt_qtaguid/stats", "qtaguid_stats", listener);
 
-        // Post everything to the dashboard.
-        reportMetrics(listener, mTestLabel, bandwidthTestMetrics);
+    }
+
+    private void saveFile(String remoteFilename, String spongeName,
+            ITestInvocationListener listener) throws DeviceNotAvailableException {
+        File f = mTestDevice.pullFile(remoteFilename);
+        if (f == null) {
+            CLog.w("Failed to pull %s", remoteFilename);
+            return;
+        }
+
+        saveFile(spongeName, listener, f);
+    }
+
+    private void saveFile(String spongeName, ITestInvocationListener listener, File file) {
+        InputStreamSource stream = new FileInputStreamSource(file);
+        listener.testLog(spongeName, LogDataType.TEXT, stream);
+        stream.cancel();
     }
 
     /**
@@ -278,123 +298,151 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
     }
 
     /**
-     * Calculate percent differences between measured PROC, PROF, and server
-     * values.
+     * Fetch the last stats from event log and calculate the differences.
      *
-     * @param deviceMetrics Map of PROC and PROF values
-     * @param serverMetrics Map of server values
+     * @throws DeviceNotAvailableException
      */
-    void calculateDifferences(Map<String, String> deviceMetrics,
-            Map<String, String> serverMetrics) {
-        boolean downloadTest = false;
-
-        if (!serverMetrics.containsKey(DOWNLOAD_LABEL) || !serverMetrics.containsKey(SIZE_LABEL)) {
-            CLog.d("Invalid server metrics, cannot calculate differences.");
-            return;
+    private boolean evaluateEventLog(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        // issue a force update of stats
+        String res = mTestDevice.executeShellCommand("dumpsys netstats poll");
+        if (!res.contains("Forced poll")) {
+            CLog.w("Failed to force a poll on the device.");
         }
-        String downloadTestString = serverMetrics.get(DOWNLOAD_LABEL);
-        String serverSize = serverMetrics.get(SIZE_LABEL);
-        if (downloadTestString.equalsIgnoreCase("true")) {
-            downloadTest = true;
-
+        // fetch events log
+        String log = mTestDevice.executeShellCommand("logcat -d -b events");
+        if (log != null) {
+            return evaluateStats("netstats_mobile_sample", log, listener);
         }
-        deviceMetrics.put(DOWNLOAD_LABEL, downloadTestString);
-        deviceMetrics.put(DOWNLOAD_LABEL, serverSize);
-
-        String procLabel = null;
-        String profLabel = null;
-        if (downloadTest) {
-            procLabel = PROC_LABEL + RX_LABEL;
-            profLabel = PROF_LABEL + RX_LABEL;
-        } else {
-            procLabel = PROC_LABEL + TX_LABEL;
-            profLabel = PROF_LABEL + TX_LABEL;
-        }
-        if (!deviceMetrics.containsKey(procLabel)
-                || !deviceMetrics.containsKey(profLabel)) {
-            CLog.d("Missing device bandwidth metrics, cannot calculate differences.");
-            return;
-        }
-        double procValue = Double.parseDouble(deviceMetrics.get(procLabel));
-        double profValue = Double.parseDouble(deviceMetrics.get(profLabel));
-        double serverValue = Double.parseDouble(serverSize);
-        double procToProf = calculatePercentageDifference(procValue, profValue);
-        double procToServer = calculatePercentageDifference(procValue, serverValue);
-        double profToServer = calculatePercentageDifference(profValue, serverValue);
-        deviceMetrics.put("Absolute difference for PROC and PROF", Double.toString(procToProf));
-        deviceMetrics.put("Absolute difference for PROC and Server", Double.toString(procToServer));
-        deviceMetrics.put("Absolute difference for PROF and Server", Double.toString(profToServer));
+        return false;
     }
 
     /**
-     * Calculate the percent difference between two values.
-     * <p>
-     * Exposed for unit testing.
+     * Parse a log output for a given key and calculate the network stats.
      *
-     * @param x
-     * @param y
-     * @return the absolute difference between x and y
+     * @param key {@link String} to search for in the log
+     * @param log obtained from adb logcat -b events
+     * @param stats Map to write the stats to
      */
-    public static double calculatePercentageDifference(double x, double y) {
-        if (x < 0 || y < 0) {
-            CLog.w("Invalid values to calculate. Need non negative values.");
-            return 0;
+    private boolean evaluateStats(String key, String log, ITestInvocationListener listener) {
+        File filteredEventLog = null;
+        BufferedWriter out = null;
+        boolean passed = true;
+
+        try {
+            filteredEventLog = File.createTempFile(String.format("%s_event_log", key), ".txt");
+            out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filteredEventLog)));
+            String[] parts = log.split("\n");
+            for (int i = parts.length - 1; i > 0; i--) {
+                String str = parts[i];
+                if (str.contains(key)) {
+                    out.write(str);
+                    passed = passed && evaluateEventLogLine(str);
+                }
+            }
+            out.flush();
+            saveFile(key + "_event_log", listener, filteredEventLog);
+            return passed;
+        } catch (FileNotFoundException e) {
+            CLog.w("Could not create file to save event log: %s", e.getMessage());
+            return false;
+        } catch (IOException e) {
+            CLog.w("Could not save event log file: %s", e.getMessage());
+        } finally {
+            if (out != null) {
+                StreamUtil.close(out);
+            }
+            if (filteredEventLog != null) {
+                filteredEventLog.delete();
+            }
         }
-        if (x == 0 && y == 0) {
-            return 0;
+        return false;
+    }
+
+    private boolean evaluateEventLogLine(String str) {
+        int start = str.lastIndexOf("[");
+        int end = str.lastIndexOf("]");
+        String subStr = str.substring(start + 1, end);
+        String[] statsStrArray = subStr.split(",");
+        if (statsStrArray.length != 13) {
+            CLog.e("Failed to parse for \"%s\" in log.", str);
+            return false;
         }
-        return Math.abs((x - y) / ((x + y) / 2)) * 100;
+        long devRb = Long.parseLong(statsStrArray[0].trim());
+        long devTb = Long.parseLong(statsStrArray[1].trim());
+        long devRp = Long.parseLong(statsStrArray[2].trim());
+        long devTp = Long.parseLong(statsStrArray[3].trim());
+        long xtRb = Long.parseLong(statsStrArray[4].trim());
+        long xtTb = Long.parseLong(statsStrArray[5].trim());
+        long xtRp = Long.parseLong(statsStrArray[6].trim());
+        long xtTp = Long.parseLong(statsStrArray[7].trim());
+        long uidRb = Long.parseLong(statsStrArray[8].trim());
+        long uidTb = Long.parseLong(statsStrArray[9].trim());
+        long uidRp = Long.parseLong(statsStrArray[10].trim());
+        long uidTp = Long.parseLong(statsStrArray[11].trim());
+
+        BandwidthStats devStats = new BandwidthStats(devRb, devRp, devTb, devTp);
+        BandwidthStats xtStats = new BandwidthStats(xtRb, xtRp, xtTb, xtTp);
+        BandwidthStats uidStats = new BandwidthStats(uidRb, uidRp, uidTb, uidTp);
+        return devStats.compareAll(xtStats, mDifferenceThreshold) &&
+                devStats.compareAll(uidStats, mDifferenceThreshold) &&
+                xtStats.compareAll(uidStats, mDifferenceThreshold);
     }
 
     /**
-     * Report run metrics by creating an empty test run to stick them in.
-     *
-     * @param listener the {@link ITestInvocationListener} of test results
-     * @param runName the test name
-     * @param metrics the {@link Map} that contains metrics for the given test
+     * Compare the data reported by instrumentation to uid breakdown reported by the kernel,
+     * the sum of uid breakdown and the total reported by the kernel and the data reported by
+     * instrumentation to the data reported by the server.
+     * @param listener result reporter
+     * @param compactRuKey key to use when posting to rdb.
+     * @param utils data parsed from the kernel.
+     * @param instrumentationData data reported by the test.
+     * @param serverDate data reported by the server.
+     * @throws DeviceNotAvailableException
      */
-    void reportMetrics(ITestInvocationListener listener, String runName,
-            Map<String, String> metrics) {
-        // Create an empty testRun to report the parsed runMetrics
-        CLog.d("About to report metrics: %s", metrics);
-        listener.testRunStarted(runName, 0);
-        listener.testRunEnded(0, metrics);
-    }
-
-    /**
-     * Report only the pass/fail results.
-     * @param listener the {@link ITestInvocationListener} of test results.
-     * @param metrics the metric that contains differences between accounting methods.
-     * @param compactRuKey the name of the reporting unit to post results.
-     */
-    private void reportPassFail(ITestInvocationListener listener,
-            Map<String, BandwidthStats> metrics, String compactRuKey) {
+    private void reportPassFail(ITestInvocationListener listener, String compactRuKey,
+            BandwidthUtils utils, Map<String, String> serverData,
+            Map<String, String> instrumentationData) throws DeviceNotAvailableException {
         if (compactRuKey == null) return;
 
         int passCount = 0;
         int failCount = 0;
 
-        for (BandwidthStats stats : metrics.values()) {
-            if (Math.abs(stats.getRxBytes()) < mDifferenceThreshold) {
-                passCount += 1;
-            } else {
-                failCount += 1;
-            }
-            if (Math.abs(stats.getRxPackets()) < mDifferenceThreshold) {
-                passCount += 1;
-            } else {
-                failCount += 1;
-            }
-            if (Math.abs(stats.getTxBytes()) < mDifferenceThreshold) {
-                passCount += 1;
-            } else {
-                failCount += 1;
-            }
-            if (Math.abs(stats.getTxPackets()) < mDifferenceThreshold) {
-                passCount += 1;
-            } else {
-                failCount += 1;
-            }
+        // Calculate the difference between what framework reports and what the kernel reports
+        boolean download = Boolean.parseBoolean(serverData.get("download"));
+        long frameworkUidBytes = 0;
+        if (download) {
+            frameworkUidBytes = Long.parseLong(instrumentationData.get("PROF_rx"));
+        } else {
+            frameworkUidBytes = Long.parseLong(instrumentationData.get("PROF_tx"));
+        }
+
+        // Calculate the difference between the reported stats in /proc/net/dev and the break down
+        // by uid.
+        BandwidthStats netDevStats = utils.getDevStats();
+        BandwidthStats sumUidStats = utils.getSumOfUidStats();
+        if (netDevStats.compareAll(sumUidStats, mDifferenceThreshold)) {
+            passCount += 1;
+        } else {
+            CLog.v("/proc/net/dev and uid stats do not match");
+            failCount += 1;
+        }
+
+        // Compare data reported by the server and the instrumentation
+        long serverBytes = Long.parseLong(serverData.get("size"));
+        float diff = Math.abs(BandwidthStats.computePercentDifference(
+                serverBytes, frameworkUidBytes));
+        if (diff < mServerDifferenceThreshold) {
+            passCount += 1;
+        } else {
+            CLog.v("Comparing between server and instrumentation failed expected %d got %d",
+                    serverBytes, frameworkUidBytes);
+            failCount += 1;
+        }
+
+        if (evaluateEventLog(listener)) {
+            passCount += 1;
+        } else {
+            failCount += 1;
         }
 
         Map<String, String> postMetrics = new HashMap<String, String>();
@@ -403,65 +451,6 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
 
         listener.testRunStarted(compactRuKey, 0);
         listener.testRunEnded(0, postMetrics);
-    }
-
-    /**
-     * Fetch the last stats from event log and calculate the differences.
-     * @throws DeviceNotAvailableException
-     */
-    private Map<String, String> fetchEventLogStats() throws DeviceNotAvailableException {
-        // issue a force update of stats
-        Map<String, String> eventLogStats = new HashMap<String, String>();
-        String res = mTestDevice.executeShellCommand("dumpsys netstats poll");
-        if (!res.contains("Forced poll")) {
-            CLog.w("Failed to force a poll on the device.");
-        }
-        // fetch events log
-        String log = mTestDevice.executeShellCommand("logcat -d -b events");
-        if (log != null) {
-            parseForLatestStats("netstats_wifi_sample", log, eventLogStats);
-            parseForLatestStats("netstats_mobile_sample", log, eventLogStats);
-            return eventLogStats;
-        }
-        return null;
-    }
-
-    /**
-     * Parse a log output for a given key and calculate the network stats.
-     * @param key {@link String} to search for in the log
-     * @param log obtained from adb logcat -b events
-     * @param stats Map to write the stats to
-     */
-    private void parseForLatestStats(String key, String log, Map<String, String> stats) {
-        String[] parts = log.split("\n");
-        for (int i = parts.length - 1; i > 0; i--) {
-            String str = parts[i];
-            if (str.contains(key)) {
-                int start = str.lastIndexOf("[");
-                int end = str.lastIndexOf("]");
-                String subStr = str.substring(start + 1, end);
-                String[] statsStrArray = subStr.split(",");
-                if (statsStrArray.length != 8) {
-                    CLog.e("Failed to parse for %s in log.", key);
-                    return;
-                }
-                float ifaceRb = Float.parseFloat(statsStrArray[0].trim());
-                float ifaceRp = Float.parseFloat(statsStrArray[1].trim());
-                float ifaceTb = Float.parseFloat(statsStrArray[2].trim());
-                float ifaceTp = Float.parseFloat(statsStrArray[3].trim());
-                float uidRb = Float.parseFloat(statsStrArray[4].trim());
-                float uidRp = Float.parseFloat(statsStrArray[5].trim());
-                float uidTb = Float.parseFloat(statsStrArray[6].trim());
-                float uidTp = Float.parseFloat(statsStrArray[7].trim());
-                BandwidthStats ifaceStats = new BandwidthStats(ifaceRb, ifaceRp, ifaceTb, ifaceTp);
-                BandwidthStats uidStats = new BandwidthStats(uidRb, uidRp, uidTb, uidTp);
-                BandwidthStats diffStats = ifaceStats.calculatePercentDifference(uidStats);
-                stats.putAll(ifaceStats.formatToStringMap(key + "_IFACE_"));
-                stats.putAll(uidStats.formatToStringMap(key + "_UID_"));
-                stats.putAll(diffStats.formatToStringMap(key + "_%_"));
-                return;
-            }
-        }
     }
 
     /**
