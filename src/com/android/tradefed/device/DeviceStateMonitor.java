@@ -159,11 +159,11 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
         long startTime = System.currentTimeMillis();
         while (System.currentTimeMillis() - startTime < waitTime) {
             final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
-            final String cmd = "ls";
+            final String cmd = "ls /system/bin/adb";
             try {
                 getIDevice().executeShellCommand(cmd, receiver, MAX_OP_TIME, TimeUnit.MILLISECONDS);
                 String output = receiver.getOutput();
-                if (output.contains("system")) {
+                if (output.contains("/system/bin/adb")) {
                     return true;
                 }
             } catch (IOException e) {
