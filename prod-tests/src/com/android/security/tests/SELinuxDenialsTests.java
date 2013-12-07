@@ -19,10 +19,10 @@ package com.android.security.tests;
 import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.loganalysis.item.BugreportItem;
 import com.android.loganalysis.item.KernelLogItem;
-import com.android.loganalysis.item.MiscKernelLogItem;
+import com.android.loganalysis.item.SELinuxItem;
 import com.android.loganalysis.parser.BugreportParser;
 import com.android.loganalysis.parser.KernelLogParser;
-import com.android.loganalysis.util.config.Option;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -33,7 +33,10 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 
+import junit.framework.Assert;
+
 import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -46,15 +49,25 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests that count how many SELinux Denials occurred.
  */
-public class SelinuxDenialsTests implements IRemoteTest, IDeviceTest {
+public class SELinuxDenialsTests implements IRemoteTest, IDeviceTest {
 
     private ITestDevice mDevice;
-    private static final int TEST_FAILED = -1;
     private static final String ADB_SHELL_KERNEL_LOGS_CMD = "su -c dmesg";
     private static final String DMESG_OUTPUT_FILE_NAME = "dmesg_output";
 
-    @Option(name = "kmsg-from-bugreport", description =
-            "Obtain kernel logs from bugreport instead of adb shell.")
+    @Option(name="selinux-domains-file",
+            description=
+            "Filepath to a file containing a list of names of SELinux domains to seed into the " +
+            "test result metrics as having 0 denials. Every line in the file that " +
+            "contains text and doesn't start with '#', is assumed to be an SELinux domain." +
+            "If a file is not specified, then the test result metrics will only " +
+            "contain results for domains that had 1 or more denials.",
+            importance=Option.Importance.ALWAYS)
+    private String mSELinuxDomainsFile;
+
+    @Option(name="kmsg-from-bugreport",
+            description="Obtain kernel logs from bugreport instead of adb shell.",
+            importance=Option.Importance.ALWAYS)
     private boolean mKmsgFromBugreport = false;
 
     @Override
@@ -68,38 +81,116 @@ public class SelinuxDenialsTests implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Runs the SelinuxDenialsCount test.
+     * Runs the SELinuxDenialsCount test.
      *
      * @param listener The test invocation listener.
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        Map<String, String> runMetrics = new HashMap<String, String>(1);
-
+        Map<String, String> runMetrics = new HashMap<String, String>();
         listener.testRunStarted("SELinux", 0);
 
-        int result = getNumDenialsOnStartup(listener);
-        // only append metrics to the run if the test passed
-        if (result != TEST_FAILED) {
-            runMetrics.put("SELinuxDenialsOnStartup", String.format("%d", result));
+        /* If an SELinux domains file was specified, get all the names out of it and seed them
+         * into runMetrics map */
+        if (mSELinuxDomainsFile != null) {
+            CLog.d("Retrieving the list of SELinux domains from file '%s'..", mSELinuxDomainsFile);
+            try {
+                List<String> domains = getSELinuxDomainNames(mSELinuxDomainsFile);
+                for (String domain : domains) {
+                    runMetrics.put(domain, "0");
+                }
+                CLog.d("%s SELinux domains retrieved from file '%s'.",
+                        domains.size(), mSELinuxDomainsFile);
+            } catch (IOException e) {
+                listener.testRunFailed(String.format(
+                        "IOException occurred when attempting to parse SELinux domains file " +
+                        "'%s': %s", mSELinuxDomainsFile, e.getMessage()));
+                return;
+            }
         }
+
+        // get # of denials
+        List<SELinuxItem> selinuxLogs = getDenialsOnStartup(listener);
+
+        // tally up how many denials occur for each selinux domain, store in HashMap
+        Map<String, Integer> domainTallies = new HashMap<String, Integer>();
+        for (SELinuxItem logItem : selinuxLogs) {
+            incrementMapKeyValue(domainTallies, logItem.getSContext());
+        }
+
+        // for each domain that had at least 1 selinux denial, put into runMetrics map
+        for (Map.Entry<String, Integer> domainTally : domainTallies.entrySet()) {
+            String key = domainTally.getKey();
+            String value = Integer.toString(domainTally.getValue());
+            runMetrics.put(key, value);
+            CLog.d("%s SELinux denials occurred for domain '%s'", value, key);
+        }
+
+        // total number of denials across all selinux domains
+        runMetrics.put("SELinuxDenialsOnStartup", String.format("%d", selinuxLogs.size()));
+        CLog.d("SELinux denials TOTAL: %d", selinuxLogs.size());
 
         listener.testRunEnded(0, runMetrics);
     }
 
     /**
-     * Count the number of SELinux denials that occurred since device startup - expecting 0.
+     * Increments the value stored in key by 1, for the specified map.
+     * If the key does not exist in the map, adds the key and sets it to 1.
+     * If the map or the key is null, does nothing.
+     *
+     * @param map the map containing the key to be incremented
+     * @param key the key containing the value you wish to increment
+     */
+    private static void incrementMapKeyValue(Map<String, Integer> map, String key) {
+        if (map == null || key == null) {
+            throw new NullPointerException();
+        }
+
+        Integer keyValue = map.get(key);
+        if (keyValue == null) {
+            map.put(key, 1);
+        } else {
+            map.put(key, keyValue + 1);
+        }
+    }
+
+    /**
+     * Reads in all of the SELinux domains from the file specified. Every line in the file that
+     * contains text, and doesn't start with '#', is assumed to be the name of an SELinux domain.
+     *
+     * @param file A (@see String} containing the path to the file to be parsed.
+     * @return a list containing all selinux domains
+     * @throws FileNotFoundException, IOException
+     */
+    private static List<String> getSELinuxDomainNames(String filepath)
+                throws IOException {
+        List<String> domains = new ArrayList<String>();
+        BufferedReader fileReader = new BufferedReader(new FileReader(filepath));
+        String line = null;
+        try {
+            while ((line = fileReader.readLine()) != null) {
+                line = line.trim();
+                if (!(line.isEmpty() || line.startsWith("#"))) {
+                    domains.add(line);
+                }
+            }
+        } finally {
+            fileReader.close();
+        }
+        return domains;
+    }
+
+    /**
+     * Retrieve the list of SELinux denials that occurred since device startup.
      * This test case should be run first, directly after device flash & startup.
      *
      * @param listener The test invocation listener.
-     * @return the count of SELinux denials, or TEST_FAILED upon failure to get the count
+     * @return the list of SELinux denials, or {@code null} upon failure to retrieve them
      * @throws DeviceNotAvailableException
      */
-    private int getNumDenialsOnStartup(ITestInvocationListener listener)
+    private List<SELinuxItem> getDenialsOnStartup(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        List<MiscKernelLogItem> selinuxLog = null;
         KernelLogItem kernelLogs;
-        int denialsCount;
 
         /* retrieve the kernel logs */
         if (mKmsgFromBugreport) {
@@ -107,23 +198,18 @@ public class SelinuxDenialsTests implements IRemoteTest, IDeviceTest {
         } else {
             kernelLogs = getKernelLogsFromAdbShell(listener);
         }
-        if (kernelLogs == null) {
-            listener.testRunFailed("failed to retrieve the kernel logs");
-            return TEST_FAILED;
-        }
+        Assert.assertNotNull(kernelLogs);
 
         /* retrieve the selinux logs from the kernel logs */
-        selinuxLog = kernelLogs.getMiscEvents(KernelLogParser.SELINUX_DENIAL);
-        attachLogs(listener, "MiscKernelLogItem", LogDataType.KERNEL_LOG,
-                constructKernelLogString(selinuxLog));
+        List<SELinuxItem> selinuxLog = kernelLogs.getSELinuxEvents();
+        attachLogs(listener, "SELinuxEvents", LogDataType.KERNEL_LOG,
+                constructSELinuxLogString(selinuxLog));
         if (selinuxLog == null) {
             listener.testRunFailed("failed to retrieve the selinux logs");
-            return TEST_FAILED;
+            return null;
         }
 
-        denialsCount = selinuxLog.size();
-        CLog.i("SELinux logs: %d", denialsCount);
-        return denialsCount;
+        return selinuxLog;
     }
 
     /**
@@ -206,15 +292,15 @@ public class SelinuxDenialsTests implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Construct a list of strings out of the given list of kernel logs.
+     * Construct a list of strings out of the given list of selinux logs.
      *
      * @param selinuxLogs the list of kernel log items
      * @return list of strings, each constructed using kernel log attributes
      */
-    private String constructKernelLogString (List<MiscKernelLogItem> kernelLogs) {
+    private String constructSELinuxLogString (List<SELinuxItem> selinuxLogs) {
         /* construct and attach a log showing only SELinuxDenials */
         StringBuffer logStr = new StringBuffer();
-        for (MiscKernelLogItem logItem : kernelLogs) {
+        for (SELinuxItem logItem : selinuxLogs) {
             logStr.append((String.format("%f   %s\n",
                     logItem.getEventTime(),
                     logItem.getStack())));
