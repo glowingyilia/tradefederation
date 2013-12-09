@@ -17,6 +17,7 @@ package com.android.tradefed.util;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.BufferedInputStream;
@@ -47,9 +48,10 @@ public class FileUtil {
      * {@link LowDiskSpaceException} if the usable disk space in desired partition is less than
      * this amount.
      */
-    private static final long MIN_DISK_SPACE_MB = 100;
-    /** The min disk space in bytes */
-    private static final long MIN_DISK_SPACE = MIN_DISK_SPACE_MB * 1024 * 1024;
+    @Option(name = "min-disk-space", description = "The minimum allowed disk"
+        + " space in megabytes for file-creation methods. May be set to"
+        + " 0 to disable checking.")
+    private static long mMinDiskSpaceMb = 100;
 
     private static final char[] SIZE_SPECIFIERS = {
             ' ', 'K', 'M', 'G', 'T'
@@ -400,10 +402,13 @@ public class FileUtil {
         // Based on empirical testing File.getUsableSpace is a low cost operation (~ 100 us for
         // local disk, ~ 100 ms for network disk). Therefore call it every time tmp file is
         // created
-        if (file.getUsableSpace() < MIN_DISK_SPACE) {
+        long usableSpace = file.getUsableSpace();
+        long minDiskSpace = mMinDiskSpaceMb * 1024 * 1024;
+        if (usableSpace < minDiskSpace) {
             throw new LowDiskSpaceException(String.format(
-                    "Available space on %s is less than %s MB", file.getAbsolutePath(),
-                    MIN_DISK_SPACE_MB));
+                    "Available space on %s is %d. Min is %d MB",
+                    file.getAbsolutePath(), file.getUsableSpace(),
+                    mMinDiskSpaceMb));
         }
     }
 
