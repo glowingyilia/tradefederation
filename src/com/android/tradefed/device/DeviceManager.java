@@ -21,7 +21,6 @@ import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.EmulatorConsole;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.command.remote.DeviceAllocationState;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;

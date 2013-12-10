@@ -15,20 +15,22 @@
  */
 package com.android.tradefed.command;
 
+import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
+import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
-import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockDeviceManager;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import junit.framework.TestCase;
 
@@ -193,6 +195,30 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
+     * Test simple case for {@link CommandScheduler#execCommand()}
+     */
+    public void testExecCommand() throws Throwable {
+        String[] args = new String[] {
+            "foo"
+        };
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
+        IScheduledInvocationListener mockListener = EasyMock
+                .createMock(IScheduledInvocationListener.class);
+        mockListener.invocationComplete(mockDevice, FreeDeviceState.AVAILABLE);
+        replayMocks(mockDevice, mockListener);
+        mScheduler.execCommand(mockListener, mockDevice, args);
+        mScheduler.start();
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join(2*1000);
+        verifyMocks(mockListener);
+    }
+
+    /**
      * Sets the number of expected
      * {@link ITestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler)} calls
      *
@@ -200,7 +226,8 @@ public class CommandSchedulerTest extends TestCase {
      */
     private void setExpectedInvokeCalls(int times) throws Throwable {
         mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject());
+                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
+                (ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().times(times);
     }
 
@@ -225,7 +252,8 @@ public class CommandSchedulerTest extends TestCase {
             }
         };
         mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject());
+                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
+                (ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andAnswer(blockResult);
         EasyMock.expectLastCall().andAnswer(blockResult);
         return blockResult;
@@ -245,7 +273,7 @@ public class CommandSchedulerTest extends TestCase {
             // config should only be created three times
             setCreateConfigExpectations(args, 3);
             mCommandOptions.setLoopMode(true);
-            mCommandOptions.setMinLoopTime(0);
+            mCommandOptions.setMinLoopTime(50);
             Object notifier = waitForExpectedInvokeCalls(2);
             mMockConfiguration.validateOptions();
             replayMocks();
@@ -282,7 +310,8 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testRun_fatalError() throws Throwable {
         mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject());
+                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
+                (ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new FatalHostError("error"));
         // set up a mock global config and wtfhandler to handle CLog.wtf when FatalHostError occurs
         IGlobalConfiguration mockGc = EasyMock.createMock(IGlobalConfiguration.class);
@@ -300,7 +329,7 @@ public class CommandSchedulerTest extends TestCase {
             mScheduler.addCommand(args);
             mScheduler.start();
             // no need to call shutdown explicitly - scheduler should shutdown by itself
-            mScheduler.join();
+            mScheduler.join(2*1000);
             verifyMocks(mockGc, mockWtf);
         } finally {
             // reset global config to null, which means 'not overloaded/use default'
@@ -387,7 +416,8 @@ public class CommandSchedulerTest extends TestCase {
         };
 
         mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject());
+                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
+                (ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andAnswer(rescheduleAndThrowAnswer);
 
         // expect one more success call

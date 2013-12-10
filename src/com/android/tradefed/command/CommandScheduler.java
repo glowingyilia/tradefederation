@@ -19,41 +19,43 @@ package com.android.tradefed.command;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.command.remote.DeviceAllocationState;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.command.remote.IRemoteClient;
 import com.android.tradefed.command.remote.RemoteClient;
+import com.android.tradefed.command.remote.RemoteException;
 import com.android.tradefed.command.remote.RemoteManager;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
-import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.StubTestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue;
 import com.android.tradefed.util.TableFormatter;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -78,8 +80,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     private List<ExecutableCommand> mAllCommands;
 
-    /** list of active invocation threads */
-    private Set<InvocationThread> mInvocationThreads;
+    /** map of device to active invocation threads */
+    private Map<ITestDevice, InvocationThread> mInvocationThreadMap;
 
     /** timer for scheduling commands to be re-queued for execution */
     private ScheduledThreadPoolExecutor mCommandTimer;
@@ -337,18 +339,39 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         }
     }
 
+    /**
+     * An {@link IScheduledInvocationListener} for locally scheduled commands added via addCommand.
+     * <p/>
+     * Returns device to device manager and remote handover server if applicable.
+     */
+    private class FreeDeviceHandler extends StubTestInvocationListener implements
+            IScheduledInvocationListener {
+
+        private final IDeviceManager mDeviceManager;
+
+        FreeDeviceHandler(IDeviceManager deviceManager) {
+            mDeviceManager = deviceManager;
+        }
+
+        @Override
+        public void invocationComplete(ITestDevice device, FreeDeviceState deviceState) {
+            mDeviceManager.freeDevice(device, deviceState);
+            remoteFreeDevice(device);
+        }
+    }
+
     private class InvocationThread extends Thread {
-        private final IDeviceManager mManager;
+        private final IScheduledInvocationListener mListener;
         private final ITestDevice mDevice;
         private final ExecutableCommand mCmd;
         private final ITestInvocation mInvocation;
         private long mStartTime = -1;
 
-        public InvocationThread(String name, IDeviceManager manager, ITestDevice device,
-                ExecutableCommand command) {
+        public InvocationThread(String name, IScheduledInvocationListener listener,
+                ITestDevice device, ExecutableCommand command) {
             // create a thread group so LoggerRegistry can identify this as an invocationThread
             super(new ThreadGroup(name), name);
-            mManager = manager;
+            mListener = listener;
             mDevice = device;
             mCmd = command;
             mInvocation = createRunInstance();
@@ -366,7 +389,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             IConfiguration config = mCmd.getConfiguration();
             try {
                 mCmd.commandStarted();
-                instance.invoke(mDevice, config, new Rescheduler(mCmd.getCommandTracker()));
+                instance.invoke(mDevice, config, new Rescheduler(mCmd.getCommandTracker()),
+                        mListener);
             } catch (DeviceUnresponsiveException e) {
                 CLog.w("Device %s is unresponsive. Reason: %s", mDevice.getSerialNumber(),
                         e.getMessage());
@@ -385,10 +409,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                 long elapsedTime = System.currentTimeMillis() - mStartTime;
                 CLog.i("Updating command '%s' with elapsed time %d ms",
                         getArgString(mCmd.getCommandTracker().getArgs()), elapsedTime);
-                mCmd.commandFinished(elapsedTime);
-                mManager.freeDevice(mDevice, deviceState);
-                remoteFreeDevice(mDevice);
+                // remove invocation thread first so another invocation can be started on device
+                // when freed
                 removeInvocationThread(this);
+                mCmd.commandFinished(elapsedTime);
+                mListener.invocationComplete(mDevice, deviceState);
             }
         }
 
@@ -418,7 +443,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         mCommandQueue = new ConditionPriorityBlockingQueue<ExecutableCommand>(
                 new ExecutableCommandComparator());
         mAllCommands = Collections.synchronizedList(new LinkedList<ExecutableCommand>());
-        mInvocationThreads = new HashSet<InvocationThread>();
+        mInvocationThreadMap = new HashMap<ITestDevice, InvocationThread>();
         // use a ScheduledThreadPoolExecutorTimer as a single-threaded timer. This class
         // is used instead of a java.util.Timer because it offers advanced shutdown options
         mCommandTimer = new ScheduledThreadPoolExecutor(1);
@@ -494,8 +519,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                             .getDeviceRequirements());
                     if (device != null) {
                         // Spawn off a thread to perform the invocation
-                        InvocationThread invThread = startInvocation(manager, device, cmd);
-                        addInvocationThread(invThread);
+                        startInvocation(new FreeDeviceHandler(manager), device, cmd);
                         if (cmd.isLoopMode()) {
                             addNewExecCommandToQueue(cmd.getCommandTracker());
                         }
@@ -512,8 +536,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             CLog.i("Waiting for invocation threads to complete");
             List<InvocationThread> threadListCopy;
             synchronized (this) {
-                threadListCopy = new ArrayList<InvocationThread>(mInvocationThreads.size());
-                threadListCopy.addAll(mInvocationThreads);
+                threadListCopy = new ArrayList<InvocationThread>(mInvocationThreadMap.size());
+                threadListCopy.addAll(mInvocationThreadMap.values());
             }
             for (Thread thread : threadListCopy) {
                 waitForThread(thread);
@@ -547,8 +571,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             try {
                 mRemoteClient.sendClose();
                 mRemoteClient.close();
-            } catch (IOException e) {
-                // ignore
+            } catch (RemoteException e) {
+                CLog.e(e);
             }
         }
     }
@@ -736,34 +760,58 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     }
 
     /**
-     * Spawns off thread to run invocation for given device
+     * {@inheritDoc}
+     */
+    @Override
+    public void execCommand(IScheduledInvocationListener listener, ITestDevice device, String[] args)
+            throws ConfigurationException {
+        CommandTracker cmdTracker = createCommandTracker(args);
+        IConfiguration config = getConfigFactory().createConfigurationFromArgs(
+                cmdTracker.getArgs());
+        config.validateOptions();
+        CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
+        ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
+        startInvocation(listener, device, execCmd);
+    }
+
+    /**
+     * Spawns off thread to run invocation for given device.
      *
-     * @param manager the {@link IDeviceManager} to return device to when complete
+     * @param callback the {@link IInvocationCompleteHandler} to invoke when complete
      * @param device the {@link ITestDevice}
      * @param cmd the {@link ExecutableCommand} to execute
-     * @return the invocation's thread
+     * @return the thread that will run the invocation
      */
-    private InvocationThread startInvocation(IDeviceManager manager, ITestDevice device,
+    private void startInvocation(IScheduledInvocationListener listener, ITestDevice device,
             ExecutableCommand cmd) {
+        if (hasInvocationThread(device)) {
+            throw new IllegalStateException(
+                    String.format("Attempting invocation on device %s when one is already running",
+                            device.getSerialNumber()));
+        }
         final String invocationName = String.format("Invocation-%s", device.getSerialNumber());
-        InvocationThread invocationThread = new InvocationThread(invocationName, manager, device,
+        InvocationThread invocationThread = new InvocationThread(invocationName, listener, device,
                 cmd);
         invocationThread.start();
-        return invocationThread;
+        addInvocationThread(invocationThread);
     }
 
     /**
      * Removes a {@link InvocationThread} from the active list.
      */
     private synchronized void removeInvocationThread(InvocationThread invThread) {
-        mInvocationThreads.remove(invThread);
+        mInvocationThreadMap.remove(invThread.getDevice());
+    }
+
+    private synchronized boolean hasInvocationThread(ITestDevice device) {
+        return mInvocationThreadMap.containsKey(device);
     }
 
     /**
      * Adds a {@link InvocationThread} to the active list.
      */
     private synchronized void addInvocationThread(InvocationThread invThread) {
-        mInvocationThreads.add(invThread);
+        mInvocationThreadMap.put(invThread.getDevice(), invThread);
     }
 
     private synchronized boolean isShutdown() {
@@ -857,9 +905,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             mRemoteClient.close();
             shutdown();
             return true;
-
-        } catch (IOException e) {
-            CLog.e("Failed to connect to remote manager at port %d", handoverPort);
+        } catch (RemoteException e) {
+            CLog.e(e);
+            // TODO: reset state and recover
         }
         return false;
     }
@@ -888,9 +936,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         if (mRemoteClient != null) {
             try {
                 mRemoteClient.sendFreeDevice(device.getSerialNumber());
-            } catch (IOException e) {
+            } catch (RemoteException e) {
                 CLog.e("Failed to send unfilter device %s to remote manager",
                         device.getSerialNumber());
+                CLog.e(e);
             }
         }
     }
@@ -929,10 +978,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public void displayInvocationsInfo(PrintWriter printWriter) {
-        if (mInvocationThreads == null || mInvocationThreads.size() == 0) {
+        if (mInvocationThreadMap == null || mInvocationThreadMap.size() == 0) {
             return;
         }
-        List<InvocationThread> copy = new ArrayList<InvocationThread>(mInvocationThreads);
+        List<InvocationThread> copy = new ArrayList<InvocationThread>(mInvocationThreadMap.values());
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
         displayRows.add(Arrays.asList("Command Id", "Exec Time", "Device", "State"));
         long curTime = System.currentTimeMillis();
@@ -1019,6 +1068,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      * Starts remote manager to listen to remote commands.
      * <p/>
      * @return true if the remote manager is started up successfully, false otherwise.
+     * TODO: refactor to throw exception on failure
      */
     private boolean startRemoteManager() {
         if (mRemoteManager != null && !mRemoteManager.isCanceled()) {
@@ -1056,57 +1106,50 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                return false;
            }
         }
-        boolean ok = forceHandover(defaultRmtMgrPort);
+        try {
+            forceHandover(defaultRmtMgrPort);
+        } catch (RemoteException e) {
+            CLog.e(e);
+            return false;
+        }
         mRemoteClient.close();
         mRemoteClient = null;
         mRemoteManager.cancel();
         mRemoteManager = null;
-        if (!ok) {
-            CLog.logAndDisplay(LogLevel.ERROR,
-                    "Tried to do auto handover with remote TF instance at port %d, but failed.",
-                    defaultRmtMgrPort);
-            return false;
-        }
 
         // Start a new remote manager and attempt to capture the original default port.
         mRemoteManager = new RemoteManager(getDeviceManager(), this);
-        CLog.logAndDisplay(LogLevel.INFO, "Sucessfully auto handover with remote TF instance!");
+        CLog.logAndDisplay(LogLevel.INFO,
+                "Successfully initiated auto handover with remote TF instance!");
         while (!mRemoteManager.connect()) {
             try {
                 sleep(2000);
             } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                    return false;
+                CLog.e(e);
+                return false;
             }
         }
 
         mRemoteManager.start();
         CLog.logAndDisplay(LogLevel.INFO,
-                "Sucessfully started remote manager after handover on port %d",
+                "Successfully started remote manager after handover on port %d",
                 mRemoteManager.getPort());
         return true;
     }
 
 
-    private boolean forceHandover(int port) {
-        try {
-            mRemoteClient = RemoteClient.connect(port);
+    private void forceHandover(int port) throws RemoteException {
+        mRemoteClient = RemoteClient.connect(port);
+        CLog.logAndDisplay(LogLevel.INFO,
+                "Connecting local client with existing remote TF at %d - Attempting takeover",
+                port);
+        // Start up a temporary local remote manager for handover.
+        if (mRemoteManager.connectAnyPort()) {
+            mRemoteManager.start();
             CLog.logAndDisplay(LogLevel.INFO,
-                    "Connecting local client with existing remote TF at %d - Attempting takeover",
-                    port);
-            // Start up a temporary local remote manager for handover.
-            if (mRemoteManager.connectAnyPort()) {
-                mRemoteManager.start();
-                CLog.logAndDisplay(LogLevel.INFO,
-                        "Started local tmp remote manager for handover at %d",
-                        mRemoteManager.getPort());
-                return (mRemoteClient.sendHandoverClose(mRemoteManager.getPort()));
-            }
-        } catch (IOException e) {
-            CLog.logAndDisplay(LogLevel.INFO,
-                    "Failed auto handover with remote manager at port %d", port);
+                    "Started local tmp remote manager for handover at %d",
+                    mRemoteManager.getPort());
+            mRemoteClient.sendHandoverClose(mRemoteManager.getPort());
         }
-        return false;
     }
 }

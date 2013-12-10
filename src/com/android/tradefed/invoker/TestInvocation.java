@@ -52,6 +52,7 @@ import junit.framework.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -180,10 +181,15 @@ public class TestInvocation implements ITestInvocation {
      * {@inheritDoc}
      */
     @Override
-    public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler)
+    public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
+            ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        List<ITestInvocationListener> allListeners = new ArrayList<ITestInvocationListener>(
+                config.getTestInvocationListeners().size() + extraListeners.length);
+        allListeners.addAll(config.getTestInvocationListeners());
+        allListeners.addAll(Arrays.asList(extraListeners));
         ITestInvocationListener listener = new LogSaverResultForwarder(config.getLogSaver(),
-                config.getTestInvocationListeners());
+                allListeners);
 
         try {
             mStatus = "fetching build";

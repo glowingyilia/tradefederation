@@ -13,25 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.command.remote;
+package com.android.tradefed.device;
 
-import com.android.tradefed.device.DeviceAllocationState;
-
-public class DeviceDescriptor {
-
-    private final String mSerial;
-    private final DeviceAllocationState mState;
-
-    public DeviceDescriptor(String serial, DeviceAllocationState state) {
-        mSerial = serial;
-        mState = state;
-    }
-
-    public String getSerial() {
-        return mSerial;
-    }
-
-    public DeviceAllocationState getState() {
-        return mState;
-    }
+/**
+ * Represents the allocation state of the device from the IDeviceManager perspective
+ */
+public enum DeviceAllocationState {
+    /** device is available to be allocated to a test */
+    Available,
+    /** device is visible via adb but is in an error state that prevents it from running tests */
+    Unavailable,
+    /** device is currently allocated to a test */
+    Allocated
 }

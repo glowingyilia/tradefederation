@@ -17,7 +17,6 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.AndroidDebugBridge;
-import com.android.tradefed.command.remote.DeviceAllocationState;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.util.IRunUtil;
 
@@ -29,29 +28,6 @@ import java.util.List;
  * Interface for managing the set of available devices for testing.
  */
 public interface IDeviceManager {
-
-    public enum FreeDeviceState {
-        /** device is responsive, and can be returned to the available device queue */
-        AVAILABLE,
-
-        /**
-         * Device is not visible via adb, and should not be returned to the available device
-         * queue
-         */
-        UNAVAILABLE,
-
-        /**
-         * Device is visible on adb, but is not responsive. Depending on configuration this
-         * device may be returned to available queue.
-         */
-        UNRESPONSIVE,
-
-        /**
-         * Device should be ignored, and not returned to the available device queue.
-         */
-        IGNORE;
-    }
-
     /**
      * A listener for fastboot state changes.
      */

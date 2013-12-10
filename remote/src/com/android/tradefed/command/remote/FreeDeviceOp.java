@@ -21,25 +21,27 @@ import org.json.JSONObject;
 /**
  * A remote operation for freeing a previously remotely allocated device.
  */
-class FreeDeviceOp extends RemoteOperation {
+class FreeDeviceOp extends RemoteOperation<Void> {
 
     private static final String SERIAL = "serial";
 
     static final String ALL_DEVICES = "*";
 
-    String mDeviceSerial;
+    private final String mDeviceSerial;
 
     FreeDeviceOp(String serial) {
         mDeviceSerial = serial;
     }
 
-    FreeDeviceOp() {
-        this(null);
-    }
-
-    @Override
-    protected void unpackFromJson(JSONObject json) throws RemoteException, JSONException {
-        mDeviceSerial = json.getString(SERIAL);
+    /**
+     * Factory method for creating a {@link FreeDeviceOp} from JSON data.
+     *
+     * @param json the data as a {@link JSONObject}
+     * @return a {@link FreeDeviceOp}
+     * @throws JSONException if failed to extract out data
+     */
+    static FreeDeviceOp createFromJson(JSONObject json) throws JSONException {
+        return new FreeDeviceOp(json.getString(SERIAL));
     }
 
     @Override
@@ -50,5 +52,9 @@ class FreeDeviceOp extends RemoteOperation {
     @Override
     protected void packIntoJson(JSONObject j) throws JSONException {
         j.put(SERIAL, mDeviceSerial);
+    }
+
+    public String getDeviceSerial() {
+        return mDeviceSerial;
     }
 }

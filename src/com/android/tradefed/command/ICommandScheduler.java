@@ -18,7 +18,10 @@ package com.android.tradefed.command;
 
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.device.FreeDeviceState;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.ITestInvocation;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import java.io.PrintWriter;
 
@@ -26,6 +29,21 @@ import java.io.PrintWriter;
  * A scheduler for running TradeFederation commands.
  */
 public interface ICommandScheduler {
+
+    /**
+    * Listener for invocation events when invocation completes.
+    * @see execCommand()
+    */
+    public static interface IScheduledInvocationListener extends ITestInvocationListener {
+        /**
+         * Callback when entire invocation has completed, including all
+         * {@link ITestInvocationListener#invocationEnded(long)} events.
+         *
+         * @param device
+         * @param deviceState
+         */
+        public void invocationComplete(ITestDevice device, FreeDeviceState deviceState);
+    }
 
     /**
      * Adds a command to the scheduler.
@@ -56,6 +74,18 @@ public interface ICommandScheduler {
      * @throws ConfigurationException if command was invalid
      */
     public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException;
+
+    /**
+     * Directly execute command on already allocated device.
+     *
+     * @param listener the {@link IScheduledInvocationListener} to be informed
+     * @param device the {@link ITestDevice} to use
+     * @param args the command arguments
+     *
+     * @throws ConfigurationException if command was invalid
+     */
+    public void execCommand(IScheduledInvocationListener listener, ITestDevice device,
+            String[] args) throws ConfigurationException;
 
     /**
      * Remove all commands from scheduler

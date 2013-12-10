@@ -17,7 +17,6 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
-import com.android.tradefed.command.remote.DeviceAllocationState;
 
 import java.util.Map;
 

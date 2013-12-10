@@ -20,45 +20,52 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Remote operation for adding a command to the local tradefed scheduler.
+ * Remote operation for asynchronously executing a command on an already allocated device.
  */
-class AddCommandOp extends RemoteOperation<Void> {
+class ExecCommandOp extends RemoteOperation<Void> {
 
+    private static final String SERIAL = "serial";
     private static final String COMMAND_ARGS = "commandArgs";
-    private static final String TIME = "time";
-    private final long mTotalTime;
+
+    private final String mSerial;
     private final String[] mCommandArgs;
 
-    AddCommandOp(long totalTime, String... commandArgs) {
-        mTotalTime = totalTime;
+    ExecCommandOp(String serial, String... commandArgs) {
+        mSerial = serial;
         mCommandArgs = commandArgs;
     }
 
     /**
-     * Factory method for creating a {@link AddCommandOp} from JSON data.
+     * Factory method for creating a {@link ExecCommandOp} from JSON data.
      *
      * @param json the data as a {@link JSONObject}
-     * @return a {@link AddCommandOp}
+     * @return a {@link ExecCommandOp}
      * @throws JSONException if failed to extract out data
      */
-    static AddCommandOp createFromJson(JSONObject jsonData) throws JSONException {
-        long totalTime = jsonData.getLong(TIME);
-        JSONArray jsonArgs = jsonData.getJSONArray(COMMAND_ARGS);
+    static ExecCommandOp createFromJson(JSONObject json) throws JSONException {
+        String serial = json.getString(SERIAL);
+        JSONArray jsonArgs = json.getJSONArray(COMMAND_ARGS);
         String[] commandArgs = new String[jsonArgs.length()];
         for (int i = 0; i < commandArgs.length; i++) {
             commandArgs[i] = jsonArgs.getString(i);
         }
-        return new AddCommandOp(totalTime, commandArgs);
+        return new ExecCommandOp(serial, commandArgs);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected OperationType getType() {
-        return OperationType.ADD_COMMAND;
+        return OperationType.EXEC_COMMAND;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected void packIntoJson(JSONObject j) throws JSONException {
-        j.put(TIME, mTotalTime);
+        j.put(SERIAL, mSerial);
         JSONArray jsonArgs = new JSONArray();
         for (String arg : mCommandArgs) {
             jsonArgs.put(arg);
@@ -70,7 +77,7 @@ class AddCommandOp extends RemoteOperation<Void> {
         return mCommandArgs;
     }
 
-    public long getTotalTime() {
-        return mTotalTime;
+    public String getDeviceSerial() {
+        return mSerial;
     }
 }

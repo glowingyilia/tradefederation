@@ -15,14 +15,19 @@
  */
 package com.android.tradefed.command.remote;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.command.ICommandScheduler;
+import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
+import com.android.tradefed.device.DeviceAllocationState;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
-import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,8 +83,8 @@ public class RemoteManagerTest extends TestCase {
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
         mRemoteClient = RemoteClient.connect(port);
-        assertTrue(mRemoteClient.sendAllocateDevice("serial"));
-        assertTrue(mRemoteClient.sendFreeDevice("serial"));
+        mRemoteClient.sendAllocateDevice("serial");
+        mRemoteClient.sendFreeDevice("serial");
         EasyMock.verify(mMockDeviceManager);
     }
 
@@ -97,7 +102,7 @@ public class RemoteManagerTest extends TestCase {
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
         mRemoteClient = RemoteClient.connect(port);
-        assertTrue(mRemoteClient.sendAddCommand(3, "arg1", "arg2"));
+        mRemoteClient.sendAddCommand(3, "arg1", "arg2");
         EasyMock.verify(mMockScheduler);
     }
 
@@ -118,8 +123,8 @@ public class RemoteManagerTest extends TestCase {
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
         mRemoteClient = RemoteClient.connect(port);
-        assertTrue(mRemoteClient.sendAllocateDevice("serial"));
-        assertTrue(mRemoteClient.sendClose());
+        mRemoteClient.sendAllocateDevice("serial");
+        mRemoteClient.sendClose();
         mRemoteClient.close();
         mRemoteMgr.join();
         EasyMock.verify(mMockDeviceManager);
@@ -142,9 +147,26 @@ public class RemoteManagerTest extends TestCase {
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
         mRemoteClient = RemoteClient.connect(port);
-        assertTrue(mRemoteClient.sendAllocateDevice("serial"));
-        assertTrue(mRemoteClient.sendFreeDevice("*"));
+        mRemoteClient.sendAllocateDevice("serial");
+        mRemoteClient.sendFreeDevice("*");
         EasyMock.verify(mMockDeviceManager);
+    }
+
+    /**
+     * Test attempt to free an unknown device
+     */
+    public void testFree_unknown() throws Exception {
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int port = mRemoteMgr.getPort();
+        assertTrue(port != -1);
+        mRemoteClient = RemoteClient.connect(port);
+        try {
+            mRemoteClient.sendFreeDevice("foo");
+            fail("RemoteException not thrown");
+        } catch (RemoteException e) {
+            // expected
+        }
     }
 
     /**
@@ -170,4 +192,184 @@ public class RemoteManagerTest extends TestCase {
         assertEquals(DeviceAllocationState.Allocated, returnedDevices.get(1).getState());
         EasyMock.verify(mMockDeviceManager);
     }
+
+    /**
+     * An integration test for normal case {@link ExecCommandOp}
+     */
+    public void testExecCommand() throws Exception {
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+        mMockDeviceManager.freeDevice(EasyMock.eq(device), EasyMock.eq(FreeDeviceState.AVAILABLE));
+        String[] args = new String[] {
+            "instrument"
+        };
+        mMockScheduler.execCommand((IScheduledInvocationListener)EasyMock.anyObject(),
+                EasyMock.eq(device), EasyMock.aryEq(args));
+
+        EasyMock.replay(mMockDeviceManager, device, mMockScheduler);
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int port = mRemoteMgr.getPort();
+        assertTrue(port != -1);
+        mRemoteClient = RemoteClient.connect(port);
+        mRemoteClient.sendAllocateDevice("serial");
+        mRemoteClient.sendExecCommand("serial", args);
+        mRemoteClient.sendFreeDevice("serial");
+        EasyMock.verify(mMockDeviceManager, mMockScheduler);
+    }
+
+    /**
+     * An integration test for case where device was not allocated before {@link ExecCommandOp}
+     */
+    public void testExecCommand_noallocate() throws Exception {
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int port = mRemoteMgr.getPort();
+        assertTrue(port != -1);
+        mRemoteClient = RemoteClient.connect(port);
+        try {
+            mRemoteClient.sendExecCommand("serial", new String[] {"instrument"});
+        } catch (RemoteException e) {
+            // expected
+            return;
+        }
+        fail("did not receive RemoteException");
+    }
+
+    /**
+     * happy-path test for {@link HandoverCloseOp}.
+     * @throws Exception
+     */
+    public void testHandoverClose() throws Exception {
+        final int port = 88;
+        EasyMock.expect(mMockScheduler.handoverShutdown(port)).andReturn(Boolean.TRUE);
+
+        EasyMock.replay(mMockScheduler);
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int mgrPort = mRemoteMgr.getPort();
+        assertTrue(mgrPort != -1);
+        mRemoteClient = RemoteClient.connect(mgrPort);
+        mRemoteClient.sendHandoverClose(port);
+        EasyMock.verify(mMockScheduler);
+    }
+
+    /**
+     * Test {@link GetLastCommandResultOp} result when device is unknown
+     * @throws Exception
+     */
+    public void testGetLastCommandResult_unknownDevice() throws Exception {
+        ICommandResultHandler mockHandler = EasyMock.createStrictMock(ICommandResultHandler.class);
+        mockHandler.notAllocated();
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+
+        int mgrPort = mRemoteMgr.getPort();
+        assertTrue(mgrPort != -1);
+        mRemoteClient = RemoteClient.connect(mgrPort);
+        EasyMock.replay(mockHandler);
+
+        mRemoteClient.sendGetLastCommandResult("foo", mockHandler);
+
+        EasyMock.verify(mockHandler);
+    }
+
+    /**
+     * Test {@link GetLastCommandResultOp} result when there is no active command
+     */
+    public void testGetLastCommandResult_noActiveCommand() throws Exception {
+        ICommandResultHandler mockHandler = EasyMock.createStrictMock(ICommandResultHandler.class);
+        mockHandler.noActiveCommand();
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+        mMockDeviceManager.freeDevice(EasyMock.eq(device), EasyMock.eq(FreeDeviceState.AVAILABLE));
+        EasyMock.replay(mMockDeviceManager, device, mockHandler);
+
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int mgrPort = mRemoteMgr.getPort();
+        assertTrue(mgrPort != -1);
+        mRemoteClient = RemoteClient.connect(mgrPort);
+
+        mRemoteClient.sendAllocateDevice("serial");
+        mRemoteClient.sendGetLastCommandResult("serial", mockHandler);
+        mRemoteClient.sendFreeDevice("serial");
+
+        EasyMock.verify(mockHandler, mMockDeviceManager);
+    }
+
+    /**
+     * Test {@link GetLastCommandResultOp} result when command is executing
+     */
+    public void testGetLastCommandResult_executing() throws Exception {
+        ICommandResultHandler mockHandler = EasyMock.createStrictMock(ICommandResultHandler.class);
+        mockHandler.stillRunning();
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+        mMockDeviceManager.freeDevice(EasyMock.eq(device), EasyMock.eq(FreeDeviceState.AVAILABLE));
+        String[] args = new String[] {
+            "instrument"
+        };
+        mMockScheduler.execCommand((IScheduledInvocationListener)EasyMock.anyObject(),
+                EasyMock.eq(device), EasyMock.aryEq(args));
+
+        EasyMock.replay(mMockDeviceManager, device, mMockScheduler, mockHandler);
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int port = mRemoteMgr.getPort();
+        assertTrue(port != -1);
+        mRemoteClient = RemoteClient.connect(port);
+        mRemoteClient.sendAllocateDevice("serial");
+        mRemoteClient.sendExecCommand("serial", args);
+        mRemoteClient.sendGetLastCommandResult("serial", mockHandler);
+        mRemoteClient.sendFreeDevice("serial");
+        EasyMock.verify(mMockDeviceManager, mockHandler);
+    }
+
+    /**
+     * Test {@link GetLastCommandResultOp} result when commmand fails due to a not available device.
+     */
+    public void testGetLastCommandResult_notAvail() throws Exception {
+        ICommandResultHandler mockHandler = EasyMock.createStrictMock(ICommandResultHandler.class);
+        mockHandler.failure((String)EasyMock.anyObject(), EasyMock.eq(FreeDeviceState.UNAVAILABLE));
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+        // TODO: change to not available
+        mMockDeviceManager.freeDevice(EasyMock.eq(device), EasyMock.eq(FreeDeviceState.AVAILABLE));
+        String[] args = new String[] {
+            "instrument"
+        };
+        mMockScheduler.execCommand((IScheduledInvocationListener)EasyMock.anyObject(),
+                EasyMock.eq(device), EasyMock.aryEq(args));
+        IAnswer<Void> invErrorAnswer = new IAnswer<Void>() {
+            @Override
+            public Void answer() throws Throwable {
+                IScheduledInvocationListener listener =
+                        (IScheduledInvocationListener)EasyMock.getCurrentArguments()[0];
+                listener.invocationStarted(new BuildInfo());
+                listener.invocationFailed(new DeviceNotAvailableException());
+                listener.invocationEnded(1);
+                listener.invocationComplete(null, FreeDeviceState.UNAVAILABLE);
+                return null;
+            }
+        };
+        EasyMock.expectLastCall().andAnswer(invErrorAnswer);
+
+        EasyMock.replay(mMockDeviceManager, device, mMockScheduler, mockHandler);
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int port = mRemoteMgr.getPort();
+        assertTrue(port != -1);
+        mRemoteClient = RemoteClient.connect(port);
+        mRemoteClient.sendAllocateDevice("serial");
+        mRemoteClient.sendExecCommand("serial", args);
+        mRemoteClient.sendGetLastCommandResult("serial", mockHandler);
+        mRemoteClient.sendFreeDevice("serial");
+        EasyMock.verify(mMockDeviceManager, mockHandler, mMockScheduler);
+    }
+
 }

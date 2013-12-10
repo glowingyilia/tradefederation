@@ -16,7 +16,6 @@
 
 package com.android.tradefed.command.remote;
 
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -25,51 +24,90 @@ import java.util.List;
 public interface IRemoteClient {
 
     /**
-     * Send a 'allocate device' command
-     *
-     * @param serial
-     * @throws IOException
-     */
-    public boolean sendAllocateDevice(String serial) throws IOException;
-
-    /**
-     * Send a 'free previously allocated device' command
-     *
-     * @param serial
-     * @throws IOException
-     */
-    public boolean sendFreeDevice(String serial) throws IOException;
-
-    /**
-     * Send a 'add command' command.
-     *
-     * @param commandArgs
-     * @throws IOException
-     */
-    public boolean sendAddCommand(long totalTime, String... commandArgs) throws IOException;
-
-    /**
-     * Send a 'close connection' command
-     *
-     * @throws IOException
-     */
-    public boolean sendClose() throws IOException;
-
-    /**
-     * Send a 'handover close connection' command
-     *
-     * @param port of the remote manager to establish a connection with.
-     * @return true if the command was accepted and completed, false otherwise.
-     * @throws IOException
-     */
-    public boolean sendHandoverClose(int port) throws IOException;
-
-    /**
      * Send a 'list devices' request to remote TF
      *
-     * @return a list of device serials and their state. Returns <code>null</code> if command failed.
+     * @return a list of device serials and their state.
+     * @throws RemoteException if command failed
      */
-    public List<DeviceDescriptor> sendListDevices();
+    public List<DeviceDescriptor> sendListDevices() throws RemoteException;
+
+    /**
+     * Send an 'allocate device' request to remote TF.
+     *
+     * @param serial
+     * @throws RemoteException
+     */
+    public void sendAllocateDevice(String serial) throws RemoteException;
+
+    /**
+     * Send a 'free previously allocated device' request to remote TF
+     *
+     * @param serial
+     * @throws RemoteException
+     */
+    public void sendFreeDevice(String serial) throws RemoteException;
+
+    /**
+     * Send an 'add command' request to remote TF. This will add the command to the queue of
+     * commands waiting for devices, essentially scheduling it for future execution at some point in
+     * time. There is no way for a client to get the result of a command added via this API.
+     *
+     * @see {@link ICommandScheduler#addCommand(String[], long)}
+     * @param elapsedTimeMs the total time in ms that the command has been executing for. Used for
+     *            scheduling prioritization, and will typically only be non-zero in handover
+     *            situations.
+     * @param commandArgs the command arguments, in [configname] [option] format
+     * @throws RemoteException
+     */
+    public void sendAddCommand(long elapsedTimeMs, String... commandArgs) throws RemoteException;
+
+    /**
+     * Send a 'execute this command on given device' request to remote TF.
+     * <p/>
+     * Unlike {@link #sendAddCommand(long, String...)}, this is used in cases where the remote
+     * client caller is doing their own device allocation, and is instructing TF to directly
+     * execute the command on a given device, instead of just scheduling the command for future
+     * execution.
+     * <p/>
+     * {@link #sendGetLastCommandResult(String, ICommandResultHandler)} can be used to get the
+     * command result.
+     *
+     * @param serial the device serial to execute on. Must have already been allocated
+     * @param commandArgs the command arguments, in [configname] [option] format
+     * @throws RemoteException
+     */
+    public void sendExecCommand(String serial, String[] commandArgs) throws RemoteException;
+
+    /**
+     * Poll the remote TF for the last command result on executed given device.
+     *
+     * @param serial the device serial to execute on. Must have already been allocated
+     * @param handler the {@link ICommandResultHandler} to communicate results to
+     * @throws RemoteException
+     */
+    public void sendGetLastCommandResult(String serial, ICommandResultHandler handler)
+            throws RemoteException;
+
+    /**
+     * Send a 'close' request to remote TF.
+     * <p/>
+     * This requests shut down of the remote TF's connection, and it will stop
+     * listening for remote requests.
+     *
+     * @deprecated will be removed in future. Except for handover cases, it should not be possible
+     * for a client to shutdown TF's remote manager.
+     * @throws RemoteException
+     */
+    @Deprecated
+    public void sendClose() throws RemoteException;
+
+    /**
+     * Send a 'handover close connection' operation
+     *
+     * @param port of the remote manager to establish a connection with.
+     * @throws RemoteException
+     */
+    public void sendHandoverClose(int port) throws RemoteException;
 
     /**
      * Close the connection to the {@link RemoteManager}.
