@@ -694,13 +694,20 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+        File localFile = null;
+        boolean success = false;
         try {
-            File localFile = FileUtil.createTempFileForRemote(remoteFilePath, null);
+            localFile = FileUtil.createTempFileForRemote(remoteFilePath, null);
             if (pullFile(remoteFilePath, localFile)) {
+                success = true;
                 return localFile;
             }
         } catch (IOException e) {
             CLog.w("Encountered IOException while trying to pull '%s': %s", remoteFilePath, e);
+        } finally {
+            if (!success) {
+                FileUtil.deleteFile(localFile);
+            }
         }
         return null;
     }
