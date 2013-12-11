@@ -427,13 +427,8 @@ class TestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
-    public String getBuildAlias() {
-        String alias = null;
-        try {
-            alias = getProperty(BUILD_ALIAS_PROP);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e(e);
-        }
+    public String getBuildAlias() throws DeviceNotAvailableException {
+        String alias = getProperty(BUILD_ALIAS_PROP);
         if (alias == null || alias.isEmpty()) {
             return getBuildId();
         }
@@ -444,13 +439,8 @@ class TestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
-    public String getBuildId() {
-        String bid = null;
-        try {
-            bid = getProperty(BUILD_ID_PROP);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e(e);
-        }
+    public String getBuildId() throws DeviceNotAvailableException {
+        String bid = getProperty(BUILD_ID_PROP);
         if (bid == null) {
             CLog.w("Could not get device %s build id.", getSerialNumber());
             return IBuildInfo.UNKNOWN_BUILD_ID;
@@ -462,19 +452,9 @@ class TestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
-    public String getBuildFlavor() {
-        String productName = null;
-        try {
-            productName = getProperty(PRODUCT_NAME_PROP);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e(e);
-        }
-        String buildType = null;
-        try {
-            buildType = getProperty(BUILD_TYPE_PROP);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e(e);
-        }
+    public String getBuildFlavor() throws DeviceNotAvailableException {
+        String productName = getProperty(PRODUCT_NAME_PROP);
+        String buildType = getProperty(BUILD_TYPE_PROP);
         if (productName == null || buildType == null) {
             CLog.w("Could not get device %s build flavor.", getSerialNumber());
             return null;

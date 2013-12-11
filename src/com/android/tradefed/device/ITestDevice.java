@@ -211,22 +211,25 @@ public interface ITestDevice {
      * Nexus builds). For example, final Android 4.2 release has build alias JDQ39, and build id
      * 573038
      * @return the build alias or fall back to build id if it could not be retrieved
+     * @throws DeviceNotAvailableException
      */
-    public String getBuildAlias();
+    public String getBuildAlias() throws DeviceNotAvailableException;
 
     /**
      * Retrieve the build the device is currently running.
      *
      * @return the build id or {@link IBuildInfo#UNKNOWN_BUILD_ID} if it could not be retrieved
+     * @throws DeviceNotAvailableException
      */
-    public String getBuildId();
+    public String getBuildId() throws DeviceNotAvailableException;
 
     /**
      * Retrieve the build flavor for the device.
      *
      * @return the build flavor or null if it could not be retrieved
+     * @throws DeviceNotAvailableException
      */
-    public String getBuildFlavor();
+    public String getBuildFlavor() throws DeviceNotAvailableException;
 
     /**
      * Retrieve the given cached property value from the device.

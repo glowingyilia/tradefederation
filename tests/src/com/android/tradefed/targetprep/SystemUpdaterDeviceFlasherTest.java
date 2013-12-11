@@ -97,7 +97,7 @@ public class SystemUpdaterDeviceFlasherTest extends TestCase {
         mControl.verify();
     }
 
-    private void yieldDifferentBuilds(boolean different) {
+    private void yieldDifferentBuilds(boolean different) throws DeviceNotAvailableException {
         EasyMock.expect(mMockDevice.getBuildId()).andReturn(A_BUILD_ID).anyTimes();
         EasyMock.expect(mMockDeviceBuild.getDeviceBuildId()).andReturn(
                 (different ? A_BUILD_ID + 1 : A_BUILD_ID)).anyTimes();
