@@ -21,6 +21,8 @@ import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.EmulatorConsole;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.command.remote.DeviceAllocationState;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
@@ -33,6 +35,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue.IMatcher;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
@@ -43,8 +46,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -163,7 +168,7 @@ public class DeviceManager implements IDeviceManager {
         if (mDvcMon != null) {
             mDvcMon.setDeviceLister(new DeviceLister() {
                 @Override
-                public Map<IDevice, String> listDevices() {
+                public Map<IDevice, DeviceAllocationState> listDevices() {
                     return fetchDevicesInfo();
                 }
             });
@@ -847,11 +852,25 @@ public class DeviceManager implements IDeviceManager {
         return unavailableSerials;
     }
 
-    private Map<IDevice, String> fetchDevicesInfo() {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<DeviceDescriptor> listAllDevices() {
+        final List<DeviceDescriptor> serialStates = new ArrayList<DeviceDescriptor>();
+        for (Map.Entry<IDevice, DeviceAllocationState> entry : fetchDevicesInfo().entrySet()) {
+            serialStates.add(new DeviceDescriptor(entry.getKey().getSerialNumber(),
+                    entry.getValue()));
+        }
+        return serialStates;
+    }
+
+    private Map<IDevice, DeviceAllocationState> fetchDevicesInfo() {
         synchronized (this) {
             checkInit();
         }
-        final Map<IDevice, String> deviceMap = new LinkedHashMap<IDevice, String>();
+        final Map<IDevice, DeviceAllocationState> deviceMap =
+                new HashMap<IDevice, DeviceAllocationState>();
 
         // these data structures all have their own locks
         final List<IDevice> allDeviceCopy = ArrayUtil.list(mAdbBridge.getDevices());
@@ -859,32 +878,25 @@ public class DeviceManager implements IDeviceManager {
         final List<ITestDevice> allocatedDeviceCopy = new ArrayList<ITestDevice>(
                 mAllocatedDeviceMap.values());
 
-        final Set<IDevice> visibleDeviceSet = new HashSet<IDevice>();
-
+        // first add all devices to map as unavailable. If they are available or allocated their
+        // state will get updated in later loops
         for (IDevice device : allDeviceCopy) {
             // ignore devices not matching global filter
             if (mGlobalDeviceFilter.matches(device)) {
-                visibleDeviceSet.add(device);
+                deviceMap.put(device, DeviceAllocationState.Unavailable);
             }
         }
 
         for (ITestDevice device : allocatedDeviceCopy) {
-            deviceMap.put(device.getIDevice(), "Allocated");
-            visibleDeviceSet.remove(device.getIDevice());
+            deviceMap.put(device.getIDevice(), DeviceAllocationState.Allocated);
         }
 
         for (IDevice device : availableDeviceCopy) {
             // don't add placeholder devices to available devices display
             if (!(device instanceof StubDevice)) {
-                deviceMap.put(device, "Available");
-                visibleDeviceSet.remove(device);
+                deviceMap.put(device, DeviceAllocationState.Available);
             }
         }
-
-        for (IDevice device : visibleDeviceSet) {
-            deviceMap.put(device, "Unavailable");
-        }
-
         return deviceMap;
     }
 
@@ -893,11 +905,44 @@ public class DeviceManager implements IDeviceManager {
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
         displayRows.add(Arrays.asList("Serial", "State", "Product", "Variant", "Build",
                 "Battery"));
-        Map<IDevice, String> deviceMap = fetchDevicesInfo();
+        Map<IDevice, DeviceAllocationState> deviceMap = fetchDevicesInfo();
+        List<Pair<IDevice, DeviceAllocationState>> sortedDeviceList = sortDeviceMap(deviceMap);
 
         IDeviceSelection selector = getDeviceSelectionOptions();
-        addDevicesInfo(selector, displayRows, deviceMap);
+        addDevicesInfo(selector, displayRows, sortedDeviceList);
         new TableFormatter().displayTable(displayRows, stream);
+    }
+
+    /**
+     * Sorts given map by state, then by serial
+     *
+     * @VisibleForTesting
+     */
+    List<Pair<IDevice, DeviceAllocationState>> sortDeviceMap(
+            Map<IDevice, DeviceAllocationState> deviceMap) {
+        List<Pair<IDevice, DeviceAllocationState>> deviceList =
+                new LinkedList<Pair<IDevice, DeviceAllocationState>>();
+        for (Map.Entry<IDevice, DeviceAllocationState> entry : deviceMap.entrySet()) {
+            deviceList.add(new Pair<IDevice, DeviceAllocationState>(entry.getKey(), entry
+                    .getValue()));
+        }
+        Comparator<Pair<IDevice, DeviceAllocationState>> c =
+                new Comparator<Pair<IDevice, DeviceAllocationState>>() {
+
+            @Override
+            public int compare(Pair<IDevice, DeviceAllocationState> o1,
+                    Pair<IDevice, DeviceAllocationState> o2) {
+                if (o1.second != o2.second) {
+                    // sort by state
+                    return o1.second.toString().compareTo(o2.second.toString());
+                }
+                // states are equal, sort by serial
+                return o1.first.getSerialNumber().compareTo(o2.first.getSerialNumber());
+            }
+
+        };
+        Collections.sort(deviceList, c);
+        return deviceList;
     }
 
     /**
@@ -910,13 +955,13 @@ public class DeviceManager implements IDeviceManager {
     }
 
     private void addDevicesInfo(IDeviceSelection selector, List<List<String>> displayRows,
-            Map<IDevice, String> deviceStateMap) {
-        for (Map.Entry<IDevice, String> deviceEntry : deviceStateMap.entrySet()) {
-            IDevice device = deviceEntry.getKey();
-            String deviceState = deviceEntry.getValue();
+            List<Pair<IDevice, DeviceAllocationState>> sortedDeviceList) {
+        for (Pair<IDevice, DeviceAllocationState> devicePair : sortedDeviceList) {
+            IDevice device = devicePair.first;
+            DeviceAllocationState deviceState = devicePair.second;
             displayRows.add(Arrays.asList(
                     device.getSerialNumber(),
-                    deviceState,
+                    deviceState.toString(),
                     getDisplay(selector.getDeviceProductType(device)),
                     getDisplay(selector.getDeviceProductVariant(device)),
                     getDisplay(device.getProperty("ro.build.id")),
@@ -1056,10 +1101,11 @@ public class DeviceManager implements IDeviceManager {
                 if (!mFastbootListeners.isEmpty()) {
                     Set<String> serials = getDevicesOnFastboot();
                     if (serials != null) {
-                        for (String serial: serials) {
+                        for (String serial : serials) {
                             IManagedTestDevice testDevice = mAllocatedDeviceMap.get(serial);
-                            if (testDevice != null &&
-                                    !testDevice.getDeviceState().equals(TestDeviceState.FASTBOOT)) {
+                            if (testDevice != null
+                                    && !testDevice.getDeviceState()
+                                            .equals(TestDeviceState.FASTBOOT)) {
                                 testDevice.setDeviceState(TestDeviceState.FASTBOOT);
                             }
                         }
@@ -1074,8 +1120,8 @@ public class DeviceManager implements IDeviceManager {
                             }
                         }
                         // create a copy of listeners for notification to prevent deadlocks
-                        Collection<IFastbootListener> listenersCopy = new ArrayList<IFastbootListener>(
-                                mFastbootListeners.size());
+                        Collection<IFastbootListener> listenersCopy =
+                                new ArrayList<IFastbootListener>(mFastbootListeners.size());
                         listenersCopy.addAll(mFastbootListeners);
                         for (IFastbootListener listener : listenersCopy) {
                             listener.stateUpdated();

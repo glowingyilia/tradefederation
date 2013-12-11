@@ -27,6 +27,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -227,62 +230,89 @@ public class RemoteManager extends Thread {
     private void processClientOperations(BufferedReader in, PrintWriter out) throws IOException {
         String line = null;
         while ((line = in.readLine()) != null && !mCancel) {
-            boolean result = false;
+            JSONObject result = new JSONObject();
             RemoteOperation rc;
             try {
                 rc = RemoteOperation.createRemoteOpFromString(line);
                 switch (rc.getType()) {
                     case ADD_COMMAND:
-                        result = processAdd((AddCommandOp)rc);
+                        processAdd((AddCommandOp)rc, result);
                         break;
                     case CLOSE:
-                        result = processClose((CloseOp)rc);
+                        processClose((CloseOp)rc, result);
                         break;
                     case ALLOCATE_DEVICE:
-                        result = processAllocate((AllocateDeviceOp)rc);
+                        processAllocate((AllocateDeviceOp)rc, result);
                         break;
                     case FREE_DEVICE:
-                        result = processFree((FreeDeviceOp)rc);
+                        processFree((FreeDeviceOp)rc, result);
                         break;
                     case HANDOVER_CLOSE:
-                        result = processHandoverClose((HandoverCloseOp)rc);
+                        processHandoverClose((HandoverCloseOp)rc, result);
+                        break;
+                    case LIST_DEVICES:
+                        processListDevices((ListDevicesOp)rc, result);
+                        break;
+                    default:
+                        result.put(RemoteOperation.ERROR, "Unrecognized operation");
                         break;
                 }
             } catch (RemoteException e) {
-                CLog.e("Failed to handle remote command", e);
+                CLog.e("Failed to handle remote command");
+                CLog.e(e);
+                addErrorToResult(result, e);
+            } catch (JSONException e) {
+                addErrorToResult(result, e);
             }
             sendAck(result, out);
         }
     }
 
-    private boolean processHandoverClose(HandoverCloseOp c) {
+    private void addErrorToResult(JSONObject result, Exception e) {
+        try {
+            result.put(RemoteOperation.ERROR, "Failed to handle remote command: " +
+                    e.toString());
+        } catch (JSONException e1) {
+            CLog.e("Failed to build json remote response");
+            CLog.e(e1);
+        }
+    }
+
+    private void processListDevices(ListDevicesOp rc, JSONObject result) {
+        try {
+            rc.packResponseIntoJson(mDeviceManager.listAllDevices(), result);
+        } catch (JSONException e) {
+            addErrorToResult(result, e);
+        }
+    }
+
+    private void processHandoverClose(HandoverCloseOp c, JSONObject result) throws JSONException {
         int port = c.mPort;
         CLog.logAndDisplay(LogLevel.INFO, "Handling Handover Close OP with port %d", port);
-        boolean success = false;
-        if (port > 0) {
-            success = mScheduler.handoverShutdown(port);
+        if (!mScheduler.handoverShutdown(port)) {
+            result.put(RemoteOperation.ERROR,
+                    "failed to perform handover shutdown with port " + port);
         }
-        return success;
     }
 
 
-    private boolean processAllocate(AllocateDeviceOp c) {
+    private void processAllocate(AllocateDeviceOp c, JSONObject result) throws JSONException {
         ITestDevice allocatedDevice = mDeviceManager.forceAllocateDevice(c.mDeviceSerial);
         if (allocatedDevice != null) {
             CLog.logAndDisplay(LogLevel.INFO,
                     "Allocating device %s that is still in use by remote tradefed",
                             c.mDeviceSerial);
             DeviceTracker.getInstance().allocateDevice(allocatedDevice);
-            return true;
+        } else {
+            String msg = "Failed to allocate device " + c.mDeviceSerial;
+            CLog.e(msg);
+            result.put(RemoteOperation.ERROR, msg);
         }
-        CLog.e("Failed to allocate device %s", c.mDeviceSerial);
-        return false;
     }
 
-    private boolean processFree(FreeDeviceOp c) {
+    private void processFree(FreeDeviceOp c, JSONObject result) throws JSONException {
         if (FreeDeviceOp.ALL_DEVICES.equals(c.mDeviceSerial)) {
             freeAllDevices();
-            return true;
         } else {
             ITestDevice d = DeviceTracker.getInstance().freeDevice(c.mDeviceSerial);
             if (d != null) {
@@ -290,29 +320,30 @@ public class RemoteManager extends Thread {
                         "Freeing device %s no longer in use by remote tradefed",
                                 c.mDeviceSerial);
                 mDeviceManager.freeDevice(d, FreeDeviceState.AVAILABLE);
-                return true;
             } else {
-                CLog.w("Could not find device to free %s", c.mDeviceSerial);
+                String msg = "Could not find device to free " + c.mDeviceSerial;
+                CLog.w(msg);
+                result.put(RemoteOperation.ERROR, msg);
             }
         }
-        return false;
     }
 
-    boolean processAdd(AddCommandOp c) {
+    private void processAdd(AddCommandOp c, JSONObject result) throws JSONException {
         CLog.logAndDisplay(LogLevel.INFO, "Adding command '%s'", ArrayUtil.join(" ",
-                c.mCommandArgs));
+                (Object[])c.mCommandArgs));
         try {
-            return mScheduler.addCommand(c.mCommandArgs, c.mTotalTime);
+            if (!mScheduler.addCommand(c.mCommandArgs, c.mTotalTime)) {
+                result.put(RemoteOperation.ERROR, "Failed to add command");
+            }
         } catch (ConfigurationException e) {
             CLog.e("Failed to add command");
             CLog.e(e);
-            return false;
+            result.put(RemoteOperation.ERROR, "Config error: " + e.toString());
         }
     }
 
-    private boolean processClose(CloseOp rc) {
+    private void processClose(CloseOp rc, JSONObject result) {
         cancel();
-        return true;
     }
 
     private void freeAllDevices() {
@@ -324,8 +355,8 @@ public class RemoteManager extends Thread {
         }
     }
 
-    private void sendAck(boolean result, PrintWriter out) {
-        out.println(result);
+    private void sendAck(JSONObject result, PrintWriter out) {
+        out.println(result.toString());
     }
 
     /**

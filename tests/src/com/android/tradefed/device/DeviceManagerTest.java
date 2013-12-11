@@ -18,13 +18,14 @@ package com.android.tradefed.device;
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
-import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.command.remote.DeviceAllocationState;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.Pair;
 
 import junit.framework.TestCase;
 
@@ -33,6 +34,9 @@ import org.easymock.EasyMock;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Unit tests for {@link DeviceManager}.
@@ -894,6 +898,29 @@ public class DeviceManagerTest extends TestCase {
         // verify device is not in allocated list
         assertFalse(manager.getAllocatedDevices().contains(ipAndPort));
         verifyMocks();
+    }
+
+    /**
+     * Basic test for {@link DeviceManager#sortDeviceMap(java.util.Map)}
+     */
+    public void testSortDeviceMap() {
+        Map<IDevice, DeviceAllocationState> deviceMap = new HashMap<IDevice, DeviceAllocationState>();
+        IDevice availDevice1 = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(availDevice1.getSerialNumber()).andStubReturn("aaa");
+        IDevice availDevice2 = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(availDevice2.getSerialNumber()).andStubReturn("bbb");
+        IDevice allocatedDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(allocatedDevice.getSerialNumber()).andStubReturn("ccc");
+        deviceMap.put(availDevice1, DeviceAllocationState.Available);
+        deviceMap.put(availDevice2, DeviceAllocationState.Available);
+        deviceMap.put(allocatedDevice, DeviceAllocationState.Allocated);
+
+        EasyMock.replay(availDevice1, availDevice2, allocatedDevice);
+        List<Pair<IDevice, DeviceAllocationState>> sortedList = createDeviceManagerNoInit()
+                .sortDeviceMap(deviceMap);
+        assertEquals(allocatedDevice, sortedList.get(0).first);
+        assertEquals(availDevice1, sortedList.get(1).first);
+        assertEquals(availDevice2, sortedList.get(2).first);
     }
 
     /**

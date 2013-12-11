@@ -16,7 +16,6 @@
 package com.android.tradefed.command.remote;
 
 import com.android.tradefed.command.ICommandScheduler;
-import com.android.tradefed.command.remote.RemoteManager;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
@@ -24,6 +23,9 @@ import com.android.tradefed.device.ITestDevice;
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Unit tests for {@link RemoteManager}.
@@ -145,4 +147,27 @@ public class RemoteManagerTest extends TestCase {
         EasyMock.verify(mMockDeviceManager);
     }
 
+    /**
+     * An integration test for {@link ListDevicesOp}
+     */
+    public void testListDevices() throws Exception {
+        List<DeviceDescriptor> deviceList =
+                new ArrayList<DeviceDescriptor>(2);
+        deviceList.add(new DeviceDescriptor("serial", DeviceAllocationState.Available));
+        deviceList.add(new DeviceDescriptor("serial2", DeviceAllocationState.Allocated));
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(deviceList);
+        EasyMock.replay(mMockDeviceManager);
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int port = mRemoteMgr.getPort();
+        assertTrue(port != -1);
+        mRemoteClient = RemoteClient.connect(port);
+        List<DeviceDescriptor> returnedDevices = mRemoteClient.sendListDevices();
+        assertEquals(2, returnedDevices.size());
+        assertEquals("serial", returnedDevices.get(0).getSerial());
+        assertEquals(DeviceAllocationState.Available, returnedDevices.get(0).getState());
+        assertEquals("serial2", returnedDevices.get(1).getSerial());
+        assertEquals(DeviceAllocationState.Allocated, returnedDevices.get(1).getState());
+        EasyMock.verify(mMockDeviceManager);
+    }
 }

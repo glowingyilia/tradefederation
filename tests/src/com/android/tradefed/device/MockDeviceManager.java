@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue.IMatcher;
 import com.android.tradefed.util.IRunUtil;
@@ -261,5 +262,13 @@ public class MockDeviceManager implements IDeviceManager {
     @Override
     public void displayDevicesInfo(PrintWriter stream) {
         // ignore
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<DeviceDescriptor> listAllDevices() {
+        return null;
     }
 }

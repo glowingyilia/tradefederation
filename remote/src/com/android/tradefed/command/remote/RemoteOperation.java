@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.command.remote;
 
 import com.android.ddmlib.Log;
@@ -25,8 +26,14 @@ import org.json.JSONObject;
  */
 abstract class RemoteOperation {
     private static final String TYPE = "type";
+
     private static final String VERSION = "version";
-    static final int CURRENT_PROTOCOL_VERSION = 2;
+
+    /** represents json key for error message */
+    public static final String ERROR = "error";
+
+    static final int CURRENT_PROTOCOL_VERSION = 3;
+
     private static final String TAG = RemoteOperation.class.getSimpleName();
 
     @SuppressWarnings("serial")
@@ -44,7 +51,7 @@ abstract class RemoteOperation {
      * Represents all types of remote operations that can be performed
      */
     enum OperationType {
-        ALLOCATE_DEVICE, FREE_DEVICE, CLOSE, ADD_COMMAND, HANDOVER_CLOSE
+        ALLOCATE_DEVICE, FREE_DEVICE, CLOSE, ADD_COMMAND, HANDOVER_CLOSE, LIST_DEVICES,
     }
 
     /**
@@ -81,6 +88,9 @@ abstract class RemoteOperation {
                 case HANDOVER_CLOSE:
                     rc = new HandoverCloseOp();
                     break;
+                case LIST_DEVICES:
+                    rc = new ListDevicesOp();
+                    break;
                 default:
                     throw new RemoteException(String.format("unknown remote command '%s'", data));
 
@@ -91,6 +101,8 @@ abstract class RemoteOperation {
             throw new RemoteException(e);
         }
     }
+
+    private String mErrorMsg = null;
 
     protected abstract OperationType getType();
 
@@ -104,26 +116,64 @@ abstract class RemoteOperation {
 
     /**
      * Return the RemoteCommand data in its wire protocol format
+     *
      * @return
      */
-     String pack() throws RemoteException {
-         JSONObject j = new JSONObject();
-         try {
-             j.put(VERSION, CURRENT_PROTOCOL_VERSION);
-             j.put(TYPE, getType().toString());
-             packIntoJson(j);
-         } catch (JSONException e) {
-             Log.e(TAG, "Failed to serialize RemoteOperation");
-             Log.e(TAG,  e);
-         }
-         return j.toString();
-     }
+    String pack() throws RemoteException {
+        JSONObject j = new JSONObject();
+        try {
+            j.put(VERSION, CURRENT_PROTOCOL_VERSION);
+            j.put(TYPE, getType().toString());
+            packIntoJson(j);
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to serialize RemoteOperation");
+            Log.e(TAG, e);
+        }
+        return j.toString();
+    }
 
-     /**
-      * Callback to add subclass specific data to the JSON object
-      * @param j
-      * @throws JSONException
-      */
+    /**
+     * Callback to add subclass specific data to the JSON object
+     *
+     * @param j
+     * @throws JSONException
+     */
     protected abstract void packIntoJson(JSONObject j) throws JSONException;
 
+    /**
+     * Optional callback to parse additional response data from the JSON object
+     *
+     * @param j
+     * @throws JSONException
+     */
+    protected void unpackResponseFromJson(JSONObject j) throws JSONException {
+    }
+
+    /**
+     * Parse out the remote op response data from string
+     *
+     * @param response
+     * @throws JSONException
+     */
+    void unpackResponseFromString(String response) throws JSONException {
+        JSONObject jsonData = new JSONObject(response);
+        if (jsonData.has(ERROR)) {
+            mErrorMsg = jsonData.getString(ERROR);
+        }
+        unpackResponseFromJson(jsonData);
+    }
+
+    /**
+     * Returns true if command failed.
+     */
+    public boolean hasError() {
+        return mErrorMsg != null;
+    };
+
+    /**
+     * Returns a detailed error message when {@link #hasError()} is true.
+     */
+    public String getErrorMsg() {
+        return mErrorMsg;
+    }
 }
