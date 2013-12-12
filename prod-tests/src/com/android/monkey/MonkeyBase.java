@@ -19,7 +19,9 @@ package com.android.monkey;
 import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.loganalysis.item.BugreportItem;
 import com.android.loganalysis.item.MonkeyLogItem;
+import com.android.loganalysis.parser.BugreportParser;
 import com.android.loganalysis.parser.MonkeyLogParser;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -53,6 +55,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Runner for stress tests which use the monkey command.
@@ -80,8 +83,8 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
      * Helper to run a monkey command with an absolute timeout.
      * <p>
      * This is used so that the command can be stopped after a set timeout, since the timeout that
-     * {@link ITestDevice#executeShellCommand(String, IShellOutputReceiver, int, int)} takes applies
-     * to the time between output, not the overall time of the command.
+     * {@link ITestDevice#executeShellCommand(String, IShellOutputReceiver, long, TimeUnit, int)}
+     * takes applies to the time between output, not the overall time of the command.
      * </p>
      */
     private class CommandHelper {
@@ -194,6 +197,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
     private ITestDevice mTestDevice = null;
     private MonkeyLogItem mMonkeyLog = null;
+    private BugreportItem mBugreport = null;
 
     /**
      * {@inheritDoc}
@@ -309,10 +313,15 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     /**
      * Capture a bugreport and send it to a listener.
      */
-    protected void takeBugreport(ITestInvocationListener listener, String bugreportName) {
+    protected BugreportItem takeBugreport(ITestInvocationListener listener, String bugreportName) {
         InputStreamSource bugreport = mTestDevice.getBugreport();
         try {
             listener.testLog(bugreportName, LogDataType.BUGREPORT, bugreport);
+            return new BugreportParser().parse(new BufferedReader(new InputStreamReader(
+                    bugreport.createInputStream())));
+        } catch (IOException e) {
+            CLog.e("Could not parse bugreport");
+            return null;
         } finally {
             bugreport.cancel();
         }
@@ -517,6 +526,8 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
         }
 
         Assert.assertNotNull("Monkey log is null", mMonkeyLog);
+        Assert.assertNotNull("Bugreport is null", mBugreport);
+        Assert.assertNotNull("Bugreport is empty", mBugreport.getTime());
 
         // If there are no activities, retrying the test won't matter.
         if (mMonkeyLog.getNoActivities()) {
