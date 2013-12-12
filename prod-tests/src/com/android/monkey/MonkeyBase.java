@@ -285,7 +285,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
             takeScreenshot(listener, "screenshot");
 
-            takeBugreport(listener, BUGREPORT_NAME);
+            mBugreport = takeBugreport(listener, BUGREPORT_NAME);
             // FIXME: Remove this once traces.txt is no longer needed.
             takeTraces(listener);
             mMonkeyLog = createMonkeyLog(listener, MONKEY_LOG_NAME, outputBuilder.toString());
