@@ -15,14 +15,12 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.log.LogUtil.CLog;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-
-import com.android.tradefed.config.OptionClass;
-
-import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.DeviceUnresponsiveException;
-import com.android.tradefed.log.LogUtil.CLog;
 
 
 

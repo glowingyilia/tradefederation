@@ -555,6 +555,7 @@ public class StubTestDevice implements IManagedTestDevice {
     /**
      * {@inheritDoc}
      */
+    @Override
     public String getBuildAlias() {
         return getBuildId();
     }

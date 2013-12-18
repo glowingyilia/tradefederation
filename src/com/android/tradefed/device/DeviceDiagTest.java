@@ -16,11 +16,14 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.command.remote.DeviceAllocationState;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.util.RunUtil;
 
 import junit.framework.TestCase;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -37,13 +40,12 @@ public class DeviceDiagTest extends TestCase {
      * Queries the {@link DeviceManager} to verify all visible devices are available for testing.
      */
     public void testAllDevicesAvailable() {
-        Collection<String> unavailDevices =
-            getDeviceManager().getUnavailableDevices();
+
+        Collection<String> unavailDevices = getUnavailableDevices();
         for (int i=0; i < 5 && unavailDevices.size() > 0; i++) {
             Log.i(LOG_TAG, "Unavailable devices detected, sleeping and polling");
             RunUtil.getDefault().sleep(1*1000);
-            unavailDevices =
-                getDeviceManager().getUnavailableDevices();
+            unavailDevices = getUnavailableDevices();
         }
         for (String device : unavailDevices) {
             System.out.println(String.format(
@@ -56,5 +58,15 @@ public class DeviceDiagTest extends TestCase {
 
     private IDeviceManager getDeviceManager() {
         return GlobalConfiguration.getDeviceManagerInstance();
+    }
+
+    private Collection<String> getUnavailableDevices() {
+        Collection<String> unavailDevices = new ArrayList<String>();
+        for (DeviceDescriptor deviceDesc : getDeviceManager().listAllDevices()) {
+            if (deviceDesc.getState() == DeviceAllocationState.Unavailable) {
+                unavailDevices.add(deviceDesc.getSerial());
+            }
+        }
+        return unavailDevices;
     }
 }

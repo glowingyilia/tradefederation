@@ -19,6 +19,8 @@ package com.android.tradefed.command;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.command.remote.DeviceAllocationState;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.command.remote.RemoteClient;
 import com.android.tradefed.command.remote.RemoteManager;
 import com.android.tradefed.config.ConfigurationException;
@@ -26,7 +28,6 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.IDeviceManager;
@@ -614,13 +615,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     private void addCommandForAllDevices(long totalExecTime, String[] args)
             throws ConfigurationException {
-        Set<String> devices = new HashSet<String>();
-        devices.addAll(getDeviceManager().getAvailableDevices());
-        devices.addAll(getDeviceManager().getAllocatedDevices());
-        // schedule for for unavailable devices, just in case they come back online
-        devices.addAll(getDeviceManager().getUnavailableDevices());
+        List<DeviceDescriptor> deviceDescs = getDeviceManager().listAllDevices();
 
-        for (String device : devices) {
+        for (DeviceDescriptor deviceDesc : deviceDescs) {
+            String device = deviceDesc.getSerial();
             String[] argsWithDevice = Arrays.copyOf(args, args.length + 2);
             argsWithDevice[argsWithDevice.length - 2] = "-s";
             argsWithDevice[argsWithDevice.length - 1] = device;
@@ -842,12 +840,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             mRemoteClient = RemoteClient.connect(handoverPort);
             CLog.d("Connected to remote manager at %d", handoverPort);
             // inform remote manager of the devices we are still using
-            for (String deviceInUse : getDeviceManager().getAllocatedDevices()) {
-                if (!mRemoteClient.sendAllocateDevice(deviceInUse)) {
-                    CLog.e("Failed to send command to remote manager");
-                    return false;
+            for (DeviceDescriptor deviceDesc : getDeviceManager().listAllDevices()) {
+                if (deviceDesc.getState() == DeviceAllocationState.Allocated) {
+                    mRemoteClient.sendAllocateDevice(deviceDesc.getSerial());
+                    CLog.d("Sent filter device %s command", deviceDesc.getSerial());
                 }
-                CLog.d("Sent filter device %s command", deviceInUse);
             }
             // now send command info
             List<CommandTracker> cmdCopy = getCommandTrackers();
@@ -1110,17 +1107,5 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                     "Failed auto handover with remote manager at port %d", port);
         }
         return false;
-    }
-
-    /**
-     * Stops the remote manager
-     */
-    private void stopRemoteManager() {
-        if (mRemoteManager == null) {
-            CLog.logAndDisplay(LogLevel.INFO, "A remote manager is not running");
-            return;
-        }
-        mRemoteManager.cancel();
-        mRemoteManager = null;
     }
 }

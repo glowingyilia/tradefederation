@@ -17,8 +17,6 @@ package com.android.tradefed.command;
 
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.GlobalConfiguration;
-import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
@@ -26,7 +24,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;

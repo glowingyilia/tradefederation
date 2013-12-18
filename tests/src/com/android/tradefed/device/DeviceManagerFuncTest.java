@@ -17,7 +17,6 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.config.GlobalConfiguration;
-import com.android.tradefed.device.IDeviceManager.FreeDeviceState;
 import com.android.tradefed.testtype.DeviceTestCase;
 
 /**

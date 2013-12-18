@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Vector;
 
@@ -46,7 +45,6 @@ public class GTestResultParserTest extends TestCase {
     private static final String GTEST_OUTPUT_FILE_5 = "gtest_output5.txt";
     private static final String GTEST_OUTPUT_FILE_6 = "gtest_output6.txt";
     private static final String LOG_TAG = "GTestResultParserTest";
-    private static final Map<String, String> EMPTY_MAP = Collections.emptyMap();
 
     /**
      * Helper to read a file from the res/testtype directory and return its contents as a String[]
@@ -121,6 +119,7 @@ public class GTestResultParserTest extends TestCase {
     /**
      * Tests the parser for a simple test run output with 0 tests and no times.
      */
+    @SuppressWarnings("unchecked")
     public void testParseNoTests() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_3);
         ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);

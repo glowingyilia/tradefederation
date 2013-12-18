@@ -39,7 +39,9 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
     /**
      * TEST chapter names
      */
+    @SuppressWarnings("unused")
     private static final String METAL = "Metal";
+    @SuppressWarnings("unused")
     private static final String HTML5 = "HTML5";
     private static final String ALL = "ALL";
 
@@ -80,7 +82,6 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         Map<String, String> metrics = new HashMap<String, String>();
         String errMsg = null;
 
-        int attempts = 0;
         boolean isTimedOut = false;
         boolean isRunningBenchmark = false;
         boolean isResultGenerated = false;

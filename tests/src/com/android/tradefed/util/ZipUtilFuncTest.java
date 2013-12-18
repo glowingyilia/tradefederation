@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.util;
 
-import com.android.tradefed.util.ZipUtil;
-
 import junit.framework.TestCase;
 
 import java.io.File;
@@ -161,12 +159,6 @@ public class ZipUtilFuncTest extends TestCase {
 
     private File createTempFile(String prefix, String suffix) throws IOException {
         File tempFile = FileUtil.createTempFile(prefix, suffix);
-        mTempFiles.add(tempFile);
-        return tempFile;
-    }
-
-    private File createTempFile(String prefix, String suffix, File parentDir) throws IOException {
-        File tempFile = FileUtil.createTempFile(prefix, suffix, parentDir);
         mTempFiles.add(tempFile);
         return tempFile;
     }

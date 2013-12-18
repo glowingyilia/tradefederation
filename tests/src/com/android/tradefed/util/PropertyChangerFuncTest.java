@@ -36,6 +36,7 @@ public class PropertyChangerFuncTest extends TestCase {
     private File mTmpOutput;
     private Map<String, String> mOriginal, mChanges, mExpected;
 
+    @Override
     protected void setUp() throws Exception {
         super.setUp();
         mTmpInput = FileUtil.createTempFile("prop_test_in", ".prop");
