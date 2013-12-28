@@ -35,6 +35,10 @@ import java.util.List;
  */
 public class RemoteClient implements IRemoteClient {
 
+    // choose an arbitrary default port that according to the interweb is not used by another
+    // popular program
+    public static final int DEFAULT_PORT = 30103;
+
     private static final String TAG = RemoteClient.class.getSimpleName();
     private final Socket mSocket;
     private final PrintWriter mWriter;
@@ -100,6 +104,16 @@ public class RemoteClient implements IRemoteClient {
         } catch (IOException e) {
             throw new RemoteException(e);
         }
+    }
+
+    /**
+     * Helper method to create a {@link RemoteClient} connected to default port
+     *
+     * @return the {@link RemoteClient}
+     * @throws RemoteException if failed to connect
+     */
+    public static IRemoteClient connect() throws RemoteException {
+        return connect(DEFAULT_PORT);
     }
 
     /**

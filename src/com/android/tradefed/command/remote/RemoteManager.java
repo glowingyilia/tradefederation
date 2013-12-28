@@ -61,10 +61,6 @@ public class RemoteManager extends Thread {
     private final IDeviceManager mDeviceManager;
     private final ICommandScheduler mScheduler;
 
-    // choose an arbitrary default port that according to the interweb is not used by another
-    // popular program
-    public static final int DEFAULT_PORT = 30103;
-
     @Option(name = "start-remote-mgr",
             description = "Whether or not to start a remote manager on boot.")
     private static boolean mStartRemoteManagerOnBoot = false;
@@ -76,7 +72,7 @@ public class RemoteManager extends Thread {
 
     @Option(name = "remote-mgr-port",
             description = "The remote manager port to use.")
-    private static int mRemoteManagerPort = DEFAULT_PORT;
+    private static int mRemoteManagerPort = RemoteClient.DEFAULT_PORT;
 
     @Option(name = "remote-mgr-socket-timeout-ms",
             description = "Timeout for when accepting connections with the remote manager socket.")
@@ -306,7 +302,7 @@ public class RemoteManager extends Thread {
         ITestDevice allocatedDevice = mDeviceManager.forceAllocateDevice(c.getDeviceSerial());
         if (allocatedDevice != null) {
             CLog.logAndDisplay(LogLevel.INFO,
-                    "Allocating device %s that is still in use by remote tradefed",
+                    "Remotely allocating device %s",
                             c.getDeviceSerial());
             DeviceTracker.getInstance().allocateDevice(allocatedDevice);
         } else {
@@ -323,7 +319,7 @@ public class RemoteManager extends Thread {
             ITestDevice d = DeviceTracker.getInstance().freeDevice(c.getDeviceSerial());
             if (d != null) {
                 CLog.logAndDisplay(LogLevel.INFO,
-                        "Freeing device %s no longer in use by remote tradefed",
+                        "Remotely freeing device %s",
                                 c.getDeviceSerial());
                 mDeviceManager.freeDevice(d, FreeDeviceState.AVAILABLE);
             } else {
