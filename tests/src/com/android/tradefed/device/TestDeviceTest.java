@@ -547,6 +547,25 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Unit test for {@link TestDevice#getExternalStoreFreeSpace()}.
+     * <p/>
+     * Verify behavior when first 'df' attempt returns empty output
+     */
+    public void testGetExternalStoreFreeSpace_emptyOutput() throws Exception {
+        final String mntPoint = "/mnt/sdcard";
+        final String expectedCmd = "df " + mntPoint;
+        EasyMock.expect(mMockMonitor.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE)).andReturn(
+                mntPoint);
+        // expect shell command to be called, and return the empty df output
+        injectShellResponse(expectedCmd, "");
+        final String dfOutput =
+                "/mnt/sdcard: 3864064K total, 1282880K used, 2581184K available (block size 32768)";
+        injectShellResponse(expectedCmd, dfOutput);
+        EasyMock.replay(mMockIDevice, mMockMonitor);
+        assertEquals(2581184, mTestDevice.getExternalStoreFreeSpace());
+    }
+
+    /**
      * Helper method to verify the {@link TestDevice#getExternalStoreFreeSpace()} method under
      * different conditions.
      *

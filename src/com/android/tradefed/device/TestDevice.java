@@ -808,7 +808,7 @@ class TestDevice implements IManagedTestDevice {
     public long getExternalStoreFreeSpace() throws DeviceNotAvailableException {
         CLog.i("Checking free space for %s", getSerialNumber());
         String externalStorePath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        String output = executeShellCommand(String.format("df %s", externalStorePath));
+        String output = getDfOutput(externalStorePath);
         Long available = parseFreeSpaceFromAvailable(output);
         if (available != null) {
             return available;
@@ -820,6 +820,25 @@ class TestDevice implements IManagedTestDevice {
 
         CLog.e("free space command output \"%s\" did not match expected patterns", output);
         return 0;
+    }
+
+    /**
+     * Run the 'df' shell command and return output, making multiple attempts if necessary.
+     *
+     * @param externalStorePath the path to check
+     * @return the output from 'shell df path'
+     * @throws DeviceNotAvailableException
+     */
+    private String getDfOutput(String externalStorePath) throws DeviceNotAvailableException {
+        for (int i=0; i < MAX_RETRY_ATTEMPTS; i++) {
+            String output = executeShellCommand(String.format("df %s", externalStorePath));
+            if (output.trim().length() > 0) {
+                return output;
+            }
+        }
+        throw new DeviceUnresponsiveException(String.format(
+                "Device %s not returning output from df command after %d attempts",
+                getSerialNumber(), MAX_RETRY_ATTEMPTS));
     }
 
     /**
