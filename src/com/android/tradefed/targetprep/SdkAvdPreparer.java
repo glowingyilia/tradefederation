@@ -28,6 +28,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -180,6 +181,8 @@ public class SdkAvdPreparer implements ITargetPreparer {
      * @throws TargetSetupError if could not get targets
      */
     private String[] getSdkTargets(ISdkBuildInfo sdkBuild) throws TargetSetupError {
+        // Need to set the ANDROID_SWT environment variable needed by android tool.
+        mRunUtil.setEnvVariable("ANDROID_SWT", getSWTDirPath(sdkBuild));
         CommandResult result = mRunUtil.runTimedCmd(ANDROID_TIMEOUT_MS,
                 sdkBuild.getAndroidToolPath(), "list", "targets", "--compact");
         if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
@@ -194,6 +197,10 @@ public class SdkAvdPreparer implements ITargetPreparer {
                     sdkBuild.getSdkDir().getAbsolutePath()));
         }
         return targets;
+    }
+
+    private String getSWTDirPath(ISdkBuildInfo sdkBuild) {
+        return FileUtil.getPath(sdkBuild.getSdkDir().getAbsolutePath(), "tools", "lib");
     }
 
     /**
