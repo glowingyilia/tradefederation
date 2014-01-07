@@ -55,6 +55,7 @@ public class SdkAvdPreparerTest extends TestCase {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockIDevice = EasyMock.createMock(IDevice.class);
 
+        mMockRunUtil.setEnvVariable(EasyMock.eq("ANDROID_SWT"), (String)EasyMock.anyObject());
         EasyMock.expect(mMockBuildInfo.getAndroidToolPath()).andStubReturn(ANDROID_TOOL);
         EasyMock.expect(mMockBuildInfo.getEmulatorToolPath()).andStubReturn(EMULATOR_TOOL);
         EasyMock.expect(mMockBuildInfo.getSdkDir()).andStubReturn(new File("sdk"));
