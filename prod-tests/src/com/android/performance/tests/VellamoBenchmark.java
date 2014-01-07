@@ -36,15 +36,6 @@ import java.util.Map;
  */
 public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
 
-    /**
-     * TEST chapter names
-     */
-    @SuppressWarnings("unused")
-    private static final String METAL = "Metal";
-    @SuppressWarnings("unused")
-    private static final String HTML5 = "HTML5";
-    private static final String ALL = "ALL";
-
     private static final String LOGTAG = "VAUTOMATIC";
     private static final String RUN_KEY = "vellamobenchmark";
     private static final long TIMEOUT_MS = 30 * 60 * 1000;
@@ -91,11 +82,13 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         isTimedOut = false;
 
         long benchmarkStartTime = System.currentTimeMillis();
-        // start the vellamo benchmark app and select an chapter (html5 or
-        // metal)
+        // start the vellamo benchmark app and run all the tests
+        // the documentation and binary for the Vellamo 2.0.x for Automation APK
+        // can be found here:
+        // https://b.corp.google.com/issue?id=5035578
         CLog.i("Starting Benchmark");
         device.executeShellCommand("am start -a com.quicinc.vellamo.AUTOMATIC"
-                + " -n com.quicinc.vellamo/.VellamoActivity -e c " + ALL);
+                + " -n com.quicinc.vellamo/.VellamoActivity");
         isRunningBenchmark = true;
         String line;
         while (isRunningBenchmark && !isResultGenerated && !isTimedOut) {
