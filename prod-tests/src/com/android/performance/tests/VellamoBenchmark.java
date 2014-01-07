@@ -115,10 +115,13 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
                         continue;
                     }
                     line = line.substring(line.indexOf(LOGTAG) + LOGTAG.length());
-                    // if we see </automatic>, we know the test is over
+                    // we need to see if the score is generated since there are some
+                    // cases the result with </automatic> tag is generated but no score is included
                     if (line.contains("</automatic>")) {
-                        isResultGenerated = true;
-                        break;
+                        if(hasScore){
+                            isResultGenerated = true;
+                            break;
+                        }
                     }
                     // get the score out
                     if (line.contains(" c: ")) {
