@@ -77,7 +77,7 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         boolean isRunningBenchmark = false;
         boolean isResultGenerated = false;
         boolean hasScore = false;
-
+        double sumScore = 0;
         device.clearErrorDialogs();
         isTimedOut = false;
 
@@ -120,7 +120,7 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
                     if (line.contains(" c: ")) {
                         hasScore = true;
                         String[] results = line.split(" c: ")[1].split(",");
-                        metrics.put(results[0], results[1]);
+                        sumScore += Double.parseDouble(results[1]);
                         CLog.i("%s :: %s", results[0], results[1]);
                     }
                 }
@@ -142,6 +142,8 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
             listener.testFailed(TestFailure.FAILURE, testId, errMsg);
         }
         long durationMs = System.currentTimeMillis() - testStartTime;
+        metrics.put("total", Double.toString(sumScore));
+        CLog.i("total :: %f", sumScore);
         listener.testEnded(testId, metrics);
         listener.testRunEnded(durationMs, metrics);
     }
