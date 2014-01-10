@@ -27,11 +27,11 @@ import com.android.tradefed.device.ITestDevice;
  */
 public class DeviceBuildDescriptor {
 
-    private static final String DEVICE_BUILD_ID = "device_build_id";
-    private static final String DEVICE_BUILD_ALIAS = "device_build_alias";
-    private static final String DEVICE_BUILD_FLAVOR = "device_build_flavor";
-    private static final String DEVICE_DESC = "device_description";
-    private static final String DEVICE_PRODUCT = "device_product";
+    public static final String DEVICE_BUILD_ID = "device_build_id";
+    public static final String DEVICE_BUILD_ALIAS = "device_build_alias";
+    public static final String DEVICE_BUILD_FLAVOR = "device_build_flavor";
+    public static final String DEVICE_DESC = "device_description";
+    public static final String DEVICE_PRODUCT = "device_product";
 
     private final IBuildInfo mBuild;
 

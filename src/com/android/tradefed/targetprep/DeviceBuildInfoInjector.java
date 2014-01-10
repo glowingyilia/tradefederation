@@ -17,6 +17,8 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.DeviceBuildDescriptor;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
@@ -27,7 +29,20 @@ import com.android.tradefed.device.ITestDevice;
  * Intended to be used for "unbundled" build types that want test reporters to use metadata
  * about what device platform test was run on.
  */
+@OptionClass(alias = "device-build-injector")
 public class DeviceBuildInfoInjector implements ITargetPreparer {
+
+    @Option(name = "override-device-build-id", description =
+            "the device buid id to inject.")
+    private String mOverrideDeviceBuildId = null;
+
+    @Option(name = "override-device-build-alias", description =
+            "the device buid alias to inject.")
+    private String mOverrideDeviceBuildAlias = null;
+
+    @Option(name = "override-device-build-flavor", description =
+            "the device build flavor to inject.")
+    private String mOverrideDeviceBuildFlavor = null;
 
     /**
      * {@inheritDoc}
@@ -35,6 +50,19 @@ public class DeviceBuildInfoInjector implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
+        DeviceBuildDescriptor.injectDeviceAttributes(device, buildInfo);
+        if (mOverrideDeviceBuildId != null) {
+            buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_ID,
+                    mOverrideDeviceBuildId);
+        }
+        if (mOverrideDeviceBuildAlias != null) {
+            buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_ALIAS,
+                    mOverrideDeviceBuildAlias);
+        }
+        if (mOverrideDeviceBuildFlavor != null){
+            buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_FLAVOR,
+                    mOverrideDeviceBuildFlavor);
+        }
         DeviceBuildDescriptor.injectDeviceAttributes(device, buildInfo);
     }
 }
