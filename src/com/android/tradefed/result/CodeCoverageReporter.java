@@ -212,14 +212,16 @@ public class CodeCoverageReporter extends StubTestInvocationListener {
     private File generateReportLocation(String rootPath) {
         String branchName = mBuildInfo.getBuildBranch();
         String buildId = mBuildInfo.getBuildId();
+        String testTag = mBuildInfo.getTestTag();
         File branchPath = new File(rootPath, branchName);
         File buildIdPath = new File(branchPath, buildId);
-        FileUtil.mkdirsRWX(buildIdPath);
+        File testTagPath = new File(buildIdPath, testTag);
+        FileUtil.mkdirsRWX(testTagPath);
         if (mLogRetentionDays != null) {
             RetentionFileSaver f = new RetentionFileSaver();
-            f.writeRetentionFile(buildIdPath, mLogRetentionDays);
+            f.writeRetentionFile(testTagPath, mLogRetentionDays);
         }
-        return buildIdPath;
+        return testTagPath;
     }
 
     private void generateCoverageReport(List<File> coverageFileList, File metaFile) {
