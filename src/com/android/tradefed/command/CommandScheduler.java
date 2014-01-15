@@ -21,6 +21,7 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.remote.DeviceAllocationState;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.command.remote.IRemoteClient;
 import com.android.tradefed.command.remote.RemoteClient;
 import com.android.tradefed.command.remote.RemoteManager;
 import com.android.tradefed.config.ConfigurationException;
@@ -83,7 +84,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     /** timer for scheduling commands to be re-queued for execution */
     private ScheduledThreadPoolExecutor mCommandTimer;
 
-    private RemoteClient mRemoteClient = null;
+    private IRemoteClient mRemoteClient = null;
     private RemoteManager mRemoteManager = null;
 
     private CommandFileWatcher mCommandFileWatcher = null;

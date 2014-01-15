@@ -34,7 +34,7 @@ import java.util.List;
  * <p/>
  * Currently uses JSON-encoded data sent via sockets.
  */
-public class RemoteClient {
+public class RemoteClient implements IRemoteClient {
 
     private static final String TAG = RemoteClient.class.getSimpleName();
     private final Socket mSocket;
@@ -106,62 +106,68 @@ public class RemoteClient {
      * @throws UnknownHostException
      * @throws IOException
      */
-    public static RemoteClient connect(int port) throws UnknownHostException, IOException {
+    public static IRemoteClient connect(int port) throws UnknownHostException, IOException {
         return new RemoteClient(port);
     }
 
     /**
-     * Send a 'allocate device' command
+     * Helper method to create a {@link RemoteClient} connected to given host and port
      *
-     * @param serial
+     * @param hostname the host name
+     * @param port the tcp/ip port
+     * @return the {@link RemoteClient}
+     * @throws UnknownHostException
      * @throws IOException
      */
+    public static IRemoteClient connect(String hostname, int port)
+        throws UnknownHostException, IOException {
+        return new RemoteClient(hostname, port);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean sendAllocateDevice(String serial) throws IOException {
         return sendCommand(new AllocateDeviceOp(serial));
     }
 
     /**
-     * Send a 'free previously allocated device' command
-     * @param serial
-     * @throws IOException
+     * {@inheritDoc}
      */
+    @Override
     public boolean sendFreeDevice(String serial) throws IOException {
         return sendCommand(new FreeDeviceOp(serial));
     }
 
     /**
-     * Send a 'add command' command.
-     *
-     * @param commandArgs
+     * {@inheritDoc}
      */
+    @Override
     public boolean sendAddCommand(long totalTime, String... commandArgs) throws IOException {
         return sendCommand(new AddCommandOp(totalTime, commandArgs));
     }
 
     /**
-     * Send a 'close connection' command
-     *
-     * @throws IOException
+     * {@inheritDoc}
      */
+    @Override
     public boolean sendClose() throws IOException {
         return sendCommand(new CloseOp());
     }
 
     /**
-     * Send a 'handover close connection' command
-     *
-     * @param port of the remote manager to establish a connection with.
-     * @return true if the command was accepted and completed, false otherwise.
-     * @throws IOException
+     * {@inheritDoc}
      */
+    @Override
     public boolean sendHandoverClose(int port) throws IOException {
         return sendCommand(new HandoverCloseOp(port));
     }
 
     /**
-     * Send a 'list devices' request to remote TF
-     * @return a list of device serials and their state. Returns <code>null</code> if command failed.
+     * {@inheritDoc}
      */
+    @Override
     public List<DeviceDescriptor> sendListDevices() {
         ListDevicesOp op = new ListDevicesOp();
         if (sendCommand(op)) {
@@ -171,11 +177,12 @@ public class RemoteClient {
     }
 
     /**
-     * Close the connection to the {@link RemoteManager}.
+     * {@inheritDoc}
      */
+    @Override
     public synchronized void close() {
         if (mSocket != null) {
-             try {
+            try {
                 mSocket.close();
             } catch (IOException e) {
                 Log.w(TAG, String.format("exception closing socket: %s", e.toString()));
@@ -186,4 +193,3 @@ public class RemoteClient {
         }
     }
 }
-

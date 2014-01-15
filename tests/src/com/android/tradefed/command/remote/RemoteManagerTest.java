@@ -34,7 +34,7 @@ public class RemoteManagerTest extends TestCase {
 
     private IDeviceManager mMockDeviceManager;
     private RemoteManager mRemoteMgr;
-    private RemoteClient mRemoteClient;
+    private IRemoteClient mRemoteClient;
     private ICommandScheduler mMockScheduler;
 
     @Override
