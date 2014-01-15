@@ -419,9 +419,6 @@ public class TestInvocation implements ITestInvocation {
         } finally {
             mStatus = "done running tests";
             try {
-                if (config.getCommandOptions().takeBugreportOnInvocationEnded()) {
-                    takeBugreport(device, listener, INVOCATION_ENDED_BUGREPORT_NAME);
-                }
                 reportLogs(device, listener, config.getLogOutput());
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
@@ -448,10 +445,18 @@ public class TestInvocation implements ITestInvocation {
             exception = running;
         } finally {
             try {
-                doTeardown(config, device, info, exception);
-            } catch (Throwable tearingDown) {
-                if (exception == null) {
-                    exception = tearingDown;
+                if (config.getCommandOptions().takeBugreportOnInvocationEnded()) {
+                    takeBugreport(device, listener, INVOCATION_ENDED_BUGREPORT_NAME);
+                }
+            } catch (Throwable bugreport) {
+                exception = bugreport;
+            } finally {
+                try {
+                    doTeardown(config, device, info, exception);
+                } catch (Throwable tearingDown) {
+                    if (exception == null) {
+                        exception = tearingDown;
+                    }
                 }
             }
         }
