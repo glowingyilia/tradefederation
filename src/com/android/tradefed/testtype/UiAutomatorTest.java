@@ -115,7 +115,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
             description="The instrumentation based test runner class name to use."
             + "Only applies when 'instrumentation' option is set.")
     private String mRunnerName =
-        "com.android.uiautomator.testrunner.UiAutomatorInstrumentationTestRunner";
+        "android.support.test.uiautomator.UiAutomatorInstrumentationTestRunner";
 
     /**
      * {@inheritDoc}
@@ -187,6 +187,9 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
 
     protected IRemoteAndroidTestRunner createTestRunner() {
         if (isInstrumentationTest()) {
+            if (mPackage == null) {
+                throw new IllegalArgumentException("package name has not been set");
+            }
             IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(mPackage, mRunnerName,
                     getDevice().getIDevice());
             return runner;
