@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
@@ -71,6 +72,7 @@ public class TestInvocation implements ITestInvocation {
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
     static final String DEVICE_UNRESPONSIVE_BUGREPORT_NAME = "device_unresponsive_bugreport";
     static final String INVOCATION_ENDED_BUGREPORT_NAME = "invocation_ended_bugreport";
+    static final String BATT_TAG = "[battery level]";
 
     private String mStatus = "(not invoked)";
 
@@ -376,6 +378,7 @@ public class TestInvocation implements ITestInvocation {
         long startTime = System.currentTimeMillis();
         long elapsedTime = -1;
 
+        logDeviceBatteryLevel(device, "initial");
         info.setDeviceSerial(device.getSerialNumber());
         startInvocation(config, device, info, listener);
         try {
@@ -439,8 +442,11 @@ public class TestInvocation implements ITestInvocation {
         Throwable exception = null;
 
         try {
+            logDeviceBatteryLevel(device, "initial -> setup");
             doSetup(config, device, info);
+            logDeviceBatteryLevel(device, "setup -> test");
             runTests(device, config, listener);
+            logDeviceBatteryLevel(device, "after test");
         } catch (Throwable running) {
             exception = running;
         } finally {
@@ -630,5 +636,16 @@ public class TestInvocation implements ITestInvocation {
     @Override
     public String toString() {
         return mStatus;
+    }
+
+    private void logDeviceBatteryLevel(ITestDevice testDevice, String event) throws Throwable {
+        if (testDevice == null) {
+            return;
+        }
+        IDevice device = testDevice.getIDevice();
+        if (device == null) {
+            return;
+        }
+        CLog.v("%s - %s - %d%%", BATT_TAG, event, device.getBatteryLevel(0));
     }
 }

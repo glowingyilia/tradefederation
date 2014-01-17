@@ -118,6 +118,7 @@ public class TestInvocationTest extends TestCase {
 
         mStubConfiguration.setLogOutput(mMockLogger);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(null);
         mMockDevice.setRecovery(mMockRecovery);
 
         EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("1");
