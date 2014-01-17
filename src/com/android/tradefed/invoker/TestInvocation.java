@@ -71,7 +71,6 @@ public class TestInvocation implements ITestInvocation {
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
     static final String DEVICE_UNRESPONSIVE_BUGREPORT_NAME = "device_unresponsive_bugreport";
     static final String INVOCATION_ENDED_BUGREPORT_NAME = "invocation_ended_bugreport";
-    static final String BATT_TAG = "[battery level]";
 
     private String mStatus = "(not invoked)";
 
@@ -377,7 +376,6 @@ public class TestInvocation implements ITestInvocation {
         long startTime = System.currentTimeMillis();
         long elapsedTime = -1;
 
-        CLog.v("%s - initial - %d%%", BATT_TAG, device.getIDevice().getBatteryLevel(0));
         info.setDeviceSerial(device.getSerialNumber());
         startInvocation(config, device, info, listener);
         try {
@@ -441,11 +439,8 @@ public class TestInvocation implements ITestInvocation {
         Throwable exception = null;
 
         try {
-            CLog.v("%s - before setup - %d%%", BATT_TAG, device.getIDevice().getBatteryLevel(0));
             doSetup(config, device, info);
-            CLog.v("%s - after setup - %d%%", BATT_TAG, device.getIDevice().getBatteryLevel(0));
             runTests(device, config, listener);
-            CLog.v("%s - after test - %d%%", BATT_TAG, device.getIDevice().getBatteryLevel(0));
         } catch (Throwable running) {
             exception = running;
         } finally {
