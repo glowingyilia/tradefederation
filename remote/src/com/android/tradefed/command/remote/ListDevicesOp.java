@@ -16,6 +16,7 @@
 package com.android.tradefed.command.remote;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.device.DeviceAllocationState;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -27,22 +28,24 @@ import java.util.List;
 /**
  * Remote operation for listing all known devices and their state.
  */
-class ListDevicesOp extends RemoteOperation {
+class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
 
     private static final String STATE = "state";
     private static final String SERIAL = "serial";
     private static final String SERIALS = "serials";
-    private List<DeviceDescriptor> mDeviceList = new ArrayList<DeviceDescriptor>();
 
     ListDevicesOp() {
     }
 
     /**
-     * {@inheritDoc}
+     * Factory method for creating a {@link ListDevicesOp} from JSON data.
+     *
+     * @param json the data as a {@link JSONObject}
+     * @return a {@link ListDevicesOp}
+     * @throws JSONException if failed to extract out data
      */
-    @Override
-    protected void unpackFromJson(JSONObject json) throws RemoteException, JSONException {
-        // ignore, nothing to do
+    static ListDevicesOp createFromJson(JSONObject json) throws JSONException {
+        return new ListDevicesOp();
     }
 
     /**
@@ -62,26 +65,18 @@ class ListDevicesOp extends RemoteOperation {
     }
 
     /**
-     * Return the list of devices returned by remote TF. Will only be valid if {@link #hasError()}
-     * is false.
-     */
-    public List<DeviceDescriptor> getDeviceStateMap() {
-        return mDeviceList;
-    }
-
-    /**
      * Unpacks the response from remote TF manager into this object.
      */
     @Override
-    protected void unpackResponseFromJson(JSONObject j) throws JSONException {
+    protected List<DeviceDescriptor> unpackResponseFromJson(JSONObject j) throws JSONException {
+        List<DeviceDescriptor> deviceList = new ArrayList<DeviceDescriptor>();
         JSONArray jsonDeviceStateArray = j.getJSONArray(SERIALS);
         for (int i = 0; i < jsonDeviceStateArray.length(); i++) {
             JSONObject deviceStateJson = jsonDeviceStateArray.getJSONObject(i);
             final String serial = deviceStateJson.getString(SERIAL);
             final String stateString = deviceStateJson.getString(STATE);
             try {
-
-                mDeviceList.add(new DeviceDescriptor(serial, DeviceAllocationState
+                deviceList.add(new DeviceDescriptor(serial, DeviceAllocationState
                         .valueOf(stateString)));
             } catch (IllegalArgumentException e) {
                 String msg = String.format("unrecognized state %s for device %s", stateString,
@@ -90,6 +85,7 @@ class ListDevicesOp extends RemoteOperation {
                 throw new JSONException(msg);
             }
         }
+        return deviceList;
     }
 
     /**

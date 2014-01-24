@@ -23,24 +23,25 @@ import org.json.JSONObject;
  * <p/>
  * Currently used to mark the device as in use by another tradefed process in handover situation.
  */
-class AllocateDeviceOp extends RemoteOperation {
+class AllocateDeviceOp extends RemoteOperation<Void> {
 
     private static final String SERIAL = "serial";
-    String mDeviceSerial;
+    private final String mDeviceSerial;
 
     AllocateDeviceOp(String serial) {
         mDeviceSerial = serial;
     }
 
-    AllocateDeviceOp() {
-        this(null);
+    /**
+     * Factory method for creating a {@link AllocateDeviceOp} from JSON data.
+     *
+     * @param json the data as a {@link JSONObject}
+     * @return a {@link AllocateDeviceOp}
+     * @throws JSONException if failed to extract out data
+     */
+    static AllocateDeviceOp createFromJson(JSONObject json) throws JSONException {
+        return new AllocateDeviceOp(json.getString(SERIAL));
     }
-
-    @Override
-    protected void unpackFromJson(JSONObject json) throws RemoteException, JSONException {
-        mDeviceSerial = json.getString(SERIAL);
-    }
-
 
     @Override
     protected OperationType getType() {
@@ -50,6 +51,10 @@ class AllocateDeviceOp extends RemoteOperation {
     @Override
     protected void packIntoJson(JSONObject j) throws JSONException {
         j.put(SERIAL, mDeviceSerial);
+    }
+
+    public String getDeviceSerial() {
+        return mDeviceSerial;
     }
 
 }

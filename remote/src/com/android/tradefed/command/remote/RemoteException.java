@@ -15,23 +15,20 @@
  */
 package com.android.tradefed.command.remote;
 
-import com.android.tradefed.device.DeviceAllocationState;
-
-public class DeviceDescriptor {
-
-    private final String mSerial;
-    private final DeviceAllocationState mState;
-
-    public DeviceDescriptor(String serial, DeviceAllocationState state) {
-        mSerial = serial;
-        mState = state;
+/**
+ * Represents a failure to execute a remote operation.
+ */
+@SuppressWarnings("serial")
+public class RemoteException extends Exception {
+    public RemoteException(Throwable t) {
+        this(t.getMessage(), t);
     }
 
-    public String getSerial() {
-        return mSerial;
+    public RemoteException(String msg) {
+        super(msg);
     }
 
-    public DeviceAllocationState getState() {
-        return mState;
+    public RemoteException(String msg, Throwable e) {
+        super(msg, e);
     }
 }

@@ -15,14 +15,15 @@
  */
 package com.android.tradefed.command.remote;
 
+import com.android.tradefed.device.FreeDeviceState;
+
 /**
- * Represents the allocation state of the device from the IDeviceManager perspective
+ * Callback for handling the result of a {@link GetLastCommandResultOp}
  */
-public enum DeviceAllocationState {
-    /** device is available to be allocated to a test */
-    Available,
-    /** device is visible via adb but is in an error state that prevents it from running tests */
-    Unavailable,
-    /** device is currently allocated to a test */
-    Allocated
+public interface ICommandResultHandler {
+    public void success();
+    public void failure(String errorDetails, FreeDeviceState deviceState);
+    public void stillRunning();
+    public void notAllocated();
+    public void noActiveCommand();
 }

@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.concurrent.Future;
 
 /**
  * Singleton class that tracks devices that have been remotely allocated.
@@ -46,6 +47,10 @@ class DeviceTracker {
     // use Hashtable since its thread-safe
     private Map<String, ITestDevice> mAllocatedDeviceMap = new Hashtable<String, ITestDevice>();
 
+    // TODO: consider merging these maps
+    private Map<String, ExecCommandTracker> mDeviceLastCommandMap =
+            new Hashtable<String, ExecCommandTracker>();
+
     /**
      * Mark given device as remotely allocated.
      */
@@ -54,12 +59,13 @@ class DeviceTracker {
     }
 
     /**
-     * Mark given device serial as freed.
+     * Mark given device serial as freed and clear the command result if any.
      *
      * @return the corresponding {@link ITestDevice} or <code>null</code> if device with given
      *         serial cannot be found
      */
     public ITestDevice freeDevice(String serial) {
+        mDeviceLastCommandMap.remove(serial);
         return mAllocatedDeviceMap.remove(serial);
     }
 
@@ -71,6 +77,37 @@ class DeviceTracker {
     public Collection<ITestDevice> freeAll() {
         Collection<ITestDevice> devices = new ArrayList<ITestDevice>(mAllocatedDeviceMap.values());
         mAllocatedDeviceMap.clear();
+        mDeviceLastCommandMap.clear();
         return devices;
+    }
+
+    /**
+     * Return a previously allocated device that matches given serial.
+     *
+     * @param serial
+     * @return the {@link ITestDevice} or <code>null</code> if it cannot be found
+     */
+    public ITestDevice getDeviceForSerial(String serial) {
+        return mAllocatedDeviceMap.get(serial);
+    }
+
+    /**
+     * Retrieve the last {@link Future} command result for given device.
+     * @param deviceSerial
+     * @return the {@link Future} or <code>null</code> if no result exists for device. Note results
+     * are cleared on {@link #freeDevice(String)}.
+     */
+    public ExecCommandTracker getLastCommandResult(String deviceSerial) {
+        return mDeviceLastCommandMap.get(deviceSerial);
+    }
+
+    /**
+     * Sets the command result tracker for given device.
+     *
+     * @param deviceSerial
+     * @param tracker
+     */
+    public void setCommandTracker(String deviceSerial, ExecCommandTracker tracker) {
+        mDeviceLastCommandMap.put(deviceSerial, tracker);
     }
 }

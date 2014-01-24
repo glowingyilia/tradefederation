@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockDeviceManager;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.RunUtil;
 
 import junit.framework.TestCase;
@@ -141,7 +142,8 @@ public class CommandSchedulerFuncTest extends TestCase {
         Integer mSlowCountLimit = 20;
 
         @Override
-        public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler)
+        public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
+                ITestInvocationListener... listeners)
                 throws DeviceNotAvailableException {
             if (config.equals(mSlowConfig)) {
                 // sleep for 2 * fast config time

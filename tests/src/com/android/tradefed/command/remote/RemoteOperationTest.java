@@ -15,23 +15,26 @@
  */
 package com.android.tradefed.command.remote;
 
-import com.android.tradefed.device.DeviceAllocationState;
+import junit.framework.TestCase;
 
-public class DeviceDescriptor {
+/**
+ * Unit tests for {@link RemoteOperation}.
+ */
+public class RemoteOperationTest extends TestCase {
 
-    private final String mSerial;
-    private final DeviceAllocationState mState;
-
-    public DeviceDescriptor(String serial, DeviceAllocationState state) {
-        mSerial = serial;
-        mState = state;
-    }
-
-    public String getSerial() {
-        return mSerial;
-    }
-
-    public DeviceAllocationState getState() {
-        return mState;
+    /**
+     * Test that exception is thrown when incoming data has a different than expected protocol
+     * version.
+     */
+    public void testProtocolVersionMismatch() throws RemoteException {
+        CloseOp o = new CloseOp();
+        String data = o.pack(0);
+        try {
+            RemoteOperation.createRemoteOpFromString(data);
+        } catch (RemoteException e) {
+            // expected
+            return;
+        }
+        fail("did not throw RemoteException");
     }
 }

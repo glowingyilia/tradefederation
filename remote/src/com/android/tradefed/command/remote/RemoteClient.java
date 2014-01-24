@@ -16,7 +16,6 @@
 package com.android.tradefed.command.remote;
 
 import com.android.ddmlib.Log;
-import com.android.tradefed.command.remote.RemoteOperation.RemoteException;
 
 import org.json.JSONException;
 
@@ -42,14 +41,14 @@ public class RemoteClient implements IRemoteClient {
     private final BufferedReader mReader;
 
     /**
-     * Initialize the {@RemoteClient}, and instruct it to connect to the given port on
-     * localhost.
+     * Initialize the {@RemoteClient}, and instruct it to connect to the given port
+     * on localhost.
      *
      * @param port the tcp/ip port number
      * @throws IOException
      * @throws UnknownHostException
      */
-    RemoteClient(int port) throws UnknownHostException, IOException {
+    private RemoteClient(int port) throws UnknownHostException, IOException {
         this(InetAddress.getLocalHost().getHostName(), port);
     }
 
@@ -61,41 +60,31 @@ public class RemoteClient implements IRemoteClient {
      * @throws IOException
      * @throws UnknownHostException
      */
-    RemoteClient(String hostName, int port) throws UnknownHostException, IOException {
+    private RemoteClient(String hostName, int port) throws UnknownHostException, IOException {
         mSocket = new Socket(hostName, port);
         mWriter = new PrintWriter(mSocket.getOutputStream(), true);
         mReader = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
     }
 
     /**
-     * Send the given command to the remote TF.
+     * Send the given operation to the remote TF.
      *
-     * @param cmd the {@link RemoteOperation} to send
-     * @return true if command was sent and processed successfully by remote TF
+     * @param op the {@link RemoteOperation} to send
+     * @throws RemoteException if failed to perform operation
      */
-    private synchronized boolean sendCommand(RemoteOperation cmd) {
+    private synchronized <T> T sendOperation(RemoteOperation<T> op) throws RemoteException {
        try {
-           mWriter.println(cmd.pack());
+           mWriter.println(op.pack());
            String response = mReader.readLine();
-           cmd.unpackResponseFromString(response);
-           if (cmd.hasError()) {
-               Log.e(TAG, "remote command failed: " + cmd.getErrorMsg());
-               return false;
-           } else {
-               return true;
+           if (response == null) {
+               throw new RemoteException("no response from remote manager");
            }
-       } catch (RemoteException e) {
-           // TODO: convert to CLog once we have tf-common
-          Log.e(TAG, "Failed to send remote command");
-          Log.e(TAG, e);
+           return op.unpackResponseFromString(response);
        } catch (IOException e) {
-           Log.e(TAG, "Failed to send remote command");
-           Log.e(TAG, e);
+           throw new RemoteException(e.getMessage(), e);
        } catch (JSONException e) {
-           Log.e(TAG, "Failed to parse remote command response");
-           Log.e(TAG, e);
+           throw new RemoteException(e.getMessage(), e);
        }
-       return false;
     }
 
     /**
@@ -103,77 +92,98 @@ public class RemoteClient implements IRemoteClient {
      *
      * @param port the tcp/ip port
      * @return the {@link RemoteClient}
-     * @throws UnknownHostException
-     * @throws IOException
+     * @throws RemoteException if failed to connect
      */
-    public static IRemoteClient connect(int port) throws UnknownHostException, IOException {
-        return new RemoteClient(port);
-    }
-
-    /**
-     * Helper method to create a {@link RemoteClient} connected to given host and port
-     *
-     * @param hostname the host name
-     * @param port the tcp/ip port
-     * @return the {@link RemoteClient}
-     * @throws UnknownHostException
-     * @throws IOException
-     */
-    public static IRemoteClient connect(String hostname, int port)
-        throws UnknownHostException, IOException {
-        return new RemoteClient(hostname, port);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean sendAllocateDevice(String serial) throws IOException {
-        return sendCommand(new AllocateDeviceOp(serial));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean sendFreeDevice(String serial) throws IOException {
-        return sendCommand(new FreeDeviceOp(serial));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean sendAddCommand(long totalTime, String... commandArgs) throws IOException {
-        return sendCommand(new AddCommandOp(totalTime, commandArgs));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean sendClose() throws IOException {
-        return sendCommand(new CloseOp());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean sendHandoverClose(int port) throws IOException {
-        return sendCommand(new HandoverCloseOp(port));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<DeviceDescriptor> sendListDevices() {
-        ListDevicesOp op = new ListDevicesOp();
-        if (sendCommand(op)) {
-            return op.getDeviceStateMap();
+    public static IRemoteClient connect(int port) throws RemoteException {
+        try {
+            return new RemoteClient(port);
+        } catch (IOException e) {
+            throw new RemoteException(e);
         }
-        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendAllocateDevice(String serial) throws RemoteException {
+        sendOperation(new AllocateDeviceOp(serial));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendFreeDevice(String serial) throws RemoteException {
+        sendOperation(new FreeDeviceOp(serial));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendAddCommand(long totalTime, String... commandArgs) throws RemoteException {
+        sendOperation(new AddCommandOp(totalTime, commandArgs));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendClose() throws RemoteException {
+        sendOperation(new CloseOp());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendHandoverClose(int port) throws RemoteException {
+        sendOperation(new HandoverCloseOp(port));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<DeviceDescriptor> sendListDevices() throws RemoteException {
+        return sendOperation(new ListDevicesOp());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendExecCommand(String serial, String[] commandArgs) throws RemoteException {
+        sendOperation(new ExecCommandOp(serial, commandArgs));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendGetLastCommandResult(String serial, ICommandResultHandler handler)
+            throws RemoteException {
+        CommandResult r = sendOperation(new GetLastCommandResultOp(serial));
+        switch (r.getStatus()) {
+            case EXECUTING:
+                handler.stillRunning();
+                break;
+            case INVOCATION_ERROR:
+                handler.failure(r.getInvocationErrorDetails(), r.getFreeDeviceState());
+                break;
+            case INVOCATION_SUCCESS:
+                handler.success();
+                break;
+            case NO_ACTIVE_COMMAND:
+                handler.noActiveCommand();
+                break;
+            case NOT_ALLOCATED:
+                handler.notAllocated();
+                break;
+            default:
+                throw new RemoteException("unrecognized status " + r.getStatus().name());
+        }
     }
 
     /**

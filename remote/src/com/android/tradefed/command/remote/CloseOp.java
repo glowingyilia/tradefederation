@@ -22,11 +22,20 @@ import org.json.JSONObject;
  * Remote operation that instructs the remote manager to shut down. Currently used when
  * handover process is complete.
  */
-class CloseOp extends RemoteOperation {
+class CloseOp extends RemoteOperation<Void> {
 
-    @Override
-    protected void unpackFromJson(JSONObject json) throws RemoteException {
-        // nothing to do
+    CloseOp() {
+    }
+
+    /**
+     * Factory method for creating a {@link CloseOp} from JSON data.
+     *
+     * @param json the data as a {@link JSONObject}
+     * @return a {@link CloseOp}
+     * @throws JSONException if failed to extract out data
+     */
+    static CloseOp createFromJson(JSONObject json) throws JSONException {
+        return new CloseOp();
     }
 
     @Override
