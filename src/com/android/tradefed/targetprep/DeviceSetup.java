@@ -52,7 +52,7 @@ public class DeviceSetup implements ITargetPreparer {
 
     @Option(name = "wifi-attempts", description =
         "maximum number of attempts to connect to wifi network.")
-    private int mWifiAttempts = 2;
+    private int mWifiAttempts = 5;
 
     @Option(name="min-external-store-space", description="the minimum amount of free space in KB" +
             " that must be present on device's external storage.")
