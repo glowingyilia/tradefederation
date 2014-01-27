@@ -33,6 +33,7 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
     private static final String STATE = "state";
     private static final String SERIAL = "serial";
     private static final String SERIALS = "serials";
+    private static final String PRODUCT_VARIANT = "variant";
 
     ListDevicesOp() {
     }
@@ -75,9 +76,10 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
             JSONObject deviceStateJson = jsonDeviceStateArray.getJSONObject(i);
             final String serial = deviceStateJson.getString(SERIAL);
             final String stateString = deviceStateJson.getString(STATE);
+            final String productVariant= deviceStateJson.getString(PRODUCT_VARIANT);
             try {
                 deviceList.add(new DeviceDescriptor(serial, DeviceAllocationState
-                        .valueOf(stateString)));
+                        .valueOf(stateString), productVariant));
             } catch (IllegalArgumentException e) {
                 String msg = String.format("unrecognized state %s for device %s", stateString,
                         serial);
@@ -98,6 +100,7 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
             JSONObject deviceStateJson = new JSONObject();
             deviceStateJson.put(SERIAL, descriptor.getSerial());
             deviceStateJson.put(STATE, descriptor.getState().toString());
+            deviceStateJson.put(PRODUCT_VARIANT, descriptor.getProductVariant());
             jsonDeviceStateArray.put(deviceStateJson);
         }
         result.put(SERIALS, jsonDeviceStateArray);

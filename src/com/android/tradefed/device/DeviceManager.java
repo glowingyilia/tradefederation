@@ -857,9 +857,10 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public List<DeviceDescriptor> listAllDevices() {
         final List<DeviceDescriptor> serialStates = new ArrayList<DeviceDescriptor>();
+        IDeviceSelection selector = getDeviceSelectionOptions();
         for (Map.Entry<IDevice, DeviceAllocationState> entry : fetchDevicesInfo().entrySet()) {
             serialStates.add(new DeviceDescriptor(entry.getKey().getSerialNumber(),
-                    entry.getValue()));
+                    entry.getValue(), selector.getDeviceProductVariant(entry.getKey())));
         }
         return serialStates;
     }
