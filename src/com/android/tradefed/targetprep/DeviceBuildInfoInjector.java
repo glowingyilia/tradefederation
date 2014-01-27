@@ -50,19 +50,30 @@ public class DeviceBuildInfoInjector implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
-        DeviceBuildDescriptor.injectDeviceAttributes(device, buildInfo);
         if (mOverrideDeviceBuildId != null) {
             buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_ID,
                     mOverrideDeviceBuildId);
+        } else {
+            buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_ID, device.getBuildId());
         }
         if (mOverrideDeviceBuildAlias != null) {
             buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_ALIAS,
                     mOverrideDeviceBuildAlias);
+        } else {
+            buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_ALIAS,
+                    device.getBuildAlias());
         }
         if (mOverrideDeviceBuildFlavor != null){
             buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_FLAVOR,
                     mOverrideDeviceBuildFlavor);
+        } else {
+            String buildFlavor = String.format("%s-%s", device.getProperty("ro.product.name"),
+                    device.getProperty("ro.build.type"));
+            buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_FLAVOR, buildFlavor);
         }
-        DeviceBuildDescriptor.injectDeviceAttributes(device, buildInfo);
+        buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_DESC,
+                DeviceBuildDescriptor.generateDeviceDesc(device));
+        buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_PRODUCT,
+                DeviceBuildDescriptor.generateDeviceProduct(device));
     }
 }
