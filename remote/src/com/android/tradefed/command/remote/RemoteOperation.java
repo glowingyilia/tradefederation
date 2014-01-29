@@ -94,16 +94,14 @@ abstract class RemoteOperation<T> {
     protected abstract OperationType getType();
 
     /**
-     * Return the RemoteCommand data in its wire protocol format
-     *
-     * @return
+     * Returns the RemoteCommand data in its wire protocol format
      */
     String pack() throws RemoteException {
         return pack(CURRENT_PROTOCOL_VERSION);
     }
 
     /**
-     * Return the RemoteCommand data in its wire protocol format, with given protocol version/
+     * Returns the RemoteCommand data in its wire protocol format, with given protocol version
      *
      * @VisibleForTesting
      */

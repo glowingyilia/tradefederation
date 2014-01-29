@@ -37,7 +37,7 @@ class AddCommandOp extends RemoteOperation<Void> {
     /**
      * Factory method for creating a {@link AddCommandOp} from JSON data.
      *
-     * @param json the data as a {@link JSONObject}
+     * @param jsonData the data as a {@link JSONObject}
      * @return a {@link AddCommandOp}
      * @throws JSONException if failed to extract out data
      */
