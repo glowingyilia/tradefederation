@@ -237,8 +237,8 @@ public class CommandFileParser {
                         CommandLine expansion = new CommandLine(lArgs.subList(3, lArgs.size()));
                         CommandLine prev = mMacros.put(name, expansion);
                         if (prev != null) {
-                            CLog.e("Overwrote short macro '%s' while parsing file %s", name, file);
-                            CLog.e("value '%s' replaced previous value '%s'", expansion, prev);
+                            CLog.w("Overwrote short macro '%s' while parsing file %s", name, file);
+                            CLog.w("value '%s' replaced previous value '%s'", expansion, prev);
                         }
                     } else if (isLineLongMacro(lArgs)) {
                         // Expected format: LONG MACRO <name>\n(multiline expansion)\nEND MACRO
@@ -268,8 +268,8 @@ public class CommandFileParser {
 
                         List<CommandLine> prev = mLongMacros.put(name, expansion);
                         if (prev != null) {
-                            CLog.e("Overwrote long macro %s while parsing file %s", name, file);
-                            CLog.e("%d-line definition replaced previous %d-line definition",
+                            CLog.w("Overwrote long macro %s while parsing file %s", name, file);
+                            CLog.w("%d-line definition replaced previous %d-line definition",
                                     expansion.size(), prev.size());
                         }
                     } else if (isLineIncludeDirective(lArgs)) {
