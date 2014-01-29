@@ -175,8 +175,8 @@ public class RemoteManagerTest extends TestCase {
     public void testListDevices() throws Exception {
         List<DeviceDescriptor> deviceList =
                 new ArrayList<DeviceDescriptor>(2);
-        deviceList.add(new DeviceDescriptor("serial", DeviceAllocationState.Available));
-        deviceList.add(new DeviceDescriptor("serial2", DeviceAllocationState.Allocated));
+        deviceList.add(new DeviceDescriptor("serial", DeviceAllocationState.Available, "toro"));
+        deviceList.add(new DeviceDescriptor("serial2", DeviceAllocationState.Allocated, "crespo"));
         EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(deviceList);
         EasyMock.replay(mMockDeviceManager);
         mRemoteMgr.connect();
@@ -188,8 +188,10 @@ public class RemoteManagerTest extends TestCase {
         assertEquals(2, returnedDevices.size());
         assertEquals("serial", returnedDevices.get(0).getSerial());
         assertEquals(DeviceAllocationState.Available, returnedDevices.get(0).getState());
+        assertEquals("toro", returnedDevices.get(0).getProductVariant());
         assertEquals("serial2", returnedDevices.get(1).getSerial());
         assertEquals(DeviceAllocationState.Allocated, returnedDevices.get(1).getState());
+        assertEquals("crespo", returnedDevices.get(1).getProductVariant());
         EasyMock.verify(mMockDeviceManager);
     }
 

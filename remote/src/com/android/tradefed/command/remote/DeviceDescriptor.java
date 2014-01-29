@@ -21,10 +21,12 @@ public class DeviceDescriptor {
 
     private final String mSerial;
     private final DeviceAllocationState mState;
+    private final String mProductVariant;
 
-    public DeviceDescriptor(String serial, DeviceAllocationState state) {
+    public DeviceDescriptor(String serial, DeviceAllocationState state, String productVariant) {
         mSerial = serial;
         mState = state;
+        mProductVariant = productVariant;
     }
 
     public String getSerial() {
@@ -34,4 +36,8 @@ public class DeviceDescriptor {
     public DeviceAllocationState getState() {
         return mState;
     }
+
+    public String getProductVariant() {
+      return mProductVariant;
+  }
 }
