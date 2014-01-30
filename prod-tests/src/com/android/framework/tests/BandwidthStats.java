@@ -18,6 +18,10 @@ package com.android.framework.tests;
 
 import com.android.tradefed.log.LogUtil.CLog;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 /**
  * Simple container class used to store network Stats.
  */
@@ -86,30 +90,124 @@ public class BandwidthStats {
         this.mTxPackets = txPackets;
     }
 
-    public boolean compareAll(BandwidthStats stats, float mDifferenceThreshold) {
-        return this.compareRb(stats, mDifferenceThreshold) &&
-                this.compareRp(stats, mDifferenceThreshold) &&
-                this.compareTb(stats, mDifferenceThreshold) &&
-                this.compareTp(stats, mDifferenceThreshold);
+    public CompareResult compareAll(BandwidthStats stats, float mDifferenceThreshold) {
+        CompareResult result = new CompareResult();
+        result.addRecord(this.compareRb(stats), mDifferenceThreshold);
+        result.addRecord(this.compareRp(stats), mDifferenceThreshold);
+        result.addRecord(this.compareTb(stats), mDifferenceThreshold);
+        result.addRecord(this.compareTp(stats), mDifferenceThreshold);
+        return result;
     }
 
-    private boolean compareTp(BandwidthStats stats, float mDifferenceThreshold) {
-        return BandwidthStats.computePercentDifference(
-                this.mTxPackets, stats.mTxPackets) < mDifferenceThreshold;
+    private ComparisonRecord compareTp(BandwidthStats stats) {
+        float difference = BandwidthStats.computePercentDifference(
+                this.mTxPackets, stats.mTxPackets);
+
+        ComparisonRecord result = new ComparisonRecord("Tp", this.mTxPackets, stats.mTxPackets,
+                difference);
+
+        return result;
     }
 
-    private boolean compareTb(BandwidthStats stats, float mDifferenceThreshold) {
-        return BandwidthStats.computePercentDifference(
-                this.mTxBytes, stats.mTxBytes) < mDifferenceThreshold;
+    private ComparisonRecord compareTb(BandwidthStats stats) {
+        float difference = BandwidthStats.computePercentDifference(
+                this.mTxBytes, stats.mTxBytes);
+
+        ComparisonRecord result = new ComparisonRecord("Tb", this.mTxBytes, stats.mTxBytes,
+                difference);
+
+        return result;
     }
 
-    private boolean compareRp(BandwidthStats stats, float mDifferenceThreshold) {
-        return BandwidthStats.computePercentDifference(
-                this.mRxPackets, stats.mRxPackets) < mDifferenceThreshold;
+    private ComparisonRecord compareRp(BandwidthStats stats) {
+        float difference = BandwidthStats.computePercentDifference(
+                this.mRxPackets, stats.mRxPackets);
+
+        ComparisonRecord result = new ComparisonRecord("Rp", this.mRxPackets, stats.mRxPackets,
+                difference);
+
+        return result;
     }
 
-    private boolean compareRb(BandwidthStats stats, float mDifferenceThreshold) {
-        return BandwidthStats.computePercentDifference(
-                this.mTxBytes, stats.mTxBytes) < mDifferenceThreshold;
+    private ComparisonRecord compareRb(BandwidthStats stats) {
+        float difference = BandwidthStats.computePercentDifference(
+                this.mRxBytes, stats.mRxBytes);
+
+        ComparisonRecord result = new ComparisonRecord("Rb", this.mRxBytes, stats.mRxBytes,
+                difference);
+
+        return result;
+    }
+
+    /**
+     * Holds the record of comparing a single stat like transmitted packets. All comparisons are
+     * recorded so it is easier to see which one failed later.
+     */
+    public static class ComparisonRecord {
+        private String mStatName;
+        private long mFirst, mSecond;
+        private float mDifference;
+
+        public ComparisonRecord(String statName, long first, long second, float difference) {
+            this.mStatName = statName;
+            this.mFirst = first;
+            this.mSecond = second;
+            this.mDifference = difference;
+        }
+
+        public String getStatName() {
+            return mStatName;
+        }
+
+        public long getFirst() {
+            return mFirst;
+        }
+
+        public long getSecond() {
+            return mSecond;
+        }
+
+        public float getDifference() {
+            return mDifference;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s expected %d actual %d difference is %f%%",
+                    mStatName, mFirst, mSecond, mDifference);
+        }
+    }
+
+    /**
+     * Holds the result of comparing bandwidth stats from different sources. The result is passed
+     * if all individual stats are within a threshold. Also keeps track of which individual stats
+     * failed the comparison for debugging purposes.
+     *
+     */
+    public static class CompareResult {
+        private boolean mPassed;
+        private List<ComparisonRecord> mFailures;
+
+        public CompareResult() {
+            mPassed = true;
+            mFailures = new ArrayList<ComparisonRecord>();
+        }
+
+        public void addRecord(ComparisonRecord record, float threshold) {
+            if (record.getDifference() < threshold) {
+                mPassed &= true;
+            } else {
+                mPassed = false;
+                mFailures.add(record);
+            }
+        }
+
+        public boolean getResult() {
+            return mPassed;
+        }
+
+        public Collection<ComparisonRecord> getFailures() {
+            return mFailures;
+        }
     }
 }
