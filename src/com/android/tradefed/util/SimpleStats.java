@@ -150,5 +150,33 @@ public class SimpleStats {
 
         return Math.sqrt(ssd / size());
     }
+
+    /**
+     * return the average value of the samples that are within one stdev
+     * e.g
+     * 2.55 50.3 50.4 48.5 50.1 29.8 30 46 48 49
+     * average: 40.45, stdev: 15.54
+     * average of the values within one stdev is: 44.67
+     * @return
+     */
+    public Double meanOverOneStandardDeviationRange() {
+        if (isEmpty()) {
+            return null;
+        }
+
+        Double avg = mean();
+        Double std = stdev();
+        Double upper = avg + std;
+        Double lower = avg - std;
+        Double sum = 0.0;
+        int count = 0;
+        for (Double meas : mData) {
+            if (meas > lower && meas < upper) {
+                sum += meas;
+                count++;
+            }
+        }
+        return sum / count;
+    }
 }
 
