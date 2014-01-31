@@ -133,6 +133,7 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
             map.put("Preview", "^Avg mShutterToPictureDisplayedTime = (\\d+)");
             map.put("RawPictureGeneration", "^Avg mPictureDisplayedToJpegCallbackTime = (\\d+)");
             map.put("GenTimeDiffOverJPEGAndRaw", "^Avg mJpegCallbackFinishTime = (\\d+)");
+            map.put("FirstPreviewTime", "^Avg FirstPreviewTime = (\\d+)");
             mTestCases.add(t);
         }
 
@@ -328,6 +329,7 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
             map.put("CameraStartup", "^Camera average startup time: (\\d+) ms");
             map.put("FirstVideoStartup", "^First Video Startup: (\\d+)");
             map.put("VideoStartup", "^Video average startup time: (\\d+) ms");
+            map.put("FirstPreviewTime", "^Avg FirstPreviewTime = (\\d+)");
         }
 
         /**
@@ -351,16 +353,18 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
                     "Avg mShutterLag = 403",
                     "Avg mShutterToPictureDisplayedTime = 369",
                     "Avg mPictureDisplayedToJpegCallbackTime = 50",
-                    "Avg mJpegCallbackFinishTime = 1679");
+                    "Avg mJpegCallbackFinishTime = 1679",
+                    "Avg FirstPreviewTime = 1340");
 
             InputStream iStream = new ByteArrayInputStream(output.getBytes());
             mTestInstance.parseOutputFile(mTestInfo, iStream, null);
             assertEquals(mTestInfo, mReportedTestInfo);
             assertNotNull(mReportedMetrics);
-            assertEquals(3, mReportedMetrics.size());
+            assertEquals(4, mReportedMetrics.size());
             assertEquals("1946", mReportedMetrics.get("CameraStartup"));
             assertEquals("2176", mReportedMetrics.get("FirstVideoStartup"));
             assertEquals("1421", mReportedMetrics.get("FirstCameraStartup"));
+            assertEquals("1340", mReportedMetrics.get("FirstPreviewTime"));
         }
     }
 }
