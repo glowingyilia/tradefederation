@@ -18,6 +18,8 @@ package com.android.framework.tests;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.framework.tests.BandwidthStats.CompareResult;
+import com.android.framework.tests.BandwidthStats.ComparisonRecord;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -358,13 +360,13 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         return false;
     }
 
-    private boolean evaluateEventLogLine(String str) {
-        int start = str.lastIndexOf("[");
-        int end = str.lastIndexOf("]");
-        String subStr = str.substring(start + 1, end);
+    private boolean evaluateEventLogLine(String line) {
+        int start = line.lastIndexOf("[");
+        int end = line.lastIndexOf("]");
+        String subStr = line.substring(start + 1, end);
         String[] statsStrArray = subStr.split(",");
         if (statsStrArray.length != 13) {
-            CLog.e("Failed to parse for \"%s\" in log.", str);
+            CLog.e("Failed to parse for \"%s\" in log.", line);
             return false;
         }
         long devRb = Long.parseLong(statsStrArray[0].trim());
@@ -383,9 +385,29 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         BandwidthStats devStats = new BandwidthStats(devRb, devRp, devTb, devTp);
         BandwidthStats xtStats = new BandwidthStats(xtRb, xtRp, xtTb, xtTp);
         BandwidthStats uidStats = new BandwidthStats(uidRb, uidRp, uidTb, uidTp);
-        return devStats.compareAll(xtStats, mDifferenceThreshold) &&
-                devStats.compareAll(uidStats, mDifferenceThreshold) &&
-                xtStats.compareAll(uidStats, mDifferenceThreshold);
+        boolean result = true;
+        CompareResult compareResult = devStats.compareAll(xtStats, mDifferenceThreshold);
+        result &= compareResult.getResult();
+        if (!compareResult.getResult()) {
+            CLog.i("Failure comparing netstats_mobile_sample dev and xt");
+            printFailures(compareResult);
+        }
+        compareResult = devStats.compareAll(uidStats, mDifferenceThreshold);
+        result &= compareResult.getResult();
+        if (!compareResult.getResult()) {
+            CLog.i("Failure comparing netstats_mobile_sample dev and uid");
+            printFailures(compareResult);
+        }
+        compareResult = xtStats.compareAll(uidStats, mDifferenceThreshold);
+        result &= compareResult.getResult();
+        if (!compareResult.getResult()) {
+            CLog.i("Failure comparing netstats_mobile_sample xt and uid");
+            printFailures(compareResult);
+        }
+        if (!result) {
+            CLog.i("Failed line: %s", line);
+        }
+        return result;
     }
 
     /**
@@ -420,10 +442,12 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         // by uid.
         BandwidthStats netDevStats = utils.getDevStats();
         BandwidthStats sumUidStats = utils.getSumOfUidStats();
-        if (netDevStats.compareAll(sumUidStats, mDifferenceThreshold)) {
+        CompareResult result = netDevStats.compareAll(sumUidStats, mDifferenceThreshold);
+        if (result.getResult()) {
             passCount += 1;
         } else {
-            CLog.v("/proc/net/dev and uid stats do not match");
+            CLog.i("/proc/net/dev and uid stats do not match");
+            printFailures(result);
             failCount += 1;
         }
 
@@ -434,7 +458,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         if (diff < mServerDifferenceThreshold) {
             passCount += 1;
         } else {
-            CLog.v("Comparing between server and instrumentation failed expected %d got %d",
+            CLog.i("Comparing between server and instrumentation failed expected %d got %d",
                     serverBytes, frameworkUidBytes);
             failCount += 1;
         }
@@ -451,6 +475,12 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
 
         listener.testRunStarted(compactRuKey, 0);
         listener.testRunEnded(0, postMetrics);
+    }
+
+    private void printFailures(CompareResult result) {
+        for (ComparisonRecord failure : result.getFailures()) {
+            CLog.i(failure.toString());
+        }
     }
 
     /**
