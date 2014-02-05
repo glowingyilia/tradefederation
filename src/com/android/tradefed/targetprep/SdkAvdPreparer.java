@@ -252,11 +252,12 @@ public class SdkAvdPreparer implements ITargetPreparer {
             throws BuildError {
         // answer 'no' when prompted for creating a custom hardware profile
         final String cmdInput = "no\r\n";
-        final String successPattern = String.format("Created AVD '%s'", target);
-        CLog.d("Creating avd for target %s with name %s", target, target);
+        final String targetName = createAvdName(target);
+        final String successPattern = String.format("Created AVD '%s'", targetName);
+        CLog.d("Creating avd for target %s with name %s", target, targetName);
 
         List<String> avdCommand = ArrayUtil.list(sdkBuild.getAndroidToolPath(),
-              "create", "avd", "--target", target, "--name", target, "--sdcard",
+              "create", "avd", "--target", target, "--name", targetName, "--sdcard",
               mSdcardSize, "--force");
 
         if (mAbi != null) {
@@ -277,8 +278,17 @@ public class SdkAvdPreparer implements ITargetPreparer {
                     "Unable to create avd for target '%s'. stderr: '%s'", target,
                     result.getStderr()));
         }
-        return target;
+        return targetName;
     }
+
+    // Create a valid AVD name, by removing invalid characters from target name.
+    private String createAvdName(String target) {
+        if (target == null)  {
+            return null;
+        }
+        return target.replaceAll("[^a-zA-Z0-9\\.\\-]", "");
+    }
+
 
     /**
      * Launch emulator, performing multiple attempts if necessary as specified.
