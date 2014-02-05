@@ -59,7 +59,7 @@ public class RemoteClient implements IRemoteClient {
     /**
      * Initialize the {@RemoteClient}, and instruct it to connect to the given hostname and port.
      *
-     * @param hostname to connect to
+     * @param hostName to connect to
      * @param port the tcp/ip port number
      * @throws IOException
      * @throws UnknownHostException
