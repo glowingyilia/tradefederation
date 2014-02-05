@@ -222,6 +222,54 @@ public class RemoteManagerTest extends TestCase {
     }
 
     /**
+     * An integration test for consecutive executes {@link ExecCommandOp}
+     */
+    public void testConsecutiveExecCommand() throws Exception {
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+        mMockDeviceManager.freeDevice(EasyMock.eq(device), EasyMock.eq(FreeDeviceState.AVAILABLE));
+        String[] args = new String[] {
+            "instrument"
+        };
+        mMockScheduler.execCommand((IScheduledInvocationListener)EasyMock.anyObject(),
+                EasyMock.eq(device), EasyMock.aryEq(args));
+        IAnswer<Object> commandSuccessAnswer = new IAnswer<Object>() {
+            @Override
+            public Object answer() {
+              ExecCommandTracker commandTracker =
+                  (ExecCommandTracker) EasyMock.getCurrentArguments()[0];
+              commandTracker.invocationComplete(null, FreeDeviceState.AVAILABLE);
+              return null;
+            }
+        };
+        EasyMock.expectLastCall().andAnswer(commandSuccessAnswer);
+
+        mMockScheduler.execCommand((IScheduledInvocationListener)EasyMock.anyObject(),
+            EasyMock.eq(device), EasyMock.aryEq(args));
+        EasyMock.replay(mMockDeviceManager, device, mMockScheduler);
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int port = mRemoteMgr.getPort();
+        assertTrue(port != -1);
+        mRemoteClient = RemoteClient.connect(port);
+        mRemoteClient.sendAllocateDevice("serial");
+        // First command succeeds right way.
+        mRemoteClient.sendExecCommand("serial", args);
+        // Second command will be scheduled but will not finish.
+        mRemoteClient.sendExecCommand("serial", args);
+        // Third command will fail since the second command is still executing.
+        try {
+            mRemoteClient.sendExecCommand("serial", args);
+            fail("did not receive RemoteException");
+        } catch (RemoteException e) {
+            // expected
+        }
+        mRemoteClient.sendFreeDevice("serial");
+        EasyMock.verify(mMockDeviceManager, mMockScheduler);
+    }
+
+    /**
      * An integration test for case where device was not allocated before {@link ExecCommandOp}
      */
     public void testExecCommand_noallocate() throws Exception {

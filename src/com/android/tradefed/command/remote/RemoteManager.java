@@ -17,6 +17,7 @@ package com.android.tradefed.command.remote;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.ICommandScheduler;
+import com.android.tradefed.command.remote.CommandResult.Status;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -353,7 +354,10 @@ public class RemoteManager extends Thread {
             result.put(RemoteOperation.ERROR, msg);
             return;
         }
-        if (DeviceTracker.getInstance().getLastCommandResult(c.getDeviceSerial()) != null) {
+        ExecCommandTracker commandResult =
+            DeviceTracker.getInstance().getLastCommandResult(c.getDeviceSerial());
+        if (commandResult != null &&
+            commandResult.getCommandResult().getStatus() == Status.EXECUTING) {
             String msg = String.format("Another command is already executing on %s",
                     c.getDeviceSerial());
             CLog.e(msg);
