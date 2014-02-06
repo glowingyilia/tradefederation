@@ -17,6 +17,7 @@
     <option name="new-emulator" value="true" />
     <target_preparer class="com.android.tradefed.targetprep.SdkAvdPreparer" />
     <target_preparer class="com.android.sdk.tests.EmulatorGpsPreparer" />
+    <target_preparer class="com.android.sdk.tests.EmulatorSmsPreparer" />
     <test class="com.android.tradefed.testtype.InstalledInstrumentationsTest" />
     <logger class="com.android.tradefed.log.FileLogger" />
 </configuration>
