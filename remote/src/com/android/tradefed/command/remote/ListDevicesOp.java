@@ -33,7 +33,10 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
     private static final String STATE = "state";
     private static final String SERIAL = "serial";
     private static final String SERIALS = "serials";
+    private static final String PRODUCT = "product";
     private static final String PRODUCT_VARIANT = "variant";
+    private static final String SDK_VERSION = "sdk";
+    private static final String BUILD_ID = "build";
 
     ListDevicesOp() {
     }
@@ -76,10 +79,13 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
             JSONObject deviceStateJson = jsonDeviceStateArray.getJSONObject(i);
             final String serial = deviceStateJson.getString(SERIAL);
             final String stateString = deviceStateJson.getString(STATE);
-            final String productVariant= deviceStateJson.getString(PRODUCT_VARIANT);
+            final String product = deviceStateJson.getString(PRODUCT);
+            final String productVariant = deviceStateJson.getString(PRODUCT_VARIANT);
+            final String sdk = deviceStateJson.getString(SDK_VERSION);
+            final String incrementalBuild = deviceStateJson.getString(BUILD_ID);
             try {
                 deviceList.add(new DeviceDescriptor(serial, DeviceAllocationState
-                        .valueOf(stateString), productVariant));
+                        .valueOf(stateString), product, productVariant, sdk, incrementalBuild));
             } catch (IllegalArgumentException e) {
                 String msg = String.format("unrecognized state %s for device %s", stateString,
                         serial);
@@ -100,7 +106,10 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
             JSONObject deviceStateJson = new JSONObject();
             deviceStateJson.put(SERIAL, descriptor.getSerial());
             deviceStateJson.put(STATE, descriptor.getState().toString());
+            deviceStateJson.put(PRODUCT, descriptor.getProduct());
             deviceStateJson.put(PRODUCT_VARIANT, descriptor.getProductVariant());
+            deviceStateJson.put(SDK_VERSION, descriptor.getSdkVersion());
+            deviceStateJson.put(BUILD_ID, descriptor.getBuildId());
             jsonDeviceStateArray.put(deviceStateJson);
         }
         result.put(SERIALS, jsonDeviceStateArray);

@@ -859,8 +859,14 @@ public class DeviceManager implements IDeviceManager {
         final List<DeviceDescriptor> serialStates = new ArrayList<DeviceDescriptor>();
         IDeviceSelection selector = getDeviceSelectionOptions();
         for (Map.Entry<IDevice, DeviceAllocationState> entry : fetchDevicesInfo().entrySet()) {
-            serialStates.add(new DeviceDescriptor(entry.getKey().getSerialNumber(),
-                    entry.getValue(), selector.getDeviceProductVariant(entry.getKey())));
+            serialStates.add(new DeviceDescriptor(
+                entry.getKey().getSerialNumber(),
+                entry.getValue(),
+                getDisplay(selector.getDeviceProductType(entry.getKey())),
+                getDisplay(selector.getDeviceProductVariant(entry.getKey())),
+                getDisplay(entry.getKey().getProperty("ro.build.version.sdk")),
+                getDisplay(entry.getKey().getProperty("ro.build.id")))
+            );
         }
         return serialStates;
     }
