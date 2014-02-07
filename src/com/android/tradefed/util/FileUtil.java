@@ -25,6 +25,7 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -406,9 +407,8 @@ public class FileUtil {
         long minDiskSpace = mMinDiskSpaceMb * 1024 * 1024;
         if (usableSpace < minDiskSpace) {
             throw new LowDiskSpaceException(String.format(
-                    "Available space on %s is %d. Min is %d MB",
-                    file.getAbsolutePath(), file.getUsableSpace(),
-                    mMinDiskSpaceMb));
+                    "Available space on %s is %.2f MB. Min is %d MB", file.getAbsolutePath(),
+                    file.getUsableSpace() / (1024.0 * 1024.0), mMinDiskSpaceMb));
         }
     }
 
