@@ -21,12 +21,19 @@ public class DeviceDescriptor {
 
     private final String mSerial;
     private final DeviceAllocationState mState;
+    private final String mProduct;
     private final String mProductVariant;
+    private final String mSdkVersion;
+    private final String mBuildId;
 
-    public DeviceDescriptor(String serial, DeviceAllocationState state, String productVariant) {
+    public DeviceDescriptor(String serial, DeviceAllocationState state, String product,
+        String productVariant, String sdkVersion, String buildId) {
         mSerial = serial;
         mState = state;
+        mProduct = product;
         mProductVariant = productVariant;
+        mSdkVersion = sdkVersion;
+        mBuildId = buildId;
     }
 
     public String getSerial() {
@@ -37,7 +44,22 @@ public class DeviceDescriptor {
         return mState;
     }
 
+    public String getProduct() {
+      return mProduct;
+    }
+
     public String getProductVariant() {
       return mProductVariant;
-  }
+    }
+
+    /*
+     * This version maps to the ro.build.version.sdk property.
+     */
+    public String getSdkVersion() {
+      return mSdkVersion;
+    }
+
+    public String getBuildId() {
+      return mBuildId;
+    }
 }
