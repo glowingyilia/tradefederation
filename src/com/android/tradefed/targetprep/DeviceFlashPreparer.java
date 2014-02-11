@@ -63,14 +63,14 @@ public abstract class DeviceFlashPreparer implements ITargetPreparer {
         "The maximum number of concurrent flashers (may be useful to avoid memory constraints)")
     private Integer mConcurrentFlashLimit = null;
 
-    private static Semaphore mConcurrentFlashLock = null;
+    private static Semaphore sConcurrentFlashLock = null;
 
     /**
      * This serves both as an indication of whether the flash lock should be used, and as an
      * indicator of whether or not the flash lock has been initialized -- if this is true
      * and {@code mConcurrentFlashLock} is {@code null}, then it has not yet been initialized.
      */
-    private static Boolean mShouldCheckFlashLock = true;
+    private static Boolean sShouldCheckFlashLock = true;
 
     /**
      * Sets the device boot time
@@ -114,11 +114,11 @@ public abstract class DeviceFlashPreparer implements ITargetPreparer {
      * Exposed for unit testing
      */
     void setConcurrentFlashSettings(Integer limit, Semaphore flashLock, boolean shouldCheck) {
-        synchronized(mShouldCheckFlashLock) {
+        synchronized(sShouldCheckFlashLock) {
             // Make a minimal attempt to avoid having things get into an inconsistent state
-            if (mConcurrentFlashLock != null && mConcurrentFlashLimit != null) {
+            if (sConcurrentFlashLock != null && mConcurrentFlashLimit != null) {
                 int curLimit = (int) mConcurrentFlashLimit;
-                int curAvail = mConcurrentFlashLock.availablePermits();
+                int curAvail = sConcurrentFlashLock.availablePermits();
                 if (curLimit != curAvail) {
                     throw new IllegalStateException(String.format("setConcurrentFlashSettings may " +
                             "not be called while any permits are active.  The flasher limit is %d, " +
@@ -127,13 +127,13 @@ public abstract class DeviceFlashPreparer implements ITargetPreparer {
             }
 
             mConcurrentFlashLimit = limit;
-            mConcurrentFlashLock = flashLock;
-            mShouldCheckFlashLock = shouldCheck;
+            sConcurrentFlashLock = flashLock;
+            sShouldCheckFlashLock = shouldCheck;
         }
     }
 
     Semaphore getConcurrentFlashLock() {
-        return mConcurrentFlashLock;
+        return sConcurrentFlashLock;
     }
 
     /**
@@ -143,28 +143,28 @@ public abstract class DeviceFlashPreparer implements ITargetPreparer {
      * Exposed for unit testing.
      */
     void takeFlashingPermit() {
-        if (!mShouldCheckFlashLock) return;
+        if (!sShouldCheckFlashLock) return;
 
         // The logic below is to avoid multi-thread race conditions while initializing
         // mConcurrentFlashLock when we hit this condition.
-        if (mConcurrentFlashLock == null) {
+        if (sConcurrentFlashLock == null) {
             // null with mShouldCheckFlashLock == true means initialization hasn't been done yet
-            synchronized(mShouldCheckFlashLock) {
+            synchronized(sShouldCheckFlashLock) {
                 // Check all state again, since another thread might have gotten here first
-                if (!mShouldCheckFlashLock) return;
+                if (!sShouldCheckFlashLock) return;
 
                 if (mConcurrentFlashLimit == null) {
-                    mShouldCheckFlashLock = false;
+                    sShouldCheckFlashLock = false;
                     return;
                 }
 
-                if (mConcurrentFlashLock == null) {
-                    mConcurrentFlashLock = new Semaphore(mConcurrentFlashLimit, true /* fair */);
+                if (sConcurrentFlashLock == null) {
+                    sConcurrentFlashLock = new Semaphore(mConcurrentFlashLimit, true /* fair */);
                 }
             }
         }
 
-        mConcurrentFlashLock.acquireUninterruptibly();
+        sConcurrentFlashLock.acquireUninterruptibly();
     }
 
     /**
@@ -173,8 +173,8 @@ public abstract class DeviceFlashPreparer implements ITargetPreparer {
      * Exposed for unit testing.
      */
     void returnFlashingPermit() {
-        if (mConcurrentFlashLock != null) {
-            mConcurrentFlashLock.release();
+        if (sConcurrentFlashLock != null) {
+            sConcurrentFlashLock.release();
         }
     }
 
