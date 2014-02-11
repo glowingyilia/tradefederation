@@ -64,6 +64,10 @@ public class TestDeviceOptions {
             + "to be available aka fully boot.")
     private long mAvailableTimeout = 6 * 60 * 1000;
 
+    @Option(name = "ping-ip-or-host", description = "default ip or host to ping during "
+            + "connectivity checks.")
+    private String mPingIpOrHost = "www.google.com";
+
     /**
      * Check whether adb root should be enabled on boot for this device
      */
@@ -209,5 +213,16 @@ public class TestDeviceOptions {
      */
     public long getAvailableTimeout() {
         return mAvailableTimeout;
+    }
+
+    /**
+     * @return the default ip or hostname to ping during connectivity tests.
+     */
+    public String getPingIpOrHost() {
+        return mPingIpOrHost;
+    }
+
+    public void setPingIpOrHost(String ipOrHost) {
+      mPingIpOrHost = ipOrHost;
     }
 }
