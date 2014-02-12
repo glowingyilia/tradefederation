@@ -22,6 +22,8 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.RunUtil;
 
 /**
  * Performs reboot or format as cleanup action after test, and optionally turns screen off
@@ -30,19 +32,41 @@ import com.android.tradefed.device.TestDeviceState;
 public class DeviceCleaner implements ITargetCleaner {
 
     public static enum CleanupAction {
+        /** no cleanup action */
         NONE,
+        /** reboot the device as post test cleanup */
         REBOOT,
+        /** format userdata and cache partitions as post test cleanup */
         FORMAT,
     }
+
+    public static enum PostCleanupAction {
+        /** no post cleanup action */
+        NONE,
+        /** turns screen off after the cleanup action */
+        SCREEN_OFF,
+        /** turns off screen and stops runtime after the cleanup action */
+        SCREEN_OFF_AND_STOP,
+    }
+
+    private static final int MAX_SCREEN_OFF_RETRY = 5;
+    private static final int SCREEN_OFF_RETRY_DELAY_MS = 2 * 1000;
 
     @Option(name = "cleanup-action",
             description = "Type of action to perform as a post test cleanup; options are: "
             + "NONE, REBOOT or FORMAT; defaults to NONE")
     private CleanupAction mCleanupAction = CleanupAction.NONE;
 
+    @Deprecated
     @Option(name = "screen-off", description = "After cleanup action, "
-            + "if screen should be turned off; defaults to false")
+            + "if screen should be turned off; defaults to false; "
+            + "[deprecated] use --post-cleanup SCREEN_OFF instead")
     private boolean mScreenOff = false;
+
+    @Option(name = "post-cleanup",
+            description = "Type of action to perform after the cleanup action;"
+            + "this will override the deprecated screen-off action if specified")
+    private PostCleanupAction mPostCleanupAction = PostCleanupAction.NONE;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
@@ -69,13 +93,39 @@ public class DeviceCleaner implements ITargetCleaner {
                     device.waitForDeviceAvailable();
                     break;
             }
-            // done with cleanup, check if screen should be turned off
-            if (mScreenOff) {
-                String output = device.executeShellCommand("dumpsys power");
-                if (output.contains("mScreenOn=true")) {
-                    // KEYCODE_POWER = 26
-                    device.executeShellCommand("input keyevent 26");
-                }
+            if (mScreenOff && mPostCleanupAction == PostCleanupAction.NONE) {
+                mPostCleanupAction = PostCleanupAction.SCREEN_OFF;
+            }
+            // perform post cleanup action
+            switch (mPostCleanupAction) {
+                case NONE:
+                    // do nothing here
+                    break;
+                case SCREEN_OFF:
+                    turnScreenOff(device);
+                    break;
+                case SCREEN_OFF_AND_STOP:
+                    turnScreenOff(device);
+                    device.executeShellCommand("stop");
+                    break;
+            }
+        }
+    }
+
+    private void turnScreenOff(ITestDevice device) throws DeviceNotAvailableException {
+        String output = device.executeShellCommand("dumpsys power");
+        int retries = 1;
+        while (output.contains("mScreenOn=true")) {
+            // KEYCODE_POWER = 26
+            device.executeShellCommand("input keyevent 26");
+            // due to framework initialization, device may not actually turn off screen
+            // after boot, recheck screen status with linear backoff
+            RunUtil.getDefault().sleep(SCREEN_OFF_RETRY_DELAY_MS * retries);
+            output = device.executeShellCommand("dumpsys power");
+            retries++;
+            if (retries > MAX_SCREEN_OFF_RETRY) {
+                CLog.w(String.format("screen still on after %d retries", retries));
+                break;
             }
         }
     }
