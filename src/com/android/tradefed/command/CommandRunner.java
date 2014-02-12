@@ -42,7 +42,7 @@ public class CommandRunner {
     public void run(String[] args) {
         try {
             GlobalConfiguration.createGlobalConfiguration(args);
-            mScheduler = new CommandScheduler();
+            mScheduler = GlobalConfiguration.getInstance().getCommandScheduler();
             mScheduler.start();
             mScheduler.addCommand(args);
             mScheduler.shutdownOnEmpty();

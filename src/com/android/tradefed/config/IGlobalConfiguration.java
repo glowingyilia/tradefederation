@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
@@ -136,10 +137,24 @@ public interface IGlobalConfiguration {
     public ITerribleFailureHandler getWtfHandler();
 
     /**
+     * Gets the {@link ICommandScheduler} to use from the configuration.
+     *
+     * @return the {@link ICommandScheduler}. Will never return null.
+     */
+    public ICommandScheduler getCommandScheduler();
+
+    /**
      * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager
      * for the test devices
      *
      * @param deviceManager
      */
     public void setDeviceManager(IDeviceManager deviceManager);
+
+    /**
+     * Set the {@link ICommandScheduler}, replacing any existing values.
+     *
+     * @param scheduler
+     */
+    public void setCommandScheduler(ICommandScheduler scheduler);
 }

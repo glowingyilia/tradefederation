@@ -30,6 +30,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceAllocationState;
+import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.FreeDeviceState;
@@ -104,6 +105,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
 
     /** flag for instructing scheduler to exit when no commands are present */
     private boolean mShutdownOnEmpty = false;
+
+    private boolean mStarted = false;
 
     private enum CommandState {
         WAITING_FOR_DEVICE("Wait_for_device"),
@@ -429,17 +432,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     /**
      * Creates a {@link CommandScheduler}.
      * <p />
-     * Note: logging is initialized here. We assume that {@link CommandScheduler#start} will be
-     * called, so that we can clean logs up at the end of the {@link CommandScheduler#run} method.
-     * In particular, this means that a leak will result if a {@link CommandScheduler} instance is
-     * instantiated but not started.
+     * Note: start must be called before use.
      */
     public CommandScheduler() {
         super("CommandScheduler");  // set the thread name
-        initLogging();
-
-        initDeviceManager();
-
         mCommandQueue = new ConditionPriorityBlockingQueue<ExecutableCommand>(
                 new ExecutableCommandComparator());
         mAllCommands = Collections.synchronizedList(new LinkedList<ExecutableCommand>());
@@ -451,10 +447,29 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     }
 
     /**
+     * Starts the scheduler including setting up of logging, init of {@link DeviceManager} etc
+     */
+    @Override
+    public void start() {
+        synchronized (this) {
+            if (mStarted) {
+                throw new IllegalStateException("scheduler has already been started");
+            }
+            initLogging();
+
+            initDeviceManager();
+
+            mStarted = true;
+        }
+        super.start();
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public synchronized CommandFileWatcher getCommandFileWatcher() {
+        assertStarted();
         if (mCommandFileWatcher == null) {
             mCommandFileWatcher = new CommandFileWatcher(this);
             mCommandFileWatcher.start();
@@ -501,6 +516,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public void run() {
+        assertStarted();
         try {
             // Notify other threads that we're running.
             mRunLatch.countDown();
@@ -605,6 +621,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException {
+        assertStarted();
         IConfiguration config = getConfigFactory().createConfigurationFromArgs(args);
         if (config.getCommandOptions().isHelpMode()) {
             getConfigFactory().printHelpForConfig(args, true, System.out);
@@ -765,6 +782,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     @Override
     public void execCommand(IScheduledInvocationListener listener, ITestDevice device, String[] args)
             throws ConfigurationException {
+        assertStarted();
         CommandTracker cmdTracker = createCommandTracker(args);
         IConfiguration config = getConfigFactory().createConfigurationFromArgs(
                 cmdTracker.getArgs());
@@ -827,6 +845,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public synchronized void shutdown() {
+        assertStarted();
         if (!isShuttingDown()) {
             CLog.d("initiating shutdown");
             clearWaitingCommands();
@@ -841,6 +860,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public synchronized void shutdownOnEmpty() {
+        assertStarted();
         if (!isShuttingDown()) {
             CLog.d("initiating shutdown on empty");
             mShutdownOnEmpty = true;
@@ -852,6 +872,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public synchronized void removeAllCommands() {
+        assertStarted();
         if (mCommandTimer != null) {
             for (Runnable task : mCommandTimer.getQueue()) {
                 mCommandTimer.remove(task);
@@ -881,6 +902,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public synchronized boolean handoverShutdown(int handoverPort) {
+        assertStarted();
         if (mRemoteClient != null) {
             CLog.e("A handover has already been initiated");
             return false;
@@ -978,6 +1000,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public void displayInvocationsInfo(PrintWriter printWriter) {
+        assertStarted();
         if (mInvocationThreadMap == null || mInvocationThreadMap.size() == 0) {
             return;
         }
@@ -1023,6 +1046,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public void displayCommandsInfo(PrintWriter printWriter) {
+        assertStarted();
         List<CommandTracker> cmds = getCommandTrackers();
         Collections.sort(cmds, new CommandTrackerIdComparator());
         for (CommandTracker cmd : cmds) {
@@ -1037,6 +1061,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     @Override
     public void displayCommandQueue(PrintWriter printWriter) {
+        assertStarted();
         if (mAllCommands.isEmpty()) {
             return;
         }
@@ -1150,6 +1175,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                     "Started local tmp remote manager for handover at %d",
                     mRemoteManager.getPort());
             mRemoteClient.sendHandoverClose(mRemoteManager.getPort());
+        }
+    }
+
+    private synchronized void assertStarted() {
+        if(!mStarted) {
+            throw new IllegalStateException("start() must be called before this method");
         }
     }
 }

@@ -756,9 +756,8 @@ public class Console extends Thread {
     public void run() {
         List<String> arrrgs = mMainArgs;
 
-        // Fallback, in case this isn't set already
         if (mScheduler == null) {
-            mScheduler = new CommandScheduler();
+            throw new IllegalStateException("command scheduler hasn't been set");
         }
 
         try {
@@ -916,7 +915,7 @@ public class Console extends Thread {
         List<String> nonGlobalArgs = GlobalConfiguration.createGlobalConfiguration(args);
 
         console.setArgs(nonGlobalArgs);
-        console.setCommandScheduler(new CommandScheduler());
+        console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
         console.setDaemon(true);
         console.start();
 

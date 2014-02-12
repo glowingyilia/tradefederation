@@ -16,6 +16,8 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.command.CommandScheduler;
+import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.IDeviceManager;
@@ -44,6 +46,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String WTF_HANDLER_TYPE_NAME = "wtf_handler";
     public static final String HOST_OPTIONS_TYPE_NAME = "host_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
+    public static final String SCHEDULER_TYPE_NAME = "command_scheduler";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static IGlobalConfiguration sInstance = null;
@@ -184,6 +187,9 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     false));
             sObjTypeMap.put(WTF_HANDLER_TYPE_NAME,
                     new ObjTypeInfo(ITerribleFailureHandler.class, false));
+            sObjTypeMap.put(SCHEDULER_TYPE_NAME,
+                    new ObjTypeInfo(ICommandScheduler.class, false));
+
         }
         return sObjTypeMap;
     }
@@ -204,6 +210,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mConfigMap = new LinkedHashMap<String, List<Object>>();
         setDeviceRequirements(new DeviceSelectionOptions());
         setDeviceManager(new DeviceManager());
+        setCommandScheduler(new CommandScheduler());
     }
 
     /**
@@ -250,6 +257,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public IDeviceSelection getDeviceRequirements() {
         return (IDeviceSelection)getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ICommandScheduler getCommandScheduler() {
+        return (ICommandScheduler)getConfigurationObject(SCHEDULER_TYPE_NAME);
     }
 
     /**
@@ -344,6 +359,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void setDeviceRequirements(IDeviceSelection devRequirements) {
         setConfigurationObjectNoThrow(DEVICE_REQUIREMENTS_TYPE_NAME, devRequirements);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCommandScheduler(ICommandScheduler scheduler) {
+        setConfigurationObjectNoThrow(SCHEDULER_TYPE_NAME, scheduler);
     }
 
     /**
