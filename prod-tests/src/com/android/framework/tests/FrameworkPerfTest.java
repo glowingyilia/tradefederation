@@ -38,8 +38,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Test that measures the average latency of foreground and background
@@ -47,77 +45,67 @@ import java.util.regex.Pattern;
  */
 public class FrameworkPerfTest implements IRemoteTest, IDeviceTest {
 
-    private static final String TEST_PACKAGE_NAME = "com.android.frameworkperf";
+    private static final String TEST_PACKAGE_NAME = "com.android.frameworkperffg";
     private static final String TEST_RUNNER_NAME = "android.test.InstrumentationTestRunner";
-    private static final Pattern METRICS_PATTERN =
-            Pattern.compile("(\\d+\\.\\d+),(\\d+),(\\d+),(\\d+\\.\\d+),(\\d+),(\\d+)");
     private static final int PERF_TIMEOUT = 30 * 60 * 1000; //30 minutes timeout
     private static final int PRE_TEST_SLEEP_MS = 30 *1000; //30s sleep prior to test start
 
-    private static final String LAYOUT = "framework_perf_layout";
-    private static final String SCHEDULING = "framework_perf_scheduling";
-    private static final String METHOD = "framework_perf_method";
-    private static final String GC = "framework_perf_gc";
-    private static final String IPCFG = "framework_perf_ipcfg";
-    private static final String XML = "framework_perf_xml";
-    private static final String BITMAP = "framework_perf_bitmap";
-    private static final String FILE = "framework_perf_file";
-    private static final String OTHER = "framework_perf_other";
+    private static final String LAYOUT = "frameworkfg_perf_layout";
+    private static final String GC = "frameworkfg_perf_gc";
+    private static final String XML = "frameworkfg_perf_xml";
+    private static final String BITMAP = "frameworkfg_perf_bitmap";
+    private static final String FILE = "frameworkfg_perf_file";
+    private static final String OTHER = "frameworkfg_perf_other";
+    private static final String MAP = "frameworkfg_perf_map";
     private static final ImmutableMap<String, String> TEST_TAG_MAP =
             new ImmutableMap.Builder<String, String>()
-            .put("LayoutInflaterButtonFg", LAYOUT)
-            .put("LayoutInflaterFg", LAYOUT)
-            .put("LayoutInflaterImageButtonFg", LAYOUT)
-            .put("LayoutInflaterLargeFg", LAYOUT)
-            .put("LayoutInflaterViewFg", LAYOUT)
-            .put("SchedFgSchedBg", SCHEDULING)
-            .put("MethodCallFgCPUBg", METHOD)
-            .put("MethodCallFgCreateFileBg", METHOD)
-            .put("MethodCallFgCreateWriteFileBg", METHOD)
-            .put("MethodCallFgCreateWriteSyncFileBg", METHOD)
-            .put("MethodCallFgGcBg", METHOD)
-            .put("MethodCallFgReadFileBg", METHOD)
-            .put("MethodCallFgSchedBg", METHOD)
-            .put("MethodCallFgWriteFileBg", METHOD)
-            .put("MethodCallFg", METHOD)
-            .put("ObjectGcFg", GC)
-            .put("FinalizingGcFg", GC)
-            .put("GcFg", GC)
-            .put("PaintGcFg", GC)
-            .put("IpcFgCPUBg", IPCFG)
-            .put("IpcFgCreateFileBg", IPCFG)
-            .put("IpcFgCreateWriteFileBg", IPCFG)
-            .put("IpcFgCreateWriteSyncFileBg", IPCFG)
-            .put("IpcFgGcBg", IPCFG)
-            .put("IpcFgReadFileBg", IPCFG)
-            .put("IpcFgSchedBg", IPCFG)
-            .put("IpcFgWriteFileBg", IPCFG)
-            .put("IpcFg", IPCFG)
-            .put("OpenXmlResFg", XML)
-            .put("ParseLargeXmlResFg", XML)
-            .put("ParseXmlResFg", XML)
-            .put("ReadXmlAttrsFg", XML)
-            .put("CreateBitmapFg", BITMAP)
-            .put("CreateRecycleBitmapFg", BITMAP)
-            .put("LoadLargeBitmapFg", BITMAP)
-            .put("LoadLargeScaledBitmapFg", BITMAP)
-            .put("LoadRecycleLargeBitmapFg", BITMAP)
-            .put("LoadRecycleSmallBitmapFg", BITMAP)
-            .put("LoadSmallBitmapFg", BITMAP)
-            .put("LoadSmallScaledBitmapFg", BITMAP)
-            .put("CreateFileFg", FILE)
-            .put("CreateWriteFileFg", FILE)
-            .put("CreateWriteSyncFileFg", FILE)
-            .put("ReadFileFgCreateWriteFileBg", FILE)
-            .put("ReadFileFgCreateWriteSyncFileBg", FILE)
-            .put("ReadFileFgReadFileBg", FILE)
-            .put("ReadFileFgWriteFileBg", FILE)
-            .put("ReadFileFg", FILE)
-            .put("WriteFileFgCreateWriteFileBg", FILE)
-            .put("WriteFileFgCreateWriteSyncFileBg", FILE)
-            .put("WriteFileFgReadFileBg", FILE)
-            .put("WriteFileFgWriteFileBg", FILE)
-            .put("WriteFileFg", FILE)
+            .put("ReadFile",FILE)
+            .put("CreateWriteFile",FILE)
+            .put("CreateWriteSyncFile",FILE)
+            .put("WriteFile",FILE)
+            .put("CreateFile",FILE)
+
+            .put("CreateRecycleBitmap",BITMAP)
+            .put("LoadLargeScaledBitmap",BITMAP)
+            .put("LoadSmallScaledBitmap",BITMAP)
+            .put("LoadRecycleSmallBitmap",BITMAP)
+            .put("LoadLargeBitmap",BITMAP)
+            .put("CreateBitmap",BITMAP)
+            .put("LoadSmallBitmap",BITMAP)
+
+            .put("LayoutInflaterButton",LAYOUT)
+            .put("LayoutInflaterImageButton",LAYOUT)
+            .put("LayoutInflaterLarge",LAYOUT)
+            .put("LayoutInflaterView",LAYOUT)
+            .put("LayoutInflater",LAYOUT)
+
+            .put("Gc",GC)
+            .put("PaintGc",GC)
+            .put("ObjectGc",GC)
+            .put("FinalizingGc",GC)
+
+            .put("OpenXmlRes",XML)
+            .put("ParseXmlRes",XML)
+            .put("ReadXmlAttrs",XML)
+            .put("ParseLargeXmlRes",XML)
+
+            .put("Sched",OTHER)
+            .put("CPU",OTHER)
+            .put("MethodCall",OTHER)
+            .put("Ipc",OTHER)
+
+            .put("GrowLargeArrayMap",MAP)
+            .put("GrowLargeHashMap",MAP)
+            .put("LookupSmallHashMap",MAP)
+            .put("LookupSmallArrayMap",MAP)
+            .put("LookupTinyHashMap",MAP)
+            .put("GrowTinyHashMap",MAP)
+            .put("LookupLargeHashMap",MAP)
+            .put("LookupTinyArrayMap",MAP)
+            .put("LookupLargeArrayMap",MAP)
+            .put("GrowTinyArrayMap",MAP)
+            .put("GrowSmallHashMap",MAP)
+            .put("GrowSmallArrayMap",MAP)
             .build();
 
     private ITestDevice mTestDevice = null;
@@ -173,36 +161,26 @@ public class FrameworkPerfTest implements IRemoteTest, IDeviceTest {
      * @param listener The {@link ITestInvocationListener} of test results
      * @param metrics The {@link Map} that contains metrics for the given test
      */
-    private void reportMetrics(ITestInvocationListener listener, Map<String, String> metrics)
-            throws IllegalArgumentException {
+    private void reportMetrics(ITestInvocationListener listener, Map<String, String> metrics) {
         // Parse out only averages
         Map<String, Map<String, String>> allMetrics = new HashMap<String, Map<String, String>>();
         for (String key : metrics.keySet()) {
-            Matcher m = METRICS_PATTERN.matcher(metrics.get(key));
-            if (m.matches()) {
-                Map<String, String> parsedMetrics = new HashMap<String, String>();
-                parsedMetrics.put(String.format("%s_fgavg", key), m.group(1));
-                parsedMetrics.put(String.format("%s_bgavg", key), m.group(4));
-
-                String testLabel = TEST_TAG_MAP.get(key);
-                if (testLabel == null) {
-                    testLabel = OTHER;
-                }
-                if (allMetrics.containsKey(testLabel)) {
-                    allMetrics.get(testLabel).putAll(parsedMetrics);
-                } else {
-                    allMetrics.put(testLabel, parsedMetrics);
-                }
+            String testLabel = TEST_TAG_MAP.get(key);
+            if (testLabel == null) {
+                testLabel = OTHER;
             }
-            else {
-                throw new IllegalArgumentException("Input text contains no metrics to parse");
+            if (!allMetrics.containsKey(testLabel)) {
+                allMetrics.put(testLabel, new HashMap<String, String>());
             }
+            allMetrics.get(testLabel).put(key, metrics.get(key));
         }
 
         for (String section : allMetrics.keySet()) {
             Map<String, String> sectionMetrics = allMetrics.get(section);
             if (sectionMetrics != null && !sectionMetrics.isEmpty()) {
-                CLog.d("About to report '%s' metrics: %s", section, sectionMetrics);
+                for (String section2 : sectionMetrics.keySet()) {
+                    CLog.i("%s ::'%s' : %s", section, section2, sectionMetrics.get(section2));
+                }
                 listener.testRunStarted(section, 0);
                 listener.testRunEnded(0, sectionMetrics);
             }
