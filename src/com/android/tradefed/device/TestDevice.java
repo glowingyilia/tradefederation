@@ -1718,15 +1718,15 @@ class TestDevice implements IManagedTestDevice {
      */
     boolean checkConnectivity() throws DeviceNotAvailableException {
         // wait for ping success
-        CLog.i("checking ping to www.google.com");
+        CLog.i("checking ping to " + mOptions.getPingIpOrHost());
         for (int i = 0; i < 10; i++) {
-            String pingOutput = executeShellCommand("ping -c 1 -w 5 www.google.com");
+            String pingOutput = executeShellCommand("ping -c 1 -w 5 " + mOptions.getPingIpOrHost());
             if (pingOutput.contains("1 packets transmitted, 1 received")) {
                 return true;
             }
             getRunUtil().sleep(1 * 1000);
         }
-        CLog.i("could not ping www.google.com");
+        CLog.i("could not ping " + mOptions.getPingIpOrHost());
         return false;
     }
 
