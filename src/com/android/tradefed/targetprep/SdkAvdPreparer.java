@@ -32,14 +32,18 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
-import java.util.List;
-
 import junit.framework.Assert;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A {@link ITargetPreparer} that will create an avd and launch an emulator
  */
-public class SdkAvdPreparer implements ITargetPreparer {
+public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
 
     private static final int ANDROID_TIMEOUT_MS = 15 * 1000;
 
@@ -69,8 +73,13 @@ public class SdkAvdPreparer implements ITargetPreparer {
     @Option(name = "abi", description = "abi to select for the avd")
     private String mAbi = null;
 
+    @Option(name = "prop", description = "pass key-value pairs of system props")
+    private Map<String,String> mProps = new HashMap<String, String>();
+
     private final IRunUtil mRunUtil;
     private final IDeviceManager mDeviceManager;
+
+    private File mSdkHome = null;
 
     /**
      * Creates a {@link SdkAvdPreparer}.
@@ -113,7 +122,7 @@ public class SdkAvdPreparer implements ITargetPreparer {
     public String createAvd(ISdkBuildInfo sdkBuildInfo)
           throws TargetSetupError, BuildError {
         String[] targets = getSdkTargets(sdkBuildInfo);
-        setAndroidSdkHome(sdkBuildInfo);
+        setAndroidSdkHome();
         String target = findTargetToLaunch(targets);
         return createAvdForTarget(sdkBuildInfo, target);
     }
@@ -148,6 +157,10 @@ public class SdkAvdPreparer implements ITargetPreparer {
         if(mForceKvm) {
             emulatorArgs.add("-qemu");
             emulatorArgs.add("-enable-kvm");
+        }
+        for (Map.Entry<String, String> propEntry : mProps.entrySet()) {
+            emulatorArgs.add("-prop");
+            emulatorArgs.add(String.format("%s=%s", propEntry.getKey(), propEntry.getValue()));
         }
 
         launchEmulator(device, avd, emulatorArgs);
@@ -206,18 +219,20 @@ public class SdkAvdPreparer implements ITargetPreparer {
     /**
      * Sets the ANDROID_SDK_HOME environment variable. The SDK home directory is used as the
      * location for SDK file storage of AVD definition files, etc.
-     *
-     * @param sdkBuild
      */
-    private void setAndroidSdkHome(ISdkBuildInfo sdkBuild) {
-        // store avds etc in sdk build location
-        // this has advantage that they will be cleaned up after run
-        mRunUtil.setEnvVariable("ANDROID_SDK_HOME", sdkBuild.getSdkDir().getAbsolutePath());
+    private void setAndroidSdkHome() throws TargetSetupError {
+        try {
+            mSdkHome = FileUtil.createTempDir("SDK_home");
+            // store avds etc in tmp location, and clean up on teardown
+            mRunUtil.setEnvVariable("ANDROID_SDK_HOME", mSdkHome.getAbsolutePath());
+        } catch (IOException e) {
+            throw new TargetSetupError("Failed to create sdk home");
+        }
     }
 
     /**
      * Find the SDK target to use.
-     * <p/>
+     * <p/>IOException
      * Will use the 'sdk-target' option if specified, otherwise will return last target in target
      * list.
      *
@@ -337,5 +352,15 @@ public class SdkAvdPreparer implements ITargetPreparer {
      */
     void setLaunchAttempts(int launchAttempts) {
         mLaunchAttempts = launchAttempts;
+    }
+
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        if (mSdkHome != null) {
+            CLog.i("Removing tmp sdk home dir %s", mSdkHome.getAbsolutePath());
+            FileUtil.recursiveDelete(mSdkHome);
+            mSdkHome = null;
+        }
     }
 }

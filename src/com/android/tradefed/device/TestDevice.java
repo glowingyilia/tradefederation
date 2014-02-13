@@ -2091,6 +2091,13 @@ class TestDevice implements IManagedTestDevice {
      * @throws DeviceNotAvailableException
      */
     private void doAdbReboot(final String into) throws DeviceNotAvailableException {
+        // emulator doesn't support reboot, try just resetting framework and hoping for the best
+        if (getIDevice().isEmulator()) {
+            CLog.i("since emulator, performing shell stop & start instead of reboot");
+            executeShellCommand("stop");
+            executeShellCommand("start");
+            return;
+        }
         if (!doAdbFrameworkReboot(into)) {
             DeviceAction rebootAction = new DeviceAction() {
                 @Override
