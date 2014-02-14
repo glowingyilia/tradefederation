@@ -133,6 +133,8 @@ public interface ICommandScheduler {
     /**
      * Start the {@link ICommandScheduler}.
      * <p/>
+     * Must be called before calling other methods.
+     * <p/>
      * Will run until {@link #shutdown()} is called.
      *
      * see {@link Thread#start()}.

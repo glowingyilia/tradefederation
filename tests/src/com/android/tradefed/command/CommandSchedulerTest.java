@@ -97,6 +97,15 @@ public class CommandSchedulerTest extends TestCase {
                 // ignore
             }
         };
+        mScheduler.start();
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        if (mScheduler != null) {
+            mScheduler.shutdown();
+        }
+        super.tearDown();
     }
 
     /**
@@ -126,7 +135,6 @@ public class CommandSchedulerTest extends TestCase {
     public void testRun_empty() throws InterruptedException {
         mMockManager.setNumDevices(1);
         replayMocks();
-        mScheduler.start();
         while (!mScheduler.isAlive()) {
             Thread.sleep(10);
         }
@@ -162,7 +170,6 @@ public class CommandSchedulerTest extends TestCase {
         mMockConfiguration.validateOptions();
         replayMocks();
         mScheduler.addCommand(args);
-        mScheduler.start();
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
         verifyMocks();
@@ -188,7 +195,6 @@ public class CommandSchedulerTest extends TestCase {
         // the same config object is being used, so clear its state
         mCommandOptions.setDryRunMode(false);
         assertTrue(mScheduler.addCommand(args2));
-        mScheduler.start();
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
         verifyMocks();
@@ -212,7 +218,6 @@ public class CommandSchedulerTest extends TestCase {
         mockListener.invocationComplete(mockDevice, FreeDeviceState.AVAILABLE);
         replayMocks(mockDevice, mockListener);
         mScheduler.execCommand(mockListener, mockDevice, args);
-        mScheduler.start();
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2*1000);
         verifyMocks(mockListener);
@@ -278,7 +283,6 @@ public class CommandSchedulerTest extends TestCase {
             mMockConfiguration.validateOptions();
             replayMocks();
             mScheduler.addCommand(args);
-            mScheduler.start();
             synchronized (notifier) {
                 notifier.wait(1 * 1000);
             }
@@ -327,7 +331,6 @@ public class CommandSchedulerTest extends TestCase {
             mMockConfiguration.validateOptions();
             replayMocks(mockGc, mockWtf);
             mScheduler.addCommand(args);
-            mScheduler.start();
             // no need to call shutdown explicitly - scheduler should shutdown by itself
             mScheduler.join(2*1000);
             verifyMocks(mockGc, mockWtf);
@@ -357,7 +360,6 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.addCommand(args);
         mMockManager.freeDevice(dev, FreeDeviceState.AVAILABLE);
 
-        mScheduler.start();
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
         verifyMocks();
@@ -385,7 +387,6 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.addCommand(args);
         mMockManager.freeDevice(dev, FreeDeviceState.AVAILABLE);
         mMockManager.freeDevice(expectedDevice, FreeDeviceState.AVAILABLE);
-        mScheduler.start();
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
         verifyMocks();
@@ -425,7 +426,6 @@ public class CommandSchedulerTest extends TestCase {
 
         replayMocks(rescheduledConfig);
         mScheduler.addCommand(args);
-        mScheduler.start();
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
 
@@ -437,7 +437,6 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testShutdown() throws Exception {
         mMockManager.setNumDevices(0);
-        mScheduler.start();
         while (!mScheduler.isAlive()) {
             Thread.sleep(10);
         }
