@@ -17,6 +17,7 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -26,10 +27,10 @@ import com.android.tradefed.log.LogUtil.CLog;
  * <p/>
  * Unlike {@link DeviceSetup}, this preparer works when adb is not root aka user builds.
  */
+@OptionClass(alias = "wifi")
 public class WifiPreparer implements ITargetPreparer {
 
-    @Option(name="wifi-network", description="the name of wifi network to connect to.",
-            mandatory=true)
+    @Option(name="wifi-network", description="the name of wifi network to connect to.")
     private String mWifiNetwork = null;
 
     @Option(name="wifi-psk", description="WPA-PSK passphrase of wifi network to connect to.")
@@ -39,12 +40,21 @@ public class WifiPreparer implements ITargetPreparer {
         "maximum number of attempts to connect to wifi network.")
     private int mWifiAttempts = 2;
 
+    @Option(name = "skip", description = "skip the connectivity check and wifi setup")
+    private boolean mSkip = false;
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
+        if (mSkip) {
+            return;
+        }
+        if (mWifiNetwork == null) {
+            throw new TargetSetupError("wifi-network not specified");
+        }
         for (int i=1; i <= mWifiAttempts; i++) {
             if (!device.connectToWifiNetworkIfNeeded(mWifiNetwork, mWifiPsk)) {
                 CLog.w("Failed to connect to wifi network %s on %s on attempt %d of %d",
