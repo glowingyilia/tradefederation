@@ -2354,7 +2354,7 @@ class TestDevice implements IManagedTestDevice {
         String output = getPropertySync("ro.crypto.state");
 
         if (output == null && isEncryptionSupported()) {
-            CLog.e("Property ro.crypto.state is null on device %s", getSerialNumber());
+            CLog.w("Property ro.crypto.state is null on device %s", getSerialNumber());
         }
 
         return "encrypted".equals(output);

@@ -41,6 +41,7 @@ import com.android.tradefed.util.TableFormatter;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -584,7 +585,7 @@ public class DeviceManager implements IDeviceManager {
             Process p = runUtil.runCmdInBackground(fullArgs);
             // sleep a small amount to wait for process to start successfully
             getRunUtil().sleep(500);
-            checkProcessDied(p);
+            assertEmulatorProcessAlive(p);
             IManagedTestDevice managedDevice = (IManagedTestDevice)device;
             managedDevice.setEmulatorProcess(p);
             managedDevice.startLogcat();
@@ -596,26 +597,33 @@ public class DeviceManager implements IDeviceManager {
         device.waitForDeviceAvailable(bootTimeout);
     }
 
+    private void assertEmulatorProcessAlive(Process p) throws DeviceNotAvailableException {
+        if (!isProcessRunning(p)) {
+            try {
+                CLog.e("Emulator process has died . stdout: '%s', stderr: '%s'",
+                        StreamUtil.getStringFromStream(p.getInputStream()),
+                        StreamUtil.getStringFromStream(p.getErrorStream()));
+            } catch (IOException e) {
+                // ignore
+            }
+            throw new DeviceNotAvailableException("emulator died after launch");
+        }
+    }
+
     /**
      * Check if emulator process has died
      *
      * @param p the {@link Process} to check
-     * @throws DeviceNotAvailableException if process has died
+     * @return true if process is running, false otherwise
      */
-    private void checkProcessDied(Process p) throws DeviceNotAvailableException {
+    private boolean isProcessRunning(Process p) {
         try {
-            int exitValue = p.exitValue();
-            // should have thrown IllegalThreadStateException
-            CLog.e("Emulator process has died with exit value %d. stdout: '%s', stderr: '%s'",
-                    exitValue, StreamUtil.getStringFromStream(p.getInputStream()),
-                    StreamUtil.getStringFromStream(p.getErrorStream()));
+            p.exitValue();
         } catch (IllegalThreadStateException e) {
             // expected if process is still alive
-            return;
-        } catch (IOException e) {
-            // fall through
+            return true;
         }
-        throw new DeviceNotAvailableException("Emulator process has died unexpectedly");
+        return false;
     }
 
     /**
@@ -626,6 +634,8 @@ public class DeviceManager implements IDeviceManager {
         EmulatorConsole console = EmulatorConsole.getConsole(device.getIDevice());
         if (console != null) {
             console.kill();
+            // check and wait for device to become not avail
+            device.waitForDeviceNotAvailable(5*1000);
             // lets ensure process is killed too - fall through
         } else {
             CLog.w("Could not get emulator console for %s", device.getSerialNumber());
@@ -634,10 +644,40 @@ public class DeviceManager implements IDeviceManager {
         Process emulatorProcess = ((IManagedTestDevice)device).getEmulatorProcess();
         if (emulatorProcess != null) {
             emulatorProcess.destroy();
+            if (isProcessRunning(emulatorProcess)) {
+                CLog.w("Emulator process still running after destroy for %s",
+                        device.getSerialNumber());
+                forceKillProcess(emulatorProcess, device.getSerialNumber());
+            }
         }
         if (!device.waitForDeviceNotAvailable(20*1000)) {
             throw new DeviceNotAvailableException(String.format("Failed to kill emulator %s",
                     device.getSerialNumber()));
+        }
+    }
+
+    /**
+     * Disgusting hack alert! Attempt to force kill given process.
+     * Relies on implementation details. Only works on linux
+     *
+     * @param emulatorProcess the {@link Process} to kill
+     * @param emulatorSerial the serial number of emulator. Only used for logging
+     */
+    private void forceKillProcess(Process emulatorProcess, String emulatorSerial) {
+        if (emulatorProcess.getClass().getName().equals("java.lang.UNIXProcess")) {
+            try {
+                CLog.i("Attempting to force kill emulator process for %s", emulatorSerial);
+                Field f = emulatorProcess.getClass().getDeclaredField("pid");
+                f.setAccessible(true);
+                Integer pid = (Integer)f.get(emulatorProcess);
+                if (pid != null) {
+                    RunUtil.getDefault().runTimedCmd(5*1000, "kill", "-9", pid.toString());
+                }
+            } catch (NoSuchFieldException e) {
+                CLog.d("got NoSuchFieldException when attempting to read process pid");
+            } catch (IllegalAccessException e) {
+                CLog.d("got IllegalAccessException when attempting to read process pid");
+            }
         }
     }
 

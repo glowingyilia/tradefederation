@@ -16,6 +16,7 @@
 
 package com.android.tradefed.targetprep;
 
+import com.android.ddmlib.EmulatorConsole;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.ISdkBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -45,7 +46,7 @@ import java.util.Map;
  */
 public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
 
-    private static final int ANDROID_TIMEOUT_MS = 15 * 1000;
+    private static final int ANDROID_TIMEOUT_MS = 30 * 1000;
 
     @Option(name = "sdk-target", description = "the name of SDK target to launch. " +
             "If unspecified, will use first target found")
@@ -152,25 +153,38 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             emulatorArgs.add("-gpu");
             emulatorArgs.add("on");
         }
-
+        for (Map.Entry<String, String> propEntry : mProps.entrySet()) {
+            emulatorArgs.add("-prop");
+            emulatorArgs.add(String.format("%s=%s", propEntry.getKey(), propEntry.getValue()));
+        }
         // qemu must be the last parameter, it assumes params that follow it are it's own
         if(mForceKvm) {
             emulatorArgs.add("-qemu");
             emulatorArgs.add("-enable-kvm");
         }
-        for (Map.Entry<String, String> propEntry : mProps.entrySet()) {
-            emulatorArgs.add("-prop");
-            emulatorArgs.add(String.format("%s=%s", propEntry.getKey(), propEntry.getValue()));
-        }
 
         launchEmulator(device, avd, emulatorArgs);
-        if (!device.getIDevice().getAvdName().equals(avd)) {
+        if (!avd.equals(getAvdNameFromEmulator(device))) {
             // not good. Either emulator isn't reporting its avd name properly, or somehow
             // the wrong emulator launched. Treat as a BuildError
             throw new BuildError(String.format(
                     "Emulator booted with incorrect avd name '%s'. Expected: '%s'.",
                     device.getIDevice().getAvdName(), avd));
         }
+    }
+
+    String getAvdNameFromEmulator(ITestDevice device) {
+        String avdName = device.getIDevice().getAvdName();
+        if (avdName == null) {
+            CLog.w("IDevice#getAvdName is null");
+            // avdName is set asynchronously on startup, which explains why it might be null
+            // query directly as work around
+            EmulatorConsole console = EmulatorConsole.getConsole(device.getIDevice());
+            if (console != null) {
+                avdName = console.getAvdName();
+            }
+        }
+        return avdName;
     }
 
     /**
@@ -287,7 +301,8 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             // stdout usually doesn't contain useful data, so don't want to add it to the
             // exception message. However, log it here as a debug log so the info is captured
             // in log
-            CLog.d("AVD creation failed. stdout: %s", result.getStdout());
+            CLog.d("AVD creation failed. status: '%s' stdout: '%s'", result.getStatus(),
+                    result.getStdout());
             // treat as BuildError
             throw new BuildError(String.format(
                     "Unable to create avd for target '%s'. stderr: '%s'", target,

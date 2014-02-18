@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+
 import java.io.File;
 
 /**
@@ -34,6 +35,9 @@ public class LocalSdkAvdPreparer extends SdkAvdPreparer {
     @Option(name = "local-sdk-path", description =
             "the local filesystem path to sdk root directory to test.")
     private File mLocalSdkPath = null;
+
+    @Option(name = "new-emulator", description = "launch a new emulator.")
+    private boolean mNewEmulator = false;
 
     private ISdkBuildInfo mSdkBuildInfo = new SdkBuildInfo();
 
@@ -52,9 +56,7 @@ public class LocalSdkAvdPreparer extends SdkAvdPreparer {
             DeviceNotAvailableException, BuildError {
         mSdkBuildInfo.setSdkDir(mLocalSdkPath);
         mSdkBuildInfo.setAdtDir(null);
-        // Note: If we want to launch the emulator, we need to pass the --new-emulator flag
-        // defined in DeviceSelectionOptions, which will create a stub emulator.
-        if (device.getIDevice().isEmulator()) {
+        if (mNewEmulator) {
             if (mLocalSdkPath == null) {
                 throw new TargetSetupError(
                         "Please set the path of the sdk using --local-sdk-path.");

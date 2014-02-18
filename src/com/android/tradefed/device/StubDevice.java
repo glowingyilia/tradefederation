@@ -22,6 +22,7 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.InstallException;
 import com.android.ddmlib.RawImage;
+import com.android.ddmlib.ScreenRecorderOptions;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncException;
 import com.android.ddmlib.SyncService;
@@ -403,5 +404,22 @@ class StubDevice implements IDevice {
             throws TimeoutException, AdbCommandRejectedException,
             ShellCommandUnresponsiveException, IOException {
         throw new IOException("stub");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean supportsFeature(Feature feature) {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void startScreenRecorder(String remoteFilePath, ScreenRecorderOptions options,
+            IShellOutputReceiver receiver) throws TimeoutException, AdbCommandRejectedException,
+            IOException, ShellCommandUnresponsiveException {
     }
 }
