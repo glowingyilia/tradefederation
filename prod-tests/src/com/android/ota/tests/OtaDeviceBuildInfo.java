@@ -250,7 +250,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public File getBasebandImageFile() {
-        return mBaselineBuild.getDeviceImageFile();
+        return mBaselineBuild.getBasebandImageFile();
     }
 
     /**

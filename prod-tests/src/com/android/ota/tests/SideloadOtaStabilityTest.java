@@ -17,6 +17,7 @@
 package com.android.ota.tests;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -31,6 +32,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.FlashingResourcesParser;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
@@ -97,6 +99,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
 
     /** controls if this test should be resumed. Only used if mResumeMode is enabled */
     private boolean mResumable = true;
+
+    private String mExpectedBootloaderVersion, mExpectedBasebandVersion;
 
     /**
      * {@inheritDoc}
@@ -194,24 +198,27 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         mResumable = false;
         checkFields();
 
-        String expectedBuildId = mOtaDeviceBuild.getOtaBuild().getOtaPackageVersion();
         CLog.i("Starting OTA sideload test from %s to %s, for %d iterations",
-                mOtaDeviceBuild.getDeviceImageVersion(), expectedBuildId, mIterations);
+                mOtaDeviceBuild.getDeviceImageVersion(),
+                mOtaDeviceBuild.getOtaBuild().getOtaPackageVersion(), mIterations);
+
+        getBasebandBootloaderVersions(mOtaDeviceBuild.getOtaBuild());
 
         long startTime = System.currentTimeMillis();
         listener.testRunStarted(mRunName, 0);
         int actualIterations = 0;
         try {
-            File otaFile = mOtaDeviceBuild.getOtaBuild().getOtaPackageFile();
             while (actualIterations < mIterations) {
                 if (actualIterations != 0) {
                     // don't need to flash device on first iteration
                     flashDevice();
                 }
-                installOta(listener, otaFile, expectedBuildId);
+                installOta(listener, mOtaDeviceBuild.getOtaBuild());
                 actualIterations++;
                 CLog.i("Device %s successfully OTA-ed to build %s. Iteration: %d of %d",
-                        mDevice.getSerialNumber(), expectedBuildId, actualIterations, mIterations);
+                        mDevice.getSerialNumber(),
+                        mOtaDeviceBuild.getOtaBuild().getOtaPackageVersion(),
+                        actualIterations, mIterations);
             }
         } catch (AssertionFailedError error) {
             CLog.e(error);
@@ -281,9 +288,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         return mResumeMode && mResumable;
     }
 
-    private void installOta(ITestInvocationListener listener, File otaFile, String expectedBuildId)
+    private void installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
-        Assert.assertTrue(mDevice.pushFile(otaFile, CACHE_OTA_PATH));
+        Assert.assertTrue(mDevice.pushFile(otaBuild.getOtaPackageFile(), CACHE_OTA_PATH));
         String installOtaCmd = String.format("--update_package=%s", CACHE_OTA_PATH);
         mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
 
@@ -309,8 +316,12 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             throw e;
         }
         Assert.assertEquals("build id does not equal expected value after OTA",
-                mDevice.getBuildId(), expectedBuildId);
-        // TODO: check baseband, bootloader versions as well
+                mDevice.getBuildId(), otaBuild.getOtaPackageVersion());
+        Assert.assertEquals("bootloader version does not equal expected value after OTA",
+                mDevice.getBootloaderVersion(), mExpectedBootloaderVersion);
+        Assert.assertEquals("baseband version does not equal expected value after OTA",
+                mDevice.getBasebandVersion(), mExpectedBasebandVersion);
+
     }
 
     private void sendRecoveryLog(ITestInvocationListener listener)
@@ -333,6 +344,17 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 destSource.cancel();
             }
             FileUtil.deleteFile(destFile);
+        }
+    }
+
+    private void getBasebandBootloaderVersions(IDeviceBuildInfo otaBuild) {
+        try {
+            FlashingResourcesParser parser = new FlashingResourcesParser(
+                    otaBuild.getDeviceImageFile());
+            mExpectedBootloaderVersion = parser.getRequiredBootloaderVersion();
+            mExpectedBasebandVersion = parser.getRequiredBasebandVersion();
+        } catch (TargetSetupError e) {
+            throw new RuntimeException("Error when trying to set up OTA version info");
         }
     }
 }
