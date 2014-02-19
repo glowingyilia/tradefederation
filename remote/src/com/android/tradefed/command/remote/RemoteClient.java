@@ -107,6 +107,22 @@ public class RemoteClient implements IRemoteClient {
     }
 
     /**
+     * Helper method to create a {@link RemoteClient} connected to given host and port
+     *
+     * @param hostname the host name
+     * @param port the tcp/ip port
+     * @return the {@link RemoteClient}
+     * @throws RemoteException if failed to connect
+     */
+    public static IRemoteClient connect(String hostname, int port) throws RemoteException {
+        try {
+            return new RemoteClient(hostname, port);
+        } catch (IOException e) {
+            throw new RemoteException(e);
+        }
+    }
+
+    /**
      * Helper method to create a {@link RemoteClient} connected to default port
      *
      * @return the {@link RemoteClient}
