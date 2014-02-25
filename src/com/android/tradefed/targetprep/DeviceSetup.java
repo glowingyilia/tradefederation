@@ -43,6 +43,7 @@ public class DeviceSetup implements ITargetPreparer {
     private static final String LOG_TAG = "DeviceSetup";
     private static final Pattern RELEASE_BUILD_NAME_PATTERN =
             Pattern.compile("[A-Z]{3}\\d{2}[A-Z]?");
+    private static final String PERSIST_PREFIX = "persist.";
 
     @Option(name="wifi-network", description="the name of wifi network to connect to.")
     private String mWifiNetwork = null;
@@ -196,8 +197,13 @@ public class DeviceSetup implements ITargetPreparer {
             propertyBuilder.append("dalvik.vm.dexopt-flags = v=n\n");
         }
         for (String prop : mSetProps) {
-            propertyBuilder.append(prop);
-            propertyBuilder.append("\n");
+            if (prop.startsWith(PERSIST_PREFIX)) {
+                prop = prop.replace('=', ' ');
+                device.executeShellCommand("setprop " + prop);
+            } else {
+                propertyBuilder.append(prop);
+                propertyBuilder.append("\n");
+            }
         }
         if (propertyBuilder.length() > 0) {
             // create a local.prop file, and push it to /data/local.prop
