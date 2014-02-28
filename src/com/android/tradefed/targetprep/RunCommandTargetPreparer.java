@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -25,6 +26,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import java.util.ArrayList;
 import java.util.List;
 
+@OptionClass(alias = "run-command")
 public class RunCommandTargetPreparer implements ITargetCleaner {
     @Option(name = "run-command", description = "adb shell command to run")
     private List<String> mCommands = new ArrayList<String>();
@@ -32,12 +34,16 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
     @Option(name = "teardown-command", description = "adb shell command to run at teardown time")
     private List<String> mTeardownCommands = new ArrayList<String>();
 
+    @Option(name = "disable", description = "Disable this preparer")
+    private boolean mDisable = false;
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
+        if (mDisable) return;
         for (String cmd : mCommands) {
             // If the command had any output, the executeShellCommand method will log it at the
             // VERBOSE level; so no need to do any logging from here.
@@ -52,6 +58,7 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
+        if (mDisable) return;
         for (String cmd : mTeardownCommands) {
             // If the command had any output, the executeShellCommand method will log it at the
             // VERBOSE level; so no need to do any logging from here.
