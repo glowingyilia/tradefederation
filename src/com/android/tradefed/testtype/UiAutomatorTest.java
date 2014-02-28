@@ -399,4 +399,12 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
     public void setRunnerName(String runnerName) {
         mRunnerName = runnerName;
     }
+
+    /**
+     * Gets the list of test class names that the harness is configured to run
+     * @return list of test class names
+     */
+    public List<String> getClassNames() {
+        return mClasses;
+    }
 }
