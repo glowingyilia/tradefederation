@@ -247,6 +247,8 @@ public class FileDownloadCache {
         try {
             hardlinkFile = FileUtil.createTempFileForRemote(remotePath, null);
             hardlinkFile.delete();
+            CLog.d("Creating hardlink '%s' to '%s'", hardlinkFile.getAbsolutePath(),
+                    cachedFile.getAbsolutePath());
             FileUtil.hardlinkFile(cachedFile, hardlinkFile);
             return hardlinkFile;
         } catch (IOException e) {
