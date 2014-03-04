@@ -20,8 +20,12 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.StubTestInvocationListener;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.Map;
 
 class ExecCommandTracker extends StubTestInvocationListener implements
         IScheduledInvocationListener {
@@ -29,6 +33,7 @@ class ExecCommandTracker extends StubTestInvocationListener implements
     private CommandResult.Status mStatus = CommandResult.Status.EXECUTING;
     private String mErrorDetails = null;
     private FreeDeviceState mState = null;
+    Map<String, String> mRunMetrics = new HashMap<String, String>();
 
     @Override
     public void invocationFailed(Throwable cause) {
@@ -49,11 +54,18 @@ class ExecCommandTracker extends StubTestInvocationListener implements
         }
     }
 
+    @Override
+    public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+        mRunMetrics.putAll(runMetrics);
+    }
+
     /**
      * Returns the current state as a {@link CommandResult}.
      * @return
      */
     CommandResult getCommandResult() {
-        return new CommandResult(mStatus, mErrorDetails, mState);
+        return new CommandResult(mStatus, mErrorDetails, mState,
+                new ImmutableMap.Builder<String, String>()
+                    .putAll(mRunMetrics).build());
     }
 }

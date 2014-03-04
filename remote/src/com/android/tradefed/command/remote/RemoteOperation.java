@@ -28,7 +28,7 @@ abstract class RemoteOperation<T> {
     /** represents json key for error message */
     static final String ERROR = "error";
 
-    static final int CURRENT_PROTOCOL_VERSION = 4;
+    static final int CURRENT_PROTOCOL_VERSION = 5;
 
     /**
      * Represents all types of remote operations that can be performed

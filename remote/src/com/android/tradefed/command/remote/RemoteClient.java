@@ -200,10 +200,11 @@ public class RemoteClient implements IRemoteClient {
                 handler.stillRunning();
                 break;
             case INVOCATION_ERROR:
-                handler.failure(r.getInvocationErrorDetails(), r.getFreeDeviceState());
+                handler.failure(r.getInvocationErrorDetails(), r.getFreeDeviceState(),
+                        r.getRunMetrics());
                 break;
             case INVOCATION_SUCCESS:
-                handler.success();
+                handler.success(r.getRunMetrics());
                 break;
             case NO_ACTIVE_COMMAND:
                 handler.noActiveCommand();

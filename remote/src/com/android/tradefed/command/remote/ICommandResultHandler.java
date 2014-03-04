@@ -17,12 +17,17 @@ package com.android.tradefed.command.remote;
 
 import com.android.tradefed.device.FreeDeviceState;
 
+import java.util.Map;
+
 /**
- * Callback for handling the result of a {@link GetLastCommandResultOp}
+ * Callback for handling the result of a {@link GetLastCommandResultOp}. Although commands can have
+ * multiple runs, we only return one set of metrics and replace any currently stored metrics with
+ * the same key.
  */
 public interface ICommandResultHandler {
-    public void success();
-    public void failure(String errorDetails, FreeDeviceState deviceState);
+    public void success(Map<String, String> runMetrics);
+    public void failure(String errorDetails, FreeDeviceState deviceState,
+            Map<String, String> runMetrics);
     public void stillRunning();
     public void notAllocated();
     public void noActiveCommand();

@@ -17,6 +17,8 @@ package com.android.tradefed.command.remote;
 
 import com.android.tradefed.device.FreeDeviceState;
 
+import java.util.Map;
+
 /**
  * Encapsulates 'last command execution' data sent over the wire
  */
@@ -33,15 +35,18 @@ class CommandResult {
     private final Status mStatus;
     private final String mError;
     private final FreeDeviceState mState;
+    private final Map<String, String> mRunMetrics;
 
-    CommandResult(Status status, String errorDetails, FreeDeviceState state) {
+    CommandResult(Status status, String errorDetails, FreeDeviceState state,
+            Map<String, String> runMetrics) {
         mStatus = status;
         mError = errorDetails;
         mState = state;
+        mRunMetrics = runMetrics;
     }
 
     public CommandResult(Status status) {
-        this(status, null, null);
+        this(status, null, null, null);
     }
 
     Status getStatus() {
@@ -54,5 +59,13 @@ class CommandResult {
 
     FreeDeviceState getFreeDeviceState() {
         return mState;
+    }
+
+    /*
+     * Although commands can have multiple runs, we only return one set of metrics and replace any
+     * currently stored metrics with the same key.
+     */
+    Map<String, String> getRunMetrics() {
+        return mRunMetrics;
     }
 }

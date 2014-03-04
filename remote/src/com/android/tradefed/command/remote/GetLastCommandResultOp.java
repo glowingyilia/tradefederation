@@ -15,11 +15,16 @@
  */
 package com.android.tradefed.command.remote;
 
+import com.google.common.collect.ImmutableMap;
+
 import com.android.tradefed.command.remote.CommandResult.Status;
 import com.android.tradefed.device.FreeDeviceState;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.Map;
 
 /**
  * Remote operation for getting the result of the last command executed
@@ -31,6 +36,9 @@ class GetLastCommandResultOp extends RemoteOperation<CommandResult> {
     private static final String FREE_DEVICE_STATE = "free_device_state";
     private static final String STATUS = "status";
     private static final String INVOCATION_ERROR = "invocation_error";
+    private static final String RUN_METRICS = "run_metrics";
+    private static final String RUN_METRICS_KEY = "key";
+    private static final String RUN_METRICS_VALUE = "value";
 
     private final String mSerial;
 
@@ -88,7 +96,21 @@ class GetLastCommandResultOp extends RemoteOperation<CommandResult> {
                 throw new JSONException(String.format("unrecognized state '%s'", freeDeviceString));
             }
         }
-        return new CommandResult(status, errorDetails, state);
+
+        Map<String, String> runMetricsMap = null;
+        JSONArray jsonRunMetricsArray = json.optJSONArray(RUN_METRICS);
+        if (jsonRunMetricsArray != null && jsonRunMetricsArray.length() > 0) {
+            ImmutableMap.Builder<String, String> mapBuilder =
+                    new ImmutableMap.Builder<String, String>();
+            for (int i = 0; i < jsonRunMetricsArray.length(); i++) {
+                JSONObject runMetricJson = jsonRunMetricsArray.getJSONObject(i);
+                final String key = runMetricJson.getString(RUN_METRICS_KEY);
+                final String value = runMetricJson.getString(RUN_METRICS_VALUE);
+                mapBuilder.put(key, value);
+            }
+            runMetricsMap = mapBuilder.build();
+        }
+        return new CommandResult(status, errorDetails, state, runMetricsMap);
     }
 
     /**
@@ -102,6 +124,17 @@ class GetLastCommandResultOp extends RemoteOperation<CommandResult> {
         }
         if (commandResult.getFreeDeviceState() != null) {
             json.put(FREE_DEVICE_STATE, commandResult.getFreeDeviceState().name());
+        }
+        Map<String, String> runMetrics = commandResult.getRunMetrics();
+        if (runMetrics != null && runMetrics.size() > 0) {
+            JSONArray jsonRunMetricsArray = new JSONArray();
+            for (Map.Entry<String, String> entry : runMetrics.entrySet()) {
+                JSONObject keyValuePairJson = new JSONObject();
+                keyValuePairJson.put(RUN_METRICS_KEY, entry.getKey());
+                keyValuePairJson.put(RUN_METRICS_VALUE, entry.getValue());
+                jsonRunMetricsArray.put(keyValuePairJson);
+            }
+            json.put(RUN_METRICS, jsonRunMetricsArray);
         }
     }
 

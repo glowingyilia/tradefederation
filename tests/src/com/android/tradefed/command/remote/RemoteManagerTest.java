@@ -31,6 +31,7 @@ import org.easymock.IAnswer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Unit tests for {@link RemoteManager}.
@@ -404,9 +405,11 @@ public class RemoteManagerTest extends TestCase {
     /**
      * Test {@link GetLastCommandResultOp} result when commmand fails due to a not available device.
      */
+    @SuppressWarnings("unchecked")
     public void testGetLastCommandResult_notAvail() throws Exception {
         ICommandResultHandler mockHandler = EasyMock.createStrictMock(ICommandResultHandler.class);
-        mockHandler.failure((String)EasyMock.anyObject(), EasyMock.eq(FreeDeviceState.UNAVAILABLE));
+        mockHandler.failure((String)EasyMock.anyObject(), EasyMock.eq(FreeDeviceState.UNAVAILABLE),
+                (Map<String, String>)EasyMock.anyObject());
         ITestDevice device = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");
         EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
