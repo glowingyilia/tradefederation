@@ -198,11 +198,28 @@ public interface ITestDevice {
      * Will attempt to retrieve bootloader version from the device's current state. (ie if device
      * is in fastboot mode, it will attempt to retrieve version from fastboot)
      *
-     * @return the {@link String} bootloader version or <code>null</code> if it cannot be dounf
+     * @return the {@link String} bootloader version or <code>null</code> if it cannot be found
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *             recovered.
      */
     public String getBootloaderVersion() throws DeviceNotAvailableException;
+
+
+    /**
+     * Convenience method to get baseband (radio) version of this device. Getting the radio version
+     * is device specific, so it might not return the correct information for all devices. This
+     * method relies on the gsm.version.baseband propery to return the correct version information.
+     * This is not accurate for some CDMA devices and the version returned here might not match
+     * the version reported from fastboot and might not return the version for the CDMA radio.
+     * TL;DR this method only reports accurate version if the gsm.version.baseband property is the
+     * same as the version returned by <code>fastboot getvar version-baseband</code>.
+     *
+     * @return the {@link String} baseband version or <code>null</code> if it cannot be determined
+     *          (device has no radio or version string cannot be read)
+     * @throws DeviceNotAvailableException if the connection with the device is lost and cannot
+     *          be recovered.
+     */
+    public String getBasebandVersion() throws DeviceNotAvailableException;
 
     /**
      * Retrieve the alias of the build that the device is currently running.

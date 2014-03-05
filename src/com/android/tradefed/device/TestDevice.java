@@ -345,6 +345,11 @@ class TestDevice implements IManagedTestDevice {
         return internalGetProperty("ro.bootloader", "version-bootloader", "Bootloader");
     }
 
+    @Override
+    public String getBasebandVersion() throws DeviceNotAvailableException {
+        return internalGetProperty("gsm.version.baseband", "version-baseband", "Baseband");
+    }
+
     /**
      * {@inheritDoc}
      */

@@ -36,4 +36,9 @@ public class VersionedFile {
     public String getVersion() {
         return mVersion;
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s:%s", mFile.getAbsolutePath(), mVersion);
+    }
 }
