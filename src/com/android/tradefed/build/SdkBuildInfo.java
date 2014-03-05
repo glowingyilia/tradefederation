@@ -30,7 +30,7 @@ import java.io.IOException;
  */
 public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
 
-    private File mAdtDir = null;
+    private File mTestDir = null;
     private File mSdkDir = null;
     private boolean mDeleteSdkDirParent;
     private static final boolean isWindows = System.getProperty("os.name") != null
@@ -67,16 +67,16 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
      * {@inheritDoc}
      */
     @Override
-    public File getAdtDir() {
-        return mAdtDir;
+    public File getTestsDir() {
+        return mTestDir;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void setAdtDir(File adtDir) {
-        mAdtDir  = adtDir;
+    public void setTestsDir(File testDir) {
+        mTestDir  = testDir;
     }
 
     /**
@@ -105,11 +105,11 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
                 FileUtil.recursiveDelete(mSdkDir);
             }
         }
-        if (mAdtDir != null) {
-            FileUtil.recursiveDelete(mAdtDir);
+        if (mTestDir != null) {
+            FileUtil.recursiveDelete(mTestDir);
         }
         mSdkDir = null;
-        mAdtDir = null;
+        mTestDir = null;
     }
 
     @Override
@@ -117,11 +117,11 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
         SdkBuildInfo cloneBuild = new SdkBuildInfo(getBuildId(), getTestTag(), getBuildTargetName());
         cloneBuild.addAllBuildAttributes(this);
         try {
-            File cloneAdtDir = null;
-            if (getAdtDir() != null) {
-                cloneAdtDir = FileUtil.createTempDir("cloneAdt");
-                FileUtil.recursiveCopy(getAdtDir(), cloneAdtDir);
-                cloneBuild.setAdtDir(cloneAdtDir);
+            File cloneTestDir = null;
+            if (getTestsDir() != null) {
+                cloneTestDir = FileUtil.createTempDir("cloneTest");
+                FileUtil.recursiveCopy(getTestsDir(), cloneTestDir);
+                cloneBuild.setTestsDir(cloneTestDir);
             }
             File cloneSdkDir = null;
             if (getSdkDir() != null) {

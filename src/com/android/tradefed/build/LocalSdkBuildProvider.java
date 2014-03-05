@@ -36,10 +36,10 @@ public class LocalSdkBuildProvider implements IBuildProvider {
             importance = Importance.IF_UNSET)
     private File mLocalSdkPath = getSdkFromBuildEnv();
 
-    @Option(name = "adt-path", description =
-            "the local filesystem path to a adt directory to test.",
+    @Option(name = "test-path", description =
+            "the local filesystem path to a test directory.",
             importance = Importance.IF_UNSET)
-    private File mLocalAdtPath = null;
+    private File mLocalTestPath = null;
 
     /**
      * {@inheritDoc}
@@ -57,9 +57,9 @@ public class LocalSdkBuildProvider implements IBuildProvider {
                     "tradefed in a Android build env with a built SDK",
                     mLocalSdkPath.getAbsolutePath(), SDK_OPTION_NAME));
         }
-        // allow a null adt-build-path
+        // allow a null test-build-path
         sdkBuild.setSdkDir(mLocalSdkPath);
-        sdkBuild.setAdtDir(mLocalAdtPath);
+        sdkBuild.setTestsDir(mLocalTestPath);
         return sdkBuild;
     }
 
