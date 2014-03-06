@@ -15,8 +15,11 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.ddmlib.ShellCommandUnresponsiveException;
+import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
@@ -384,11 +387,11 @@ public class TestInvocation implements ITestInvocation {
         long startTime = System.currentTimeMillis();
         long elapsedTime = -1;
 
-        logDeviceBatteryLevel(device, "initial");
         info.setDeviceSerial(device.getSerialNumber());
         startInvocation(config, device, info, listener);
         try {
             device.setOptions(config.getDeviceOptions());
+            logDeviceBatteryLevel(device, "initial");
 
             prepareAndRun(config, device, info, listener);
         } catch (BuildError e) {
@@ -644,7 +647,7 @@ public class TestInvocation implements ITestInvocation {
         return mStatus;
     }
 
-    private void logDeviceBatteryLevel(ITestDevice testDevice, String event) throws Throwable {
+    private void logDeviceBatteryLevel(ITestDevice testDevice, String event) {
         if (testDevice == null) {
             return;
         }
@@ -652,6 +655,18 @@ public class TestInvocation implements ITestInvocation {
         if (device == null) {
             return;
         }
-        CLog.v("%s - %s - %d%%", BATT_TAG, event, device.getBatteryLevel(0));
+        try {
+            CLog.v("%s - %s - %d%%", BATT_TAG, event, device.getBatteryLevel(0));
+            return;
+        } catch (TimeoutException e) {
+            // fall through
+        } catch (AdbCommandRejectedException e) {
+            // fall through
+        } catch (IOException e) {
+            // fall through
+        } catch (ShellCommandUnresponsiveException e) {
+            // fall through
+        }
+        CLog.v("Failed to get battery level");
     }
 }
