@@ -347,7 +347,11 @@ class TestDevice implements IManagedTestDevice {
 
     @Override
     public String getBasebandVersion() throws DeviceNotAvailableException {
-        return internalGetProperty("gsm.version.baseband", "version-baseband", "Baseband");
+        if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
+            return getFastbootVariable("version-baseband");
+        } else {
+            return getPropertySync("gsm.version.baseband");
+        }
     }
 
     /**
