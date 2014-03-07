@@ -17,6 +17,7 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
@@ -26,15 +27,16 @@ import java.util.Collection;
 /**
  * A {@link ITargetPreparer} that wipes user data on the device.
  */
+@OptionClass(alias = "erase-user-data")
 public class EraseUserDataPreparer implements ITargetPreparer {
 
     @Option(name="wipe-skip-list", description=
             "list of /data subdirectories to NOT wipe when doing UserDataFlashOption.TESTS_ZIP")
         private Collection<String> mDataWipeSkipList = new ArrayList<String>();
 
-    @Option(name="retain-data", description=
+    @Option(name="disable", description=
             "Retain data, don't erase anything, effectively disables this preparer")
-    private boolean mRetainData = false;
+    private boolean mDisable = false;
 
     @Option(name="wait-for-available",
             description="Wait until device is available for testing before performing erase")
@@ -48,11 +50,14 @@ public class EraseUserDataPreparer implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
+        if (mDisable) {
+            return;
+        }
         if (mWaitForAvailable) {
             device.waitForDeviceAvailable();
         }
+        
         device.enableAdbRoot();
-        if (mRetainData) return;
         if (mTestsZipInstaller == null) {
             if (mDataWipeSkipList.isEmpty()) {
                 // Maintain backwards compatibility
