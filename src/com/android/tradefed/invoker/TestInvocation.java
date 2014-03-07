@@ -35,6 +35,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
+import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.InvocationSummaryHelper;
@@ -275,10 +276,14 @@ public class TestInvocation implements ITestInvocation {
             isSharded |= shardTest(shardableTests, test);
         }
         if (isSharded) {
+            // shard this invocation!
+
+            // create the TestInvocationListener that will collect results from all the shards,
+            // and forward them to the original set of listeners (minus any ISharddableListeners)
+            // once all shards complete
             ShardMasterResultForwarder resultCollector = new ShardMasterResultForwarder(
-                    config.getTestInvocationListeners(), shardableTests.size());
-            ShardListener origConfigListener = new ShardListener(resultCollector);
-            config.setTestInvocationListener(origConfigListener);
+                    buildMasterShardListeners(config), shardableTests.size());
+
             // report invocation started using original buildinfo
             resultCollector.invocationStarted(info);
             for (IRemoteTest testShard : shardableTests) {
@@ -287,7 +292,9 @@ public class TestInvocation implements ITestInvocation {
                 shardConfig.setTest(testShard);
                 shardConfig.setBuildProvider(new ExistingBuildProvider(info.clone(),
                         config.getBuildProvider()));
-                shardConfig.setTestInvocationListener(new ShardListener(resultCollector));
+
+                shardConfig.setTestInvocationListeners(
+                        buildShardListeners(resultCollector, config.getTestInvocationListeners()));
                 shardConfig.setLogOutput(config.getLogOutput().clone());
                 shardConfig.setCommandOptions(config.getCommandOptions().clone());
                 // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original
@@ -299,6 +306,38 @@ public class TestInvocation implements ITestInvocation {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Builds the {@link ITestInvocationListener} listeners that will collect the results from
+     * all shards. Currently excludes {@link IShardableListener}s.
+     */
+    private List<ITestInvocationListener> buildMasterShardListeners(IConfiguration config) {
+        List<ITestInvocationListener> newListeners = new ArrayList<ITestInvocationListener>();
+        for (ITestInvocationListener l : config.getTestInvocationListeners()) {
+            if (!(l instanceof IShardableListener)) {
+                newListeners.add(l);
+            }
+        }
+        return newListeners;
+    }
+
+    /**
+     * Builds the list of {@link ITestInvocationListener}s for each shard.
+     * Currently includes any {@link IShardableListener}, plus a single listener that will forward
+     * results to the master shard collector.
+     */
+    private List<ITestInvocationListener> buildShardListeners(
+            ITestInvocationListener resultCollector, List<ITestInvocationListener> origListeners) {
+        List<ITestInvocationListener> shardListeners = new ArrayList<ITestInvocationListener>();
+        for (ITestInvocationListener l : origListeners) {
+            if (l instanceof IShardableListener) {
+                shardListeners.add(((IShardableListener)l).clone());
+            }
+        }
+        ShardListener origConfigListener = new ShardListener(resultCollector);
+        shardListeners.add(origConfigListener);
+        return shardListeners;
     }
 
     /**
