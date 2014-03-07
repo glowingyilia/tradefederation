@@ -25,7 +25,8 @@ LOCAL_MODULE := tf-remote-client
 
 LOCAL_MODULE_TAGS := optional
 # only depend on ddmlib for the Log class
-LOCAL_JAVA_LIBRARIES := json-prebuilt ddmlib-prebuilt
+LOCAL_JAVA_LIBRARIES := ddmlib-prebuilt
+LOCAL_STATIC_JAVA_LIBRARIES := json-prebuilt
 
 include $(BUILD_HOST_JAVA_LIBRARY)
 
