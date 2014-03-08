@@ -77,6 +77,13 @@ public class DeviceCleaner implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
+        clean(device);
+    }
+
+    /**
+     * Execute cleanup action followed by post cleanup action
+     */
+    protected void clean(ITestDevice device) throws DeviceNotAvailableException {
         if (TestDeviceState.ONLINE.equals(device.getDeviceState())) {
             switch (mCleanupAction) {
                 case NONE:
