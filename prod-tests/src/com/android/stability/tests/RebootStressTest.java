@@ -43,6 +43,8 @@ import java.util.Map;
  */
 public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTest {
 
+    private static final String[] LAST_KMSG_PATHS = {
+        "/proc/last_kmsg", "/sys/fs/pstore/console-ramoops"};
     // max number of ms to allowed for the post-boot waitForDeviceAvailable check
     private static final long DEVICE_AVAIL_TIME = 3 * 1000;
 
@@ -260,12 +262,17 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
      */
     private void checkForUserDataFailure(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        mLastKmsg = getDevice().executeShellCommand("cat /proc/last_kmsg");
+        for (String path : LAST_KMSG_PATHS) {
+            if (getDevice().doesFileExist(path)) {
+                mLastKmsg = getDevice().executeShellCommand("cat " + path);
+                Assert.assertFalse(String.format("Last kmsg log showed a kernel panic on %s",
+                        getDevice().getSerialNumber()), mLastKmsg.contains("Kernel panic"));
+                break;
+            }
+        }
         mDmesg = getDevice().executeShellCommand("dmesg");
         Assert.assertFalse(String.format("Read only mount of userdata detected on %s",
                 getDevice().getSerialNumber()),
                 mDmesg.contains("Remounting filesystem read-only"));
-        Assert.assertFalse(String.format("Last kmsg log showed a kernel panic on %s",
-                getDevice().getSerialNumber()), mLastKmsg.contains("Kernel panic"));
     }
 }
