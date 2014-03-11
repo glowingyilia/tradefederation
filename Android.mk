@@ -26,10 +26,10 @@ LOCAL_JAVACFLAGS += -g -Xlint
 LOCAL_MODULE := tradefed
 
 LOCAL_MODULE_TAGS := optional
-LOCAL_STATIC_JAVA_LIBRARIES := junit kxml2-2.3.0 jline-1.0
+LOCAL_STATIC_JAVA_LIBRARIES := junit kxml2-2.3.0 jline-1.0 tf-remote-client
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
-LOCAL_JAVA_LIBRARIES := ddmlib-prebuilt emmalib tools-common-prebuilt tf-remote-client
+LOCAL_JAVA_LIBRARIES := ddmlib-prebuilt emmalib tools-common-prebuilt
 
 include $(BUILD_HOST_JAVA_LIBRARY)
 
