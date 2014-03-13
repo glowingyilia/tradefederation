@@ -18,7 +18,7 @@ package com.android.tradefed.build;
 import java.io.File;
 
 /**
- *  A {@link IBuildInfo} that represents an extracted Android SDK and ADT build.
+ *  A {@link IBuildInfo} that represents an extracted Android SDK and tests.
  */
 public interface ISdkBuildInfo extends IBuildInfo {
 
@@ -28,14 +28,14 @@ public interface ISdkBuildInfo extends IBuildInfo {
     public File getSdkDir();
 
     /**
-     * Returns the directory that contains the extracted ADT build.
+     * Returns the directory that contains the extracted tests.
      */
-    public File getAdtDir();
+    public File getTestsDir();
 
     /**
-     * Sets the directory that contains the extracted ADT build.
+     * Sets the directory that contains the extracted tests.
      */
-    public void setAdtDir(File adtDir);
+    public void setTestsDir(File testsDir);
 
     /**
      * Sets the directory that contains the extracted SDK build.

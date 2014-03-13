@@ -55,7 +55,9 @@ public class LocalSdkAvdPreparer extends SdkAvdPreparer {
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException, BuildError {
         mSdkBuildInfo.setSdkDir(mLocalSdkPath);
-        mSdkBuildInfo.setAdtDir(null);
+        mSdkBuildInfo.setTestsDir(null);
+        // Note: If we want to launch the emulator, we need to pass the --new-emulator flag
+        // defined in DeviceSelectionOptions, which will create a stub emulator.
         if (mNewEmulator) {
             if (mLocalSdkPath == null) {
                 throw new TargetSetupError(
