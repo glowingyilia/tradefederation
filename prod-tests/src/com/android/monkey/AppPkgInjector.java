@@ -21,6 +21,7 @@ import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.targetprep.BuildError;
@@ -39,6 +40,10 @@ import junit.framework.Assert;
  */
 public class AppPkgInjector implements ITargetPreparer, IConfigurationReceiver {
 
+    @Option(name = "skip-injector", description = "Set to true if we should skip automatically " +
+            "adding all package names of installed packages. Default is false.")
+    private boolean mSkipInjecting = false;
+
     private IConfiguration mConfig;
 
     /**
@@ -56,6 +61,9 @@ public class AppPkgInjector implements ITargetPreparer, IConfigurationReceiver {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
+        if (mSkipInjecting) {
+            return;
+        }
         Assert.assertNotNull(mConfig);
         Assert.assertTrue("provided build is not a IAppBuildInfo",
                 buildInfo instanceof IAppBuildInfo);
