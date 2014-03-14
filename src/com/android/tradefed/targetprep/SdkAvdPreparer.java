@@ -37,6 +37,8 @@ import junit.framework.Assert;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +78,10 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
 
     @Option(name = "prop", description = "pass key-value pairs of system props")
     private Map<String,String> mProps = new HashMap<String, String>();
+
+    @Option(name = "emulator-arg",
+            description = "Additional argument to launch the emulator with. Can be repeated.")
+    private Collection<String> mEmulatorArgs = new ArrayList<String>();
 
     private final IRunUtil mRunUtil;
     private final IDeviceManager mDeviceManager;
@@ -156,6 +162,22 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
         for (Map.Entry<String, String> propEntry : mProps.entrySet()) {
             emulatorArgs.add("-prop");
             emulatorArgs.add(String.format("%s=%s", propEntry.getKey(), propEntry.getValue()));
+        }
+        for (String arg : mEmulatorArgs) {
+            String[] tokens = arg.split(" ");
+            if (tokens.length == 1 && tokens[0].startsWith("-")) {
+                emulatorArgs.add(tokens[0]);
+            } else if (tokens.length == 2) {
+                if (!tokens[0].startsWith("-")) {
+                    throw new TargetSetupError(String.format(
+                            "The emulator arg '%s' is invalid.", arg));
+                }
+                emulatorArgs.add(tokens[0]);
+                emulatorArgs.add(tokens[1]);
+            } else {
+                throw new TargetSetupError(String.format(
+                        "The emulator arg '%s' is invalid.", arg));
+            }
         }
         // qemu must be the last parameter, it assumes params that follow it are it's own
         if(mForceKvm) {
