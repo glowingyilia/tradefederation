@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -140,6 +141,14 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     @Option(name = "option", description = "Option to pass to monkey command. May be repeated.")
     private Collection<String> mOptions = new LinkedList<String>();
 
+    @Option(name = "launch-extras-int", description = "Launch int extras. May be repeated. " +
+            "Format: --launch-extras-i key value. Note: this will be applied to all components.")
+    private Map<String, Integer> mIntegerExtras = new HashMap<String, Integer>();
+
+    @Option(name = "launch-extras-str", description = "Launch string extras. May be repeated. " +
+            "Format: --launch-extras-s key value. Note: this will be applied to all components.")
+    private Map<String, String> mStringExtras = new HashMap<String, String>();
+
     @Option(name = "target-count", description = "Target number of events to send.",
             importance = Importance.ALWAYS)
     private int mTargetCount = 125000;
@@ -222,6 +231,20 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     }
 
     /**
+     * Returns the command that should be used to launch the app,
+     */
+    private String getAppCmdWithExtras() {
+        String extras = "";
+        for (Map.Entry<String, String> sEntry : mStringExtras.entrySet()) {
+            extras += String.format(" -e %s %s", sEntry.getKey(), sEntry.getValue());
+        }
+        for (Map.Entry<String, Integer> sEntry : mIntegerExtras.entrySet()) {
+            extras += String.format(" --ei %s %d", sEntry.getKey(), sEntry.getValue());
+        }
+        return LAUNCH_APP_CMD + extras;
+    }
+
+    /**
      * Run the monkey one time and return a {@link MonkeyLogItem} for the run.
      */
     protected void runMonkey(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -241,7 +264,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
         // launch the list of apps that needs warm-up
         for (String componentName : mLaunchComponents) {
-            getDevice().executeShellCommand(String.format(LAUNCH_APP_CMD, componentName));
+            getDevice().executeShellCommand(String.format(getAppCmdWithExtras(), componentName));
             // give it some more time to settle down
             getRunUtil().sleep(5000);
         }
