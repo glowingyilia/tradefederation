@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.build;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
@@ -74,11 +75,23 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
         copy.addAllBuildAttributes(this);
         try {
             File copyDir = FileUtil.createTempDir("foldercopy");
-            FileUtil.recursiveCopy(mRootDir, copyDir);
+            linkOrCopy(mRootDir, copyDir);
             copy.setRootDir(copyDir);
             return copy;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    static void linkOrCopy(File orig, File dest) throws IOException {
+        try {
+            FileUtil.recursiveHardlink(orig, dest);
+            return;
+        } catch (IOException e) {
+            // fall through
+            CLog.w("hardlink of %s %s failed: " + e.toString(), orig.getAbsolutePath(),
+                    dest.getAbsolutePath());
+        }
+        FileUtil.recursiveCopy(orig, dest);
     }
 }

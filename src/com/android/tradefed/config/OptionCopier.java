@@ -16,6 +16,8 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.HashMap;
@@ -46,6 +48,18 @@ public class OptionCopier {
                         origObject);
                 OptionSetter.setFieldValue(option.name(), destObject, destField, origValue);
             }
+        }
+    }
+
+    /**
+     * Identical to {@link #copyOptions(Object, Object)} but will log instead of throw if exception
+     * occurs.
+     */
+    public static void copyOptionsNoThrow(Object source, Object dest) {
+        try {
+            copyOptions(source, dest);
+        } catch (ConfigurationException e) {
+            CLog.e(e);
         }
     }
 
