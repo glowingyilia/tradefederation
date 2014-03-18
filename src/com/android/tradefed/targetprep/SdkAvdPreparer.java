@@ -73,6 +73,10 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     @Option(name = "force-kvm", description = "require kvm for emulator launch")
     private boolean mForceKvm = false;
 
+    @Option(name = "device", description = "emulator device type to launch." +
+            "If unspecified, will launch generic version")
+    private String mDevice = null;
+
     @Option(name = "abi", description = "abi to select for the avd")
     private String mAbi = null;
 
@@ -314,6 +318,11 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
         if (mAbi != null) {
             avdCommand.add("--abi");
             avdCommand.add(mAbi);
+        }
+
+        if (mDevice != null) {
+            avdCommand.add("--device");
+            avdCommand.add(mDevice);
         }
 
         CommandResult result = mRunUtil.runTimedCmdWithInput(ANDROID_TIMEOUT_MS,
