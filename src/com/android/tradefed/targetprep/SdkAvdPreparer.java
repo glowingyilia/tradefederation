@@ -73,7 +73,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     @Option(name = "force-kvm", description = "require kvm for emulator launch")
     private boolean mForceKvm = false;
 
-    @Option(name = "device", description = "emulator device type to launch." +
+    @Option(name = "emulator-device-type", description = "emulator device type to launch." +
             "If unspecified, will launch generic version")
     private String mDevice = null;
 
