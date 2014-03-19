@@ -168,8 +168,16 @@ public class RemoteClient implements IRemoteClient {
      * {@inheritDoc}
      */
     @Override
-    public void sendHandoverClose(int port) throws RemoteException {
-        sendOperation(new HandoverCloseOp(port));
+    public void sendStartHandover(int port) throws RemoteException {
+        sendOperation(new StartHandoverOp(port));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendHandoverComplete() throws RemoteException {
+        sendOperation(new HandoverCompleteOp());
     }
 
     /**

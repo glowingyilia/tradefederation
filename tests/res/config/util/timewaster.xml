@@ -14,9 +14,9 @@
      limitations under the License.
 -->
 <configuration
-    description="dummy config that can be used to run idly on a device">
+    description="Empty config that just runs for specified period of time">
 
-    <target_preparer class="com.android.tradefed.targetprep.TimeWaster" />
-    <logger class="com.android.tradefed.log.FileLogger" />
+   <target_preparer class="com.android.tradefed.targetprep.TimeWaster" />
+   <logger class="com.android.tradefed.log.FileLogger" />
 
 </configuration>

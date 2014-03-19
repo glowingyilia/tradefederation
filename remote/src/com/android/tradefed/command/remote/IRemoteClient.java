@@ -102,12 +102,20 @@ public interface IRemoteClient {
     public void sendClose() throws RemoteException;
 
     /**
-     * Send a 'handover close connection' operation
+     * Request to start a handover sequence to another TF.
      *
-     * @param port of the remote manager to establish a connection with.
+     * @param port the port of the remote TF to hand over too
      * @throws RemoteException
      */
-    public void sendHandoverClose(int port) throws RemoteException;
+    public void sendStartHandover(int port) throws RemoteException;
+
+    /**
+     * Inform remote TF that handover sequence is now complete. Old TF has freed all devices and is
+     * shutting down.
+     *
+     * @throws RemoteException
+     */
+    public void sendHandoverComplete() throws RemoteException;
 
     /**
      * Close the connection to the {@link RemoteManager}.

@@ -123,6 +123,12 @@ public interface ICommandScheduler {
     public boolean handoverShutdown(int handoverPort);
 
     /**
+     * Informs the command scheduler that a initiated handover sequence is complete, and it should
+     * re-initialize its remote manager on the default port.
+     */
+    public void completeHandover();
+
+    /**
      * Attempt to forcefully shutdown the command scheduler.
      * <p/>
      * Similar to {@link #shutdown()}, but will also forcefully kill the adb connection, in an

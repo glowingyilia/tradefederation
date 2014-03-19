@@ -60,10 +60,7 @@ public class RemoteManagerTest extends TestCase {
             mRemoteClient.close();
         }
         if (mRemoteMgr != null) {
-            mRemoteMgr.cancel();
-            // We want to make sure we completely close down the remotemanager before moving on to
-            // to the next test.
-            mRemoteMgr.join();
+            mRemoteMgr.cancelAndWait();
         }
         super.tearDown();
     }
@@ -311,10 +308,9 @@ public class RemoteManagerTest extends TestCase {
     }
 
     /**
-     * happy-path test for {@link HandoverCloseOp}.
-     * @throws Exception
+     * Happy-path test for a handover start
      */
-    public void testHandoverClose() throws Exception {
+    public void testHandover() throws Exception {
         final int port = 88;
         EasyMock.expect(mMockScheduler.handoverShutdown(port)).andReturn(Boolean.TRUE);
 
@@ -324,7 +320,9 @@ public class RemoteManagerTest extends TestCase {
         int mgrPort = mRemoteMgr.getPort();
         assertTrue(mgrPort != -1);
         mRemoteClient = RemoteClient.connect(mgrPort);
-        mRemoteClient.sendHandoverClose(port);
+        mRemoteClient.sendStartHandover(port);
+        // disgusting sleep alert! TODO: change to a wait-notify thingy
+        Thread.sleep(100);
         EasyMock.verify(mMockScheduler);
     }
 
@@ -446,5 +444,4 @@ public class RemoteManagerTest extends TestCase {
         mRemoteClient.sendFreeDevice("serial");
         EasyMock.verify(mMockDeviceManager, mockHandler, mMockScheduler);
     }
-
 }
