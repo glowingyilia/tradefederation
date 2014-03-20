@@ -222,7 +222,6 @@ public class DeviceManagerTest extends TestCase {
                 return mMockRunUtil;
             }
         };
-        mgr.setEnableLogcat(false);
         mgr.setSynchronousMode(true);
         return mgr;
     }

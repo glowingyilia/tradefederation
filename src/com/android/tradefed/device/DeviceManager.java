@@ -76,8 +76,6 @@ public class DeviceManager implements IDeviceManager {
     /** a {@link DeviceSelectionOptions} that matches any device.  Visible for testing. */
     static final IDeviceSelection ANY_DEVICE_OPTIONS = new DeviceSelectionOptions();
 
-
-
     private IDeviceMonitor mDvcMon;
 
     private boolean mIsInitialized = false;
@@ -91,7 +89,6 @@ public class DeviceManager implements IDeviceManager {
     private Set<IFastbootListener> mFastbootListeners;
     private FastbootMonitor mFastbootMonitor;
     private Map<String, IDeviceStateMonitor> mCheckDeviceMap;
-    private boolean mEnableLogcat = true;
     private boolean mIsTerminated = false;
     private IDeviceSelection mGlobalDeviceFilter;
     @Option(name="max-emulators",
@@ -241,13 +238,6 @@ public class DeviceManager implements IDeviceManager {
      */
     IRunUtil getRunUtil() {
         return RunUtil.getDefault();
-    }
-
-    /**
-     * Toggle whether allocated devices should capture logcat in background
-     */
-    public void setEnableLogcat(boolean enableLogcat) {
-        mEnableLogcat = enableLogcat;
     }
 
     /**
@@ -471,9 +461,6 @@ public class DeviceManager implements IDeviceManager {
     private ITestDevice createAllocatedDevice(IDevice allocatedDevice) {
         IManagedTestDevice testDevice = createTestDevice(allocatedDevice,
                 createStateMonitor(allocatedDevice));
-        if (mEnableLogcat && !(allocatedDevice instanceof StubDevice)) {
-            testDevice.startLogcat();
-        }
         mAllocatedDeviceMap.put(allocatedDevice.getSerialNumber(), testDevice);
         CLog.i("Allocated device %s", testDevice.getSerialNumber());
         updateDeviceMonitor();
@@ -517,6 +504,7 @@ public class DeviceManager implements IDeviceManager {
     public void freeDevice(ITestDevice device, FreeDeviceState deviceState) {
         checkInit();
         IManagedTestDevice managedDevice = (IManagedTestDevice)device;
+        // force stop capturing logcat just to be sure
         managedDevice.stopLogcat();
         IDevice ideviceToReturn = device.getIDevice();
         // don't kill emulator if it wasn't launched by launchEmulator (ie emulatorProcess is null).

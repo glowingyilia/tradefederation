@@ -32,8 +32,13 @@ public class TestDeviceOptions {
     @Option(name = "disable-keyguard-cmd", description = "shell command to disable keyguard.")
     private String mDisableKeyguardCmd = "input keyevent 82";
 
+    @Option(name = "enable-logcat", description =
+            "Enable background logcat capture when invocation is running.")
+    private boolean mEnableLogcat = true;
+
     @Option(name = "max-tmp-logcat-file", description =
-        "The maximum size of tmp logcat data to retain, in bytes.")
+        "The maximum size of tmp logcat data to retain, in bytes. " +
+        "Only used if --enable-logcat is set")
     private long mMaxLogcatDataSize = 20 * 1024 * 1024;
 
     @Option(name = "fastboot-timeout", description =
@@ -224,5 +229,12 @@ public class TestDeviceOptions {
 
     public void setPingIpOrHost(String ipOrHost) {
       mPingIpOrHost = ipOrHost;
+    }
+
+    /**
+     * @return true if background logcat capture is enabled
+     */
+    public boolean isLogcatCaptureEnabled() {
+        return mEnableLogcat;
     }
 }
