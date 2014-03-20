@@ -636,6 +636,26 @@ public interface ITestDevice {
     public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException;
 
     /**
+     * Start capturing logcat output from device in the background.
+     * <p/>
+     * Will have no effect if logcat output is already being captured.
+     * Data can be later retrieved via getLogcat.
+     * <p/>
+     * When the device is no longer in use, {@link #stopLogcat()} must be called.
+     * <p/>
+     * {@link #startLogcat()} and {@link #stopLogcat()} do not normally need to be called when
+     * within a TF invocation context, as the TF framework will start and stop logcat.
+     */
+    public void startLogcat();
+
+    /**
+     * Stop capturing logcat output from device, and discard currently saved logcat data.
+     * <p/>
+     * Will have no effect if logcat output is not being captured.
+     */
+    public void stopLogcat();
+
+    /**
      * Deletes any accumulated logcat data.
      * <p/>
      * This is useful for cases when you want to ensure {@link ITestDevice#getLogcat()} only returns

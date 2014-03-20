@@ -23,23 +23,6 @@ import com.android.ddmlib.IDevice;
 interface IManagedTestDevice extends ITestDevice {
 
     /**
-     * Start capturing logcat output from device in the background.
-     * <p/>
-     * Will have no effect if logcat output is already being captured.
-     * Data can be later retrieved via getLogcat.
-     * <p/>
-     * When the device is no longer in use, {@link #stopLogcat()} must be called.
-     */
-    public void startLogcat();
-
-    /**
-     * Stop capturing logcat output from device, and discard currently saved logcat data.
-     * <p/>
-     * Will have no effect if logcat output is not being captured.
-     */
-    public void stopLogcat();
-
-    /**
      * Update the IDevice associated with this ITestDevice.
      * <p/>
      * The new IDevice must refer the same physical device as the current reference. This method

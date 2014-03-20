@@ -193,12 +193,13 @@ public class TestInvocationTest extends TestCase {
         BuildRetrievalError exception = new BuildRetrievalError("error", null, mMockBuildInfo);
         EasyMock.expect(mMockBuildProvider.getBuild()).andThrow(exception);
         setupMockFailureListeners(exception);
-        EasyMock.expect(mMockLogger.getLog()).andReturn(new ByteArrayInputStreamSource(
-                new byte[0]));
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
+        setupInvoke();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
+        EasyMock.expect(mMockLogger.getLog())
+        .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        EasyMock.expect(mMockDevice.getLogcat())
+        .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
         replayMocks(test);
         mTestInvocation.invoke(mMockDevice, mStubConfiguration, new StubRescheduler());
         verifyMocks(test);
@@ -212,6 +213,7 @@ public class TestInvocationTest extends TestCase {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        setupInvoke();
         replayMocks(test);
         mTestInvocation.invoke(mMockDevice, mStubConfiguration, new StubRescheduler());
         verifyMocks(test);
@@ -232,6 +234,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setTest(test);
         mStubConfiguration.getCommandOptions().setLoopMode(false);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        setupInvoke();
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
         mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
@@ -334,8 +337,6 @@ public class TestInvocationTest extends TestCase {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
-        mMockBuildInfo.setDeviceSerial(SERIAL);
 
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.expectLastCall().andThrow(exception);
@@ -343,12 +344,7 @@ public class TestInvocationTest extends TestCase {
 
         EasyMock.expect(mMockDevice.getBugreport())
                 .andReturn(new ByteArrayInputStreamSource(new byte[0]));
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
-        EasyMock.expect(mMockLogger.getLog()).andReturn(new ByteArrayInputStreamSource(
-                new byte[0]));
-
-        mMockBuildProvider.cleanUp(mMockBuildInfo);
+        setupInvokeWithBuild();
         replayMocks(test);
         mTestInvocation.invoke(mMockDevice, mStubConfiguration, new StubRescheduler());
         verifyMocks(test);
@@ -371,6 +367,7 @@ public class TestInvocationTest extends TestCase {
         resumeListener.invocationStarted(mMockBuildInfo);
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
+        mMockDevice.startLogcat();
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
 
         resumableTest.run((ITestInvocationListener)EasyMock.anyObject());
@@ -400,12 +397,14 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mockRescheduler.scheduleConfig(EasyMock.capture(capturedConfig)))
                 .andReturn(Boolean.TRUE);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
+        mMockDevice.stopLogcat();
 
         mMockLogger.init();
         mMockLogSaver.invocationStarted(mMockBuildInfo);
         // now set resumed invocation expectations
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
+        mMockDevice.startLogcat();
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         mMockLogSaver.invocationStarted(mMockBuildInfo);
         mMockDevice.setRecovery(mMockRecovery);
@@ -429,6 +428,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(resumeListener.getSummary()).andReturn(null);
         mMockBuildInfo.cleanUp();
         mMockLogger.closeLog();
+        mMockDevice.stopLogcat();
 
         EasyMock.replay(mockRescheduler, resumeListener, resumableTest, mMockPreparer,
                 mMockBuildProvider, mMockLogger, mMockLogSaver, mMockDevice, mMockBuildInfo);
@@ -588,21 +588,36 @@ public class TestInvocationTest extends TestCase {
      * @param test the {@link Test} to use.
      */
     private void setupNormalInvoke(IRemoteTest test) throws Throwable {
+        setupInvokeWithBuild();
         mStubConfiguration.setTest(test);
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
 
-        mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
 
+        replayMocks(test);
+    }
+
+    /**
+     * Set up expected calls that occur on every invoke, regardless of result
+     */
+    private void setupInvoke() {
+        mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
+        mMockDevice.startLogcat();
+        mMockDevice.stopLogcat();
+    }
+
+    /**
+     * Set up expected calls that occur on every invoke that gets a valid build
+     */
+    private void setupInvokeWithBuild() {
+        setupInvoke();
         EasyMock.expect(mMockDevice.getLogcat())
                 .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
 
-        EasyMock.expect(mMockLogger.getLog()).andReturn(new ByteArrayInputStreamSource(
-                new byte[0]));
-
+        EasyMock.expect(mMockLogger.getLog())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
-        replayMocks(test);
     }
 
     /**

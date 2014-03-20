@@ -200,6 +200,10 @@ public class TestInvocation implements ITestInvocation {
             mStatus = "fetching build";
             config.getLogOutput().init();
             getLogRegistry().registerLogger(config.getLogOutput());
+            device.setOptions(config.getDeviceOptions());
+            if (config.getDeviceOptions().isLogcatCaptureEnabled()) {
+                device.startLogcat();
+            }
             IBuildInfo info = null;
             if (config.getBuildProvider() instanceof IDeviceBuildProvider) {
                 info = ((IDeviceBuildProvider)config.getBuildProvider()).getBuild(device);
@@ -234,6 +238,7 @@ public class TestInvocation implements ITestInvocation {
         } catch (IOException e) {
             CLog.e(e);
         }
+        device.stopLogcat();
         // save current log contents to global log
         getLogRegistry().dumpToGlobalLog(config.getLogOutput());
         getLogRegistry().unregisterLogger();
@@ -390,7 +395,6 @@ public class TestInvocation implements ITestInvocation {
         info.setDeviceSerial(device.getSerialNumber());
         startInvocation(config, device, info, listener);
         try {
-            device.setOptions(config.getDeviceOptions());
             logDeviceBatteryLevel(device, "initial");
 
             prepareAndRun(config, device, info, listener);
@@ -581,6 +585,7 @@ public class TestInvocation implements ITestInvocation {
         InputStreamSource globalLogSource = logger.getLog();
         if (device != null) {
             logcatSource = device.getLogcat();
+            device.stopLogcat();
         }
 
         if (logcatSource != null) {
