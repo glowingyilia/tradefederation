@@ -64,6 +64,9 @@ public class MonkeyPackageDiff implements IDeviceTest, IRemoteTest {
             importance = Importance.ALWAYS, mandatory = true)
     private File mGoldenFile = null;
 
+    @Option(name = "ignore-package", description = "Package name to ignore. May be repeated.")
+    private Collection<String> mIgnoreList = new HashSet<String>();
+
     ITestDevice mDevice = null;
 
     /**
@@ -105,13 +108,13 @@ public class MonkeyPackageDiff implements IDeviceTest, IRemoteTest {
 
         SortedSet<String> addedPackages = new TreeSet<String>();
         for (String pack : actualPackages) {
-            if (!expectedPackages.contains(pack)) {
+            if (!expectedPackages.contains(pack) && !mIgnoreList.contains(pack)) {
                 addedPackages.add(pack);
             }
         }
         SortedSet<String> removedPackages = new TreeSet<String>();
         for (String pack : expectedPackages) {
-            if (!actualPackages.contains(pack)) {
+            if (!actualPackages.contains(pack) && !mIgnoreList.contains(pack)) {
                 removedPackages.add(pack);
             }
         }
