@@ -35,6 +35,8 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.StringEscapeUtils;
 
+import junit.framework.Assert;
+
 import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
@@ -421,7 +423,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         }
 
         if (mInstallFile != null) {
-            mDevice.installPackage(mInstallFile, true);
+            Assert.assertNull(mDevice.installPackage(mInstallFile, true));
             doTestRun(listener);
             mDevice.uninstallPackage(mPackageName);
         } else {
