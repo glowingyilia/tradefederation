@@ -473,4 +473,14 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     private void handleBatteryException(IDevice device, Exception e) {
         CLog.w("Failed to query battery level for %s: %s", device.getSerialNumber(), e.toString());
     }
+
+    /**
+     * Helper factory method to create a {@link IDeviceSelection} that will only match device
+     * with given serial
+     */
+    public static IDeviceSelection createForSerial(String serial) {
+        DeviceSelectionOptions o = new DeviceSelectionOptions();
+        o.setSerial(serial);
+        return o;
+    }
 }

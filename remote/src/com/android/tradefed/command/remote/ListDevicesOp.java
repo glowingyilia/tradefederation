@@ -37,6 +37,8 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
     private static final String PRODUCT_VARIANT = "variant";
     private static final String SDK_VERSION = "sdk";
     private static final String BUILD_ID = "build";
+    private static final String IS_STUB = "stub";
+    private static final String BATTERY_LEVEL = "battery";
 
     ListDevicesOp() {
     }
@@ -78,14 +80,17 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
         for (int i = 0; i < jsonDeviceStateArray.length(); i++) {
             JSONObject deviceStateJson = jsonDeviceStateArray.getJSONObject(i);
             final String serial = deviceStateJson.getString(SERIAL);
+            final boolean isStubDevice = deviceStateJson.getBoolean(IS_STUB);
             final String stateString = deviceStateJson.getString(STATE);
             final String product = deviceStateJson.getString(PRODUCT);
             final String productVariant = deviceStateJson.getString(PRODUCT_VARIANT);
             final String sdk = deviceStateJson.getString(SDK_VERSION);
             final String incrementalBuild = deviceStateJson.getString(BUILD_ID);
+            final String batteryLevel = deviceStateJson.getString(BATTERY_LEVEL);
             try {
-                deviceList.add(new DeviceDescriptor(serial, DeviceAllocationState
-                        .valueOf(stateString), product, productVariant, sdk, incrementalBuild));
+                deviceList.add(new DeviceDescriptor(serial, isStubDevice, DeviceAllocationState
+                        .valueOf(stateString), product, productVariant, sdk, incrementalBuild,
+                        batteryLevel));
             } catch (IllegalArgumentException e) {
                 String msg = String.format("unrecognized state %s for device %s", stateString,
                         serial);

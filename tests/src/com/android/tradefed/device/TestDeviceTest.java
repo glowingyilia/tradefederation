@@ -44,7 +44,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 
 /**
  * Unit tests for {@link TestDevice}.
@@ -57,16 +56,17 @@ public class TestDeviceTest extends TestCase {
     private TestDevice mRecoveryTestDevice;
     private TestDevice mNoFastbootTestDevice;
     private IDeviceRecovery mMockRecovery;
-    private IDeviceStateMonitor mMockMonitor;
+    private IDeviceStateMonitor mMockStateMonitor;
     private IRunUtil mMockRunUtil;
     private IWifiHelper mMockWifi;
+    private IDeviceMonitor mMockDvcMonitor;
 
     /**
      * A {@link TestDevice} that is suitable for running tests against
      */
     private class TestableTestDevice extends TestDevice {
         public TestableTestDevice() {
-            super(mMockIDevice, mMockMonitor);
+            super(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         }
 
         @Override
@@ -94,7 +94,8 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial").anyTimes();
         mMockReceiver = EasyMock.createMock(IShellOutputReceiver.class);
         mMockRecovery = EasyMock.createMock(IDeviceRecovery.class);
-        mMockMonitor = EasyMock.createMock(IDeviceStateMonitor.class);
+        mMockStateMonitor = EasyMock.createMock(IDeviceStateMonitor.class);
+        mMockDvcMonitor = EasyMock.createMock(IDeviceMonitor.class);
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockWifi = EasyMock.createMock(IWifiHelper.class);
 
@@ -142,7 +143,7 @@ public class TestDeviceTest extends TestCase {
      */
     public void testEnableAdbRoot_notRoot() throws Exception {
         setEnableAdbRootExpectations();
-        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockMonitor);
+        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
         assertTrue(mTestDevice.enableAdbRoot());
     }
 
@@ -159,9 +160,9 @@ public class TestDeviceTest extends TestCase {
                 mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("adb"),
                         EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("root"))).andReturn(
                 adbResult);
-        EasyMock.expect(mMockMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
+        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
                 mMockIDevice);
     }
 
@@ -184,11 +185,11 @@ public class TestDeviceTest extends TestCase {
                 mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("adb"),
                         EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("root"))).andReturn(
                 adbResult);
-        EasyMock.expect(mMockMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
+        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE).times(2);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
                 mMockIDevice).times(2);
-        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockMonitor);
+        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
         assertTrue(mTestDevice.enableAdbRoot());
     }
 
@@ -339,7 +340,7 @@ public class TestDeviceTest extends TestCase {
         final String expectedOutput = "this is the output\r\n in two lines\r\n";
         // FIXME: this isn't actually causing a DeviceNotAvailableException to be thrown
         injectShellResponse(testCommand, expectedOutput);
-        mMockRecovery.recoverDevice(EasyMock.eq(mMockMonitor), EasyMock.eq(false));
+        mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
 
         EasyMock.replay(mMockIDevice);
@@ -390,7 +391,7 @@ public class TestDeviceTest extends TestCase {
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new IOException());
-        mMockRecovery.recoverDevice(EasyMock.eq(mMockMonitor), EasyMock.eq(false));
+        mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
         EasyMock.replay(mMockIDevice);
         EasyMock.replay(mMockRecovery);
@@ -415,11 +416,11 @@ public class TestDeviceTest extends TestCase {
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new IOException());
-        mMockRecovery.recoverDevice(EasyMock.eq(mMockMonitor), EasyMock.eq(true));
+        mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(true));
         setEnableAdbRootExpectations();
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
-        EasyMock.replay(mMockIDevice, mMockRecovery, mMockRunUtil, mMockMonitor);
+        EasyMock.replay(mMockIDevice, mMockRecovery, mMockRunUtil, mMockStateMonitor);
         mRecoveryTestDevice.executeShellCommand(testCommand, mMockReceiver);
     }
 
@@ -446,7 +447,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void assertRecoverySuccess() throws DeviceNotAvailableException, IOException,
             TimeoutException, AdbCommandRejectedException, ShellCommandUnresponsiveException {
-        mMockRecovery.recoverDevice(EasyMock.eq(mMockMonitor), EasyMock.eq(false));
+        mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
         // expect post boot up steps
         mMockIDevice.executeShellCommand(EasyMock.eq(mTestDevice.getDisableKeyguardCmd()),
                 (IShellOutputReceiver)EasyMock.anyObject(),
@@ -502,14 +503,14 @@ public class TestDeviceTest extends TestCase {
      * Puts all the mock objects into replay mode
      */
     private void replayMocks() {
-        EasyMock.replay(mMockIDevice, mMockRecovery, mMockMonitor, mMockRunUtil, mMockWifi);
+        EasyMock.replay(mMockIDevice, mMockRecovery, mMockStateMonitor, mMockRunUtil, mMockWifi);
     }
 
     /**
      * Verify all the mock objects
      */
     private void verifyMocks() {
-        EasyMock.verify(mMockIDevice, mMockRecovery, mMockMonitor, mMockRunUtil, mMockWifi);
+        EasyMock.verify(mMockIDevice, mMockRecovery, mMockStateMonitor, mMockRunUtil, mMockWifi);
     }
 
 
@@ -555,14 +556,14 @@ public class TestDeviceTest extends TestCase {
     public void testGetExternalStoreFreeSpace_emptyOutput() throws Exception {
         final String mntPoint = "/mnt/sdcard";
         final String expectedCmd = "df " + mntPoint;
-        EasyMock.expect(mMockMonitor.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE)).andReturn(
+        EasyMock.expect(mMockStateMonitor.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE)).andReturn(
                 mntPoint);
         // expect shell command to be called, and return the empty df output
         injectShellResponse(expectedCmd, "");
         final String dfOutput =
                 "/mnt/sdcard: 3864064K total, 1282880K used, 2581184K available (block size 32768)";
         injectShellResponse(expectedCmd, dfOutput);
-        EasyMock.replay(mMockIDevice, mMockMonitor);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
         assertEquals(2581184, mTestDevice.getExternalStoreFreeSpace());
     }
 
@@ -577,11 +578,11 @@ public class TestDeviceTest extends TestCase {
             throws Exception {
         final String mntPoint = "/mnt/sdcard";
         final String expectedCmd = "df " + mntPoint;
-        EasyMock.expect(mMockMonitor.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE)).andReturn(
+        EasyMock.expect(mMockStateMonitor.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE)).andReturn(
                 mntPoint);
         // expect shell command to be called, and return the test df output
         injectShellResponse(expectedCmd, dfOutput);
-        EasyMock.replay(mMockIDevice, mMockMonitor);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
         assertEquals(expectedFreeSpaceKB, mTestDevice.getExternalStoreFreeSpace());
     }
 
@@ -624,7 +625,7 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expectLastCall().andThrow(new IOException());
         EasyMock.expect(mockRunner.getPackageName()).andReturn("foo");
         listener.testRunFailed((String)EasyMock.anyObject());
-        mMockRecovery.recoverDevice(EasyMock.eq(mMockMonitor), EasyMock.eq(false));
+        mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
         EasyMock.replay(listener, mockRunner, mMockIDevice, mMockRecovery);
         try {
@@ -704,8 +705,8 @@ public class TestDeviceTest extends TestCase {
                         blockResult);
 
         // expect
-        mMockMonitor.setState(TestDeviceState.FASTBOOT);
-        mMockMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+        mMockStateMonitor.setState(TestDeviceState.FASTBOOT);
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
         replayMocks();
 
         mTestDevice.setDeviceState(TestDeviceState.FASTBOOT);
@@ -774,7 +775,7 @@ public class TestDeviceTest extends TestCase {
         setEncryptedUnsupportedExpectations();
         setEncryptedUnsupportedExpectations();
         setEncryptedUnsupportedExpectations();
-        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockMonitor);
+        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
 
         try {
             mTestDevice.encryptDevice(false);
@@ -916,11 +917,11 @@ public class TestDeviceTest extends TestCase {
      * Test normal success case for {@link TestDevice#reboot()}
      */
     public void testReboot() throws Exception {
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
                 mMockIDevice);
         setEnableAdbRootExpectations();
         setEncryptedUnsupportedExpectations();
-        EasyMock.expect(mMockMonitor.waitForDeviceAvailable(EasyMock.anyLong())).andReturn(
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong())).andReturn(
                 mMockIDevice);
         replayMocks();
         mTestDevice.reboot();
@@ -931,12 +932,12 @@ public class TestDeviceTest extends TestCase {
      * Test {@link TestDevice#reboot()} attempts a recovery upon failure
      */
     public void testRebootRecovers() throws Exception {
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
                 mMockIDevice);
         setEnableAdbRootExpectations();
         setEncryptedUnsupportedExpectations();
-        EasyMock.expect(mMockMonitor.waitForDeviceAvailable(EasyMock.anyLong())).andReturn(null);
-        mMockRecovery.recoverDevice(mMockMonitor, false);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong())).andReturn(null);
+        mMockRecovery.recoverDevice(mMockStateMonitor, false);
         replayMocks();
         mRecoveryTestDevice.reboot();
         verifyMocks();
@@ -949,7 +950,7 @@ public class TestDeviceTest extends TestCase {
         final String output = "package:/system/app/LiveWallpapers.apk=com.android.wallpaper\n" +
                 "package:/system/app/LiveWallpapersPicker.apk=com.android.wallpaper.livepicker";
         injectShellResponse(TestDevice.LIST_PACKAGES_CMD, output);
-        EasyMock.replay(mMockIDevice, mMockMonitor);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
         Set<String> actualPkgs = mTestDevice.getInstalledPackageNames();
         assertEquals(2, actualPkgs.size());
         assertTrue(actualPkgs.contains("com.android.wallpaper"));
@@ -964,7 +965,7 @@ public class TestDeviceTest extends TestCase {
     public void testGetInstalledPackageNamesForBadOutput() throws Exception {
         final String output = "junk output";
         injectShellResponse(TestDevice.LIST_PACKAGES_CMD, output);
-        EasyMock.replay(mMockIDevice, mMockMonitor);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
         Set<String> actualPkgs = mTestDevice.getInstalledPackageNames();
         assertEquals(0, actualPkgs.size());
     }
@@ -1132,6 +1133,34 @@ public class TestDeviceTest extends TestCase {
                 "      Classes: 0x40000023",
                 "Input Dispatcher State:"
                 );
+    }
+
+    /**
+     * Simple test for {@link TestDevice#handleAllocationEvent(DeviceEvent)}
+     */
+    public void testHandleAllocationEvent() {
+        assertEquals(DeviceAllocationState.Unknown, mTestDevice.getAllocationState());
+
+        assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.CONNECTED_ONLINE));
+        assertEquals(DeviceAllocationState.Checking_Availability, mTestDevice.getAllocationState());
+
+        assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.AVAILABLE_CHECK_PASSED));
+        assertEquals(DeviceAllocationState.Available, mTestDevice.getAllocationState());
+
+        assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST));
+        assertEquals(DeviceAllocationState.Allocated, mTestDevice.getAllocationState());
+
+        assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.FREE_AVAILABLE));
+        assertEquals(DeviceAllocationState.Available, mTestDevice.getAllocationState());
+
+        assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.DISCONNECTED));
+        assertEquals(DeviceAllocationState.Unknown, mTestDevice.getAllocationState());
+
+        assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST));
+        assertEquals(DeviceAllocationState.Allocated, mTestDevice.getAllocationState());
+
+        assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.FREE_UNKNOWN));
+        assertEquals(DeviceAllocationState.Unknown, mTestDevice.getAllocationState());
     }
 }
 

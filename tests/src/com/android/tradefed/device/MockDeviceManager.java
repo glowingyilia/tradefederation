@@ -25,10 +25,7 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link IDeviceManager} that simulates the resource allocation of {@link DeviceManager}
@@ -36,7 +33,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class MockDeviceManager implements IDeviceManager {
 
-    ConditionPriorityBlockingQueue<ITestDevice> mDeviceQueue =
+    // acts as an available device queue
+    ConditionPriorityBlockingQueue<ITestDevice> mAvailableDeviceQueue =
         new ConditionPriorityBlockingQueue<ITestDevice>();
 
     private int mTotalDevices;
@@ -46,7 +44,7 @@ public class MockDeviceManager implements IDeviceManager {
     }
 
     public void setNumDevices(int numDevices) {
-        mDeviceQueue.clear();
+        mAvailableDeviceQueue.clear();
         mTotalDevices = numDevices;
         for (int i = 0; i < numDevices; i++) {
             ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
@@ -56,7 +54,7 @@ public class MockDeviceManager implements IDeviceManager {
             EasyMock.expect(mockDevice.getIDevice()).andStubReturn(
                     mockIDevice);
             EasyMock.replay(mockDevice, mockIDevice);
-            mDeviceQueue.add(mockDevice);
+            mAvailableDeviceQueue.add(mockDevice);
         }
     }
 
@@ -93,7 +91,7 @@ public class MockDeviceManager implements IDeviceManager {
     @Override
     public ITestDevice allocateDevice() {
         try {
-            return mDeviceQueue.take();
+            return mAvailableDeviceQueue.take();
         } catch (InterruptedException e) {
             return null;
         }
@@ -103,17 +101,9 @@ public class MockDeviceManager implements IDeviceManager {
      * {@inheritDoc}
      */
     @Override
-    public ITestDevice allocateDevice(long timeout) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void freeDevice(ITestDevice device, FreeDeviceState state) {
         if (!state.equals(FreeDeviceState.UNAVAILABLE)) {
-            mDeviceQueue.add(device);
+            mAvailableDeviceQueue.add(device);
         }
     }
 
@@ -146,41 +136,8 @@ public class MockDeviceManager implements IDeviceManager {
      * {@inheritDoc}
      */
     @Override
-    public Collection<String> getAllocatedDevices() {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Collection<String> getAvailableDevices() {
-        Collection<String> deviceSerials = new ArrayList<String>(mDeviceQueue.size());
-        for (ITestDevice dev : mDeviceQueue) {
-            deviceSerials.add(dev.getSerialNumber());
-        }
-        return deviceSerials;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Collection<String> getUnavailableDevices() {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ITestDevice allocateDevice(long timeout, IDeviceSelection options) {
-        try {
-            return mDeviceQueue.poll(timeout, TimeUnit.MILLISECONDS,
-                    new TestDeviceMatcher(options));
-        } catch (InterruptedException e) {
-            return null;
-        }
+    public ITestDevice allocateDevice(IDeviceSelection options) {
+        return mAvailableDeviceQueue.poll(new TestDeviceMatcher(options));
     }
 
     /**
@@ -210,7 +167,7 @@ public class MockDeviceManager implements IDeviceManager {
      */
     public void assertDevicesFreed() throws AssertionError {
         Assert.assertEquals("allocated device was not returned to queue", mTotalDevices,
-                getAvailableDevices().size());
+                mAvailableDeviceQueue.size());
     }
 
     /**
@@ -269,10 +226,5 @@ public class MockDeviceManager implements IDeviceManager {
     @Override
     public List<DeviceDescriptor> listAllDevices() {
         return null;
-    }
-
-    @Override
-    public void displayEmulatorStats(PrintWriter printWriter) {
-        // ignore
     }
 }

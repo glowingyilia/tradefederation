@@ -27,17 +27,16 @@ import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
+import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
-import com.android.tradefed.util.ConditionPriorityBlockingQueue;
-import com.android.tradefed.util.ConditionPriorityBlockingQueue.IMatcher;
 import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -47,14 +46,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -80,18 +74,13 @@ public class DeviceManager implements IDeviceManager {
 
     private boolean mIsInitialized = false;
 
-
-    /** A thread-safe map that tracks the devices currently allocated for testing.*/
-    private Map<String, IManagedTestDevice> mAllocatedDeviceMap;
-    /** A FIFO, thread-safe queue for holding devices visible on adb available for testing */
-    private ConditionPriorityBlockingQueue<IDevice> mAvailableDeviceQueue;
+    private ManagedDeviceList mManagedDeviceList;
 
     private IAndroidDebugBridge mAdbBridge;
     private ManagedDeviceListener mManagedDeviceListener;
     private boolean mFastbootEnabled;
     private Set<IFastbootListener> mFastbootListeners;
     private FastbootMonitor mFastbootMonitor;
-    private Map<String, IDeviceStateMonitor> mCheckDeviceMap;
     private boolean mIsTerminated = false;
     private IDeviceSelection mGlobalDeviceFilter;
     @Option(name="max-emulators",
@@ -102,7 +91,13 @@ public class DeviceManager implements IDeviceManager {
     private int mNumNullDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
-    private EmulatorStats mEmulatorStats = new EmulatorStats();
+
+    /**
+     * Creator interface for {@link IManagedTestDevice}s
+     */
+    interface IManagedTestDeviceFactory {
+        IManagedTestDevice createDevice(IDevice stubDevice);
+    }
 
     /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
@@ -120,8 +115,29 @@ public class DeviceManager implements IDeviceManager {
      * methods are called.
      */
     @Override
-    public synchronized void init(IDeviceSelection globalDeviceFilter,
-                                  IDeviceMonitor globalDeviceMonitor) {
+    public void init(IDeviceSelection globalDeviceFilter, IDeviceMonitor globalDeviceMonitor) {
+        init(globalDeviceFilter, globalDeviceMonitor, new IManagedTestDeviceFactory() {
+            @Override
+            public IManagedTestDevice createDevice(IDevice idevice) {
+                TestDevice testDevice = new TestDevice(idevice, new DeviceStateMonitor(
+                        DeviceManager.this, idevice, mFastbootEnabled), mDvcMon);
+                testDevice.setFastbootEnabled(mFastbootEnabled);
+                if (idevice instanceof FastbootDevice) {
+                    testDevice.setDeviceState(TestDeviceState.FASTBOOT);
+                } else if (idevice instanceof StubDevice) {
+                    testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+                }
+                return testDevice;
+            }
+        });
+    }
+
+    /**
+     * Initialize the device manager. This must be called once and only once before any other
+     * methods are called.
+     */
+    synchronized void init(IDeviceSelection globalDeviceFilter, IDeviceMonitor globalDeviceMonitor,
+            IManagedTestDeviceFactory deviceFactory) {
         if (mIsInitialized) {
             throw new IllegalStateException("already initialized");
         }
@@ -137,10 +153,7 @@ public class DeviceManager implements IDeviceManager {
         mIsInitialized = true;
         mGlobalDeviceFilter = globalDeviceFilter;
         mDvcMon = globalDeviceMonitor;
-        // Using ConcurrentHashMap for thread safety: handles concurrent modification and iteration
-        mAllocatedDeviceMap = new ConcurrentHashMap<String, IManagedTestDevice>();
-        mAvailableDeviceQueue = new ConditionPriorityBlockingQueue<IDevice>();
-        mCheckDeviceMap = new ConcurrentHashMap<String, IDeviceStateMonitor>();
+        mManagedDeviceList = new ManagedDeviceList(deviceFactory);
 
         if (isFastbootAvailable()) {
             mFastbootListeners = Collections.synchronizedSet(new HashSet<IFastbootListener>());
@@ -169,8 +182,8 @@ public class DeviceManager implements IDeviceManager {
         if (mDvcMon != null) {
             mDvcMon.setDeviceLister(new DeviceLister() {
                 @Override
-                public Map<IDevice, DeviceAllocationState> listDevices() {
-                    return fetchDevicesInfo();
+                public List<DeviceDescriptor> listDevices() {
+                    return listAllDevices();
                 }
             });
             mDvcMon.run();
@@ -248,33 +261,37 @@ public class DeviceManager implements IDeviceManager {
      * Asynchronously checks if device is available, and adds to queue
      * @param device
      */
-    private void checkAndAddAvailableDevice(final IDevice device) {
-        if (mCheckDeviceMap.containsKey(device.getSerialNumber())) {
-            // device already being checked, ignore
-            CLog.d("Already checking new device %s, ignoring", device.getSerialNumber());
+    private void checkAndAddAvailableDevice(final IManagedTestDevice testDevice) {
+        if (mGlobalDeviceFilter != null && !mGlobalDeviceFilter.matches(testDevice.getIDevice())) {
+            CLog.v("device %s doesn't match global filter, ignoring",
+                    testDevice.getSerialNumber());
+            mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.AVAILABLE_CHECK_IGNORED);
             return;
         }
-        if (!mGlobalDeviceFilter.matches(device)) {
-            CLog.v("New device %s doesn't match global filter, ignoring", device.getSerialNumber());
-            return;
-        }
-        final IDeviceStateMonitor monitor = createStateMonitor(device);
-        mCheckDeviceMap.put(device.getSerialNumber(), monitor);
 
-        final String threadName = String.format("Check device %s", device.getSerialNumber());
+        final String threadName = String.format("Check device %s", testDevice.getSerialNumber());
         Runnable checkRunnable = new Runnable() {
             @Override
             public void run() {
-                CLog.d("checking new device %s responsiveness", device.getSerialNumber());
-                if (monitor.waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS)) {
-                    CLog.logAndDisplay(LogLevel.INFO, "Detected new device %s",
-                            device.getSerialNumber());
-                    addAvailableDevice(device);
-                } else{
-                    CLog.e("Device %s is not responsive to adb shell command , " +
-                            "skip adding to available pool", device.getSerialNumber());
+                CLog.d("checking new device %s responsiveness", testDevice.getSerialNumber());
+                if (testDevice.getMonitor().waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS)) {
+                    DeviceEventResponse r =  mManagedDeviceList.handleDeviceEvent(testDevice,
+                            DeviceEvent.AVAILABLE_CHECK_PASSED);
+                    if (r.stateChanged && r.allocationState == DeviceAllocationState.Available) {
+                        CLog.logAndDisplay(LogLevel.INFO, "Detected new device %s",
+                                testDevice.getSerialNumber());
+                    } else {
+                        CLog.d("Device %s failed or ignored responsiveness check, ",
+                                testDevice.getSerialNumber());
+                    }
+                } else {
+                    DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(testDevice,
+                            DeviceEvent.AVAILABLE_CHECK_FAILED);
+                    if (r.stateChanged && r.allocationState == DeviceAllocationState.Unavailable) {
+                        CLog.w("Device %s is unresponsive, will not be available for testing",
+                                testDevice.getSerialNumber());
+                    }
                 }
-                mCheckDeviceMap.remove(device.getSerialNumber());
             }
         };
         if (mSynchronousMode ) {
@@ -308,16 +325,28 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
+    private void addAvailableDevice(IDevice stubDevice) {
+        IManagedTestDevice d = mManagedDeviceList.findOrCreate(stubDevice);
+        if (d != null) {
+            mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.FORCE_AVAILABLE);
+        } else {
+            CLog.e("Could not create stub device");
+        }
+    }
+
     private void addFastbootDevices() {
         Set<String> serials = getDevicesOnFastboot();
         if (serials != null) {
             for (String serial: serials) {
-                addAvailableDevice(new FastbootDevice(serial));
+                FastbootDevice d = new FastbootDevice(serial);
+                if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
+                    addAvailableDevice(d);
+                }
             }
         }
     }
 
-    private static class FastbootDevice extends StubDevice {
+    static class FastbootDevice extends StubDevice {
         FastbootDevice(String serial) {
             super(serial, false);
         }
@@ -332,54 +361,21 @@ public class DeviceManager implements IDeviceManager {
         return new DeviceStateMonitor(this, device, mFastbootEnabled);
     }
 
-    private void addAvailableDevice(final IDevice device) {
-        IMatcher<IDevice> deviceSerialMatcher = new IMatcher<IDevice>() {
-            @Override
-            public boolean matches(IDevice element) {
-                return element.getSerialNumber().equals(device.getSerialNumber());
-            }
-
-        };
-        // add IDevice to available queue, replacing any existing IDevice with same serial
-        IDevice existingObject = mAvailableDeviceQueue.addUnique(deviceSerialMatcher, device);
-        if (existingObject != null) {
-            // TODO: reduce severity level for this log. Leaving high for now to understand
-            // circumstances where this can happen
-            CLog.w("Found existing device for available device %s", device.getSerialNumber());
-        }
-        updateDeviceMonitor();
-    }
-
     /**
-     * Get the available device queue.
-     * <p/>
-     * Exposed for unit testing
-     * @return
+     * {@inheritDoc}
      */
-    ConditionPriorityBlockingQueue<IDevice> getAvailableDeviceQueue() {
-        return mAvailableDeviceQueue;
-    }
-
-    void updateDeviceMonitor() {
-        if (mDvcMon == null) return;
-        if (!mIsInitialized) {
-            CLog.w("updateDeviceMonitor called before DeviceManager was initialized!");
-        }
-        if (mAdbBridge == null) return;
-        mDvcMon.notifyDeviceStateChange();
+    @Override
+    public ITestDevice allocateDevice() {
+        return allocateDevice(ANY_DEVICE_OPTIONS);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public ITestDevice allocateDevice() {
+    public ITestDevice allocateDevice(IDeviceSelection options) {
         checkInit();
-        IDevice allocatedDevice = takeAvailableDevice();
-        if (allocatedDevice == null) {
-            return null;
-        }
-        return createAllocatedDevice(allocatedDevice);
+        return mManagedDeviceList.allocate(options);
     }
 
     /**
@@ -388,110 +384,14 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public ITestDevice forceAllocateDevice(String serial) {
         checkInit();
-        if (mAllocatedDeviceMap.containsKey(serial)) {
-            CLog.w("Device %s is already allocated", serial);
-            return null;
+        IManagedTestDevice d = mManagedDeviceList.findOrCreate(new StubDevice(serial, false));
+        if (d != null) {
+            DeviceEventResponse r = d.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST);
+            if (r.stateChanged && r.allocationState == DeviceAllocationState.Allocated) {
+                return d;
+            }
         }
-        // first try to allocate that device as normal
-        DeviceSelectionOptions options = new DeviceSelectionOptions();
-        options.addSerial(serial);
-        IDevice allocatedDevice = pollAvailableDevice(1, options);
-        if (allocatedDevice == null) {
-            // not there? allocate a stub device
-            allocatedDevice = new StubDevice(serial, false);
-        }
-        return createAllocatedDevice(allocatedDevice);
-    }
-
-    /**
-     * Retrieves and removes a IDevice from the available device queue, waiting indefinitely if
-     * necessary until an IDevice becomes available.
-     *
-     * @return the {@link IDevice} or <code>null</code> if interrupted
-     */
-    private IDevice takeAvailableDevice() {
-        try {
-            return mAvailableDeviceQueue.take(ANY_DEVICE_OPTIONS);
-        } catch (InterruptedException e) {
-            CLog.w("interrupted while taking device");
-            return null;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ITestDevice allocateDevice(long timeout) {
-        checkInit();
-        IDevice allocatedDevice = pollAvailableDevice(timeout, ANY_DEVICE_OPTIONS);
-        if (allocatedDevice == null) {
-            return null;
-        }
-        return createAllocatedDevice(allocatedDevice);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ITestDevice allocateDevice(long timeout, IDeviceSelection options) {
-        checkInit();
-        IDevice allocatedDevice = pollAvailableDevice(timeout, options);
-        if (allocatedDevice == null) {
-            return null;
-        }
-        return createAllocatedDevice(allocatedDevice);
-    }
-
-    /**
-     * Retrieves and removes a IDevice from the available device queue, waiting for timeout if
-     * necessary until an IDevice becomes available.
-     *
-     * @param timeout the number of ms to wait for device
-     * @param options the {@link DeviceSelectionOptions} the returned device must meet
-     *
-     * @return the {@link IDevice} or <code>null</code> if interrupted
-     */
-    private IDevice pollAvailableDevice(long timeout, IDeviceSelection options) {
-        try {
-            return mAvailableDeviceQueue.poll(timeout, TimeUnit.MILLISECONDS, options);
-        } catch (InterruptedException e) {
-            CLog.w("interrupted while polling for device");
-            return null;
-        }
-    }
-
-    private ITestDevice createAllocatedDevice(IDevice allocatedDevice) {
-        IManagedTestDevice testDevice = createTestDevice(allocatedDevice,
-                createStateMonitor(allocatedDevice));
-        mAllocatedDeviceMap.put(allocatedDevice.getSerialNumber(), testDevice);
-        CLog.i("Allocated device %s", testDevice.getSerialNumber());
-        updateDeviceMonitor();
-        if (allocatedDevice.isEmulator()) {
-            mEmulatorStats.recordAllocation(allocatedDevice.getSerialNumber());
-        }
-        return testDevice;
-    }
-
-    /**
-     * Factory method to create a {@link IManagedTestDevice}.
-     * <p/>
-     * Exposed so unit tests can mock
-     *
-     * @param allocatedDevice
-     * @param monitor
-     * @return a {@link IManagedTestDevice}
-     */
-    IManagedTestDevice createTestDevice(IDevice allocatedDevice, IDeviceStateMonitor monitor) {
-        IManagedTestDevice testDevice = new TestDevice(allocatedDevice, monitor);
-        testDevice.setFastbootEnabled(mFastbootEnabled);
-        if (allocatedDevice instanceof FastbootDevice) {
-            testDevice.setDeviceState(TestDeviceState.FASTBOOT);
-        } else if (allocatedDevice instanceof StubDevice) {
-            testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-        }
-        return testDevice;
+        return null;
     }
 
     /**
@@ -528,23 +428,12 @@ public class DeviceManager implements IDeviceManager {
                 deviceState = FreeDeviceState.UNAVAILABLE;
             }
         }
-        if (mAllocatedDeviceMap.remove(device.getSerialNumber()) == null) {
-            CLog.e("freeDevice called with unallocated device %s",
-                    device.getSerialNumber());
-        } else if (deviceState == FreeDeviceState.UNRESPONSIVE) {
-            // TODO: add class flag to control if unresponsive device's are returned to pool
-            // TODO: also consider tracking unresponsive events received per device - so a
-            // device that is continually unresponsive could be removed from available queue
-            addAvailableDevice(ideviceToReturn);
-        } else if (deviceState == FreeDeviceState.AVAILABLE) {
-            addAvailableDevice(ideviceToReturn);
-        } else if (deviceState == FreeDeviceState.UNAVAILABLE) {
-            CLog.logAndDisplay(LogLevel.WARN, "Freed device %s is unavailable. Removing from use.",
-                    device.getSerialNumber());
-        }
-        updateDeviceMonitor();
-        if (ideviceToReturn.isEmulator()) {
-            mEmulatorStats.recordFree(ideviceToReturn.getSerialNumber());
+
+        DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(managedDevice,
+                DeviceEvent.convertFromFree(deviceState));
+        if (r != null && !r.stateChanged) {
+            CLog.e("Device %s was in unexpected state %s when freeing", device.getSerialNumber(),
+                    r.allocationState.toString());
         }
     }
 
@@ -684,14 +573,10 @@ public class DeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice connectToTcpDevice(String ipAndPort) {
-        if (mAllocatedDeviceMap.containsKey(ipAndPort)) {
-            CLog.w("Device with tcp serial %s is already allocated", ipAndPort);
+        ITestDevice tcpDevice = forceAllocateDevice(ipAndPort);
+        if (tcpDevice == null) {
             return null;
         }
-        // create a mapping between this device, and its soon-to-be associated tcp serial number
-        // this is done so a) the device can get state updates and b) this device isn't allocated
-        // to another caller when it goes online with new serial
-        ITestDevice tcpDevice = createAllocatedDevice(new StubDevice(ipAndPort));
         if (doAdbConnect(ipAndPort)) {
             try {
                 tcpDevice.setRecovery(new WaitDeviceRecovery());
@@ -751,7 +636,7 @@ public class DeviceManager implements IDeviceManager {
         for (int i = 1; i <= 3; i++) {
             String adbConnectResult = executeGlobalAdbCommand("connect", ipAndPort);
             // runcommand "adb connect ipAndPort"
-            if (adbConnectResult.startsWith(resultSuccess)) {
+            if (adbConnectResult != null && adbConnectResult.startsWith(resultSuccess)) {
                 return true;
             }
             CLog.w("Failed to connect to device on %s, attempt %d of 3. Response: %s.",
@@ -800,7 +685,7 @@ public class DeviceManager implements IDeviceManager {
     public synchronized void terminateHard() {
         checkInit();
         if (!mIsTerminated ) {
-            for (IManagedTestDevice device : mAllocatedDeviceMap.values()) {
+            for (IManagedTestDevice device : mManagedDeviceList) {
                 device.setRecovery(new AbortRecovery());
             }
             mAdbBridge.disconnectBridge();
@@ -838,56 +723,6 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized Collection<String> getAllocatedDevices() {
-        checkInit();
-        Collection<String> allocatedDeviceSerials = new ArrayList<String>(
-                mAllocatedDeviceMap.size());
-        allocatedDeviceSerials.addAll(mAllocatedDeviceMap.keySet());
-        return allocatedDeviceSerials;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized Collection<String> getAvailableDevices() {
-        checkInit();
-        Collection<String> availableDeviceSerials = new ArrayList<String>(
-                mAvailableDeviceQueue.size());
-        synchronized (mAvailableDeviceQueue) {
-            for (IDevice device : mAvailableDeviceQueue) {
-                // don't add placeholder devices to available devices display
-                if (!(device instanceof StubDevice)) {
-                    availableDeviceSerials.add(device.getSerialNumber());
-                }
-            }
-        }
-        return availableDeviceSerials;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized Collection<String> getUnavailableDevices() {
-        checkInit();
-        IDevice[] visibleDevices = mAdbBridge.getDevices();
-        Collection<String> unavailableSerials = new ArrayList<String>(
-                visibleDevices.length);
-        Collection<String> availSerials = getAvailableDevices();
-        Collection<String> allocatedSerials = getAllocatedDevices();
-        for (IDevice device : visibleDevices) {
-            if (!availSerials.contains(device.getSerialNumber()) &&
-                    !allocatedSerials.contains(device.getSerialNumber())) {
-                unavailableSerials.add(device.getSerialNumber());
-            }
-        }
-        return unavailableSerials;
-    }
 
     /**
      * {@inheritDoc}
@@ -896,52 +731,23 @@ public class DeviceManager implements IDeviceManager {
     public List<DeviceDescriptor> listAllDevices() {
         final List<DeviceDescriptor> serialStates = new ArrayList<DeviceDescriptor>();
         IDeviceSelection selector = getDeviceSelectionOptions();
-        for (Map.Entry<IDevice, DeviceAllocationState> entry : fetchDevicesInfo().entrySet()) {
-            serialStates.add(new DeviceDescriptor(
-                entry.getKey().getSerialNumber(),
-                entry.getValue(),
-                getDisplay(selector.getDeviceProductType(entry.getKey())),
-                getDisplay(selector.getDeviceProductVariant(entry.getKey())),
-                getDisplay(entry.getKey().getProperty("ro.build.version.sdk")),
-                getDisplay(entry.getKey().getProperty("ro.build.id")))
-            );
+        for (IManagedTestDevice d : mManagedDeviceList) {
+            IDevice idevice = d.getIDevice();
+            if (idevice instanceof StubDevice
+                    && d.getAllocationState() != DeviceAllocationState.Allocated) {
+                // don't add placeholder devices
+                continue;
+            }
+            serialStates.add(new DeviceDescriptor(idevice.getSerialNumber(),
+                    idevice instanceof StubDevice,
+                    d.getAllocationState(),
+                    getDisplay(selector.getDeviceProductType(idevice)),
+                    getDisplay(selector.getDeviceProductVariant(idevice)),
+                    getDisplay(idevice.getProperty("ro.build.version.sdk")),
+                    getDisplay(idevice.getProperty("ro.build.id")),
+                    getDisplay(selector.getBatteryLevel(idevice))));
         }
         return serialStates;
-    }
-
-    private Map<IDevice, DeviceAllocationState> fetchDevicesInfo() {
-        synchronized (this) {
-            checkInit();
-        }
-        final Map<IDevice, DeviceAllocationState> deviceMap =
-                new HashMap<IDevice, DeviceAllocationState>();
-
-        // these data structures all have their own locks
-        final List<IDevice> allDeviceCopy = ArrayUtil.list(mAdbBridge.getDevices());
-        final List<IDevice> availableDeviceCopy = mAvailableDeviceQueue.getCopy();
-        final List<ITestDevice> allocatedDeviceCopy = new ArrayList<ITestDevice>(
-                mAllocatedDeviceMap.values());
-
-        // first add all devices to map as unavailable. If they are available or allocated their
-        // state will get updated in later loops
-        for (IDevice device : allDeviceCopy) {
-            // ignore devices not matching global filter
-            if (mGlobalDeviceFilter.matches(device)) {
-                deviceMap.put(device, DeviceAllocationState.Unavailable);
-            }
-        }
-
-        for (ITestDevice device : allocatedDeviceCopy) {
-            deviceMap.put(device.getIDevice(), DeviceAllocationState.Allocated);
-        }
-
-        for (IDevice device : availableDeviceCopy) {
-            // don't add placeholder devices to available devices display
-            if (!(device instanceof StubDevice)) {
-                deviceMap.put(device, DeviceAllocationState.Available);
-            }
-        }
-        return deviceMap;
     }
 
     @Override
@@ -949,39 +755,30 @@ public class DeviceManager implements IDeviceManager {
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
         displayRows.add(Arrays.asList("Serial", "State", "Product", "Variant", "Build",
                 "Battery"));
-        Map<IDevice, DeviceAllocationState> deviceMap = fetchDevicesInfo();
-        List<Pair<IDevice, DeviceAllocationState>> sortedDeviceList = sortDeviceMap(deviceMap);
-
-        IDeviceSelection selector = getDeviceSelectionOptions();
-        addDevicesInfo(selector, displayRows, sortedDeviceList);
+        List<DeviceDescriptor> deviceList = listAllDevices();
+        sortDeviceList(deviceList);
+        addDevicesInfo(displayRows, deviceList);
         new TableFormatter().displayTable(displayRows, stream);
     }
 
     /**
-     * Sorts given map by state, then by serial
+     * Sorts list by state, then by serial
      *
      * @VisibleForTesting
      */
-    List<Pair<IDevice, DeviceAllocationState>> sortDeviceMap(
-            Map<IDevice, DeviceAllocationState> deviceMap) {
-        List<Pair<IDevice, DeviceAllocationState>> deviceList =
-                new LinkedList<Pair<IDevice, DeviceAllocationState>>();
-        for (Map.Entry<IDevice, DeviceAllocationState> entry : deviceMap.entrySet()) {
-            deviceList.add(new Pair<IDevice, DeviceAllocationState>(entry.getKey(), entry
-                    .getValue()));
-        }
-        Comparator<Pair<IDevice, DeviceAllocationState>> c =
-                new Comparator<Pair<IDevice, DeviceAllocationState>>() {
+    static List<DeviceDescriptor> sortDeviceList(List<DeviceDescriptor> deviceList) {
+
+        Comparator<DeviceDescriptor> c = new Comparator<DeviceDescriptor>() {
 
             @Override
-            public int compare(Pair<IDevice, DeviceAllocationState> o1,
-                    Pair<IDevice, DeviceAllocationState> o2) {
-                if (o1.second != o2.second) {
+            public int compare(DeviceDescriptor o1, DeviceDescriptor o2) {
+                if (o1.getState() != o2.getState()) {
                     // sort by state
-                    return o1.second.toString().compareTo(o2.second.toString());
+                    return o1.getState().toString()
+                            .compareTo(o2.getState().toString());
                 }
                 // states are equal, sort by serial
-                return o1.first.getSerialNumber().compareTo(o2.first.getSerialNumber());
+                return o1.getSerial().compareTo(o2.getSerial());
             }
 
         };
@@ -998,18 +795,21 @@ public class DeviceManager implements IDeviceManager {
         return new DeviceSelectionOptions();
     }
 
-    private void addDevicesInfo(IDeviceSelection selector, List<List<String>> displayRows,
-            List<Pair<IDevice, DeviceAllocationState>> sortedDeviceList) {
-        for (Pair<IDevice, DeviceAllocationState> devicePair : sortedDeviceList) {
-            IDevice device = devicePair.first;
-            DeviceAllocationState deviceState = devicePair.second;
+    private void addDevicesInfo(List<List<String>> displayRows,
+            List<DeviceDescriptor> sortedDeviceList) {
+        for (DeviceDescriptor desc : sortedDeviceList) {
+            if (desc.isStubDevice() &&
+                    desc.getState() != DeviceAllocationState.Allocated) {
+                // don't add placeholder devices
+                continue;
+            }
             displayRows.add(Arrays.asList(
-                    device.getSerialNumber(),
-                    deviceState.toString(),
-                    getDisplay(selector.getDeviceProductType(device)),
-                    getDisplay(selector.getDeviceProductVariant(device)),
-                    getDisplay(device.getProperty("ro.build.id")),
-                    getDisplay(selector.getBatteryLevel(device)))
+                    desc.getSerial(),
+                    desc.getState().toString(),
+                    desc.getProduct(),
+                    desc.getProductVariant(),
+                    desc.getBuildId(),
+                    desc.getBatteryLevel())
             );
         }
     }
@@ -1023,6 +823,7 @@ public class DeviceManager implements IDeviceManager {
         return o == null ? "unknown" : o.toString();
     }
 
+
     /**
      * A class to listen for and act on device presence updates from ddmlib
      */
@@ -1032,18 +833,21 @@ public class DeviceManager implements IDeviceManager {
          * {@inheritDoc}
          */
         @Override
-        public void deviceChanged(IDevice device, int changeMask) {
-            IManagedTestDevice testDevice = mAllocatedDeviceMap.get(device.getSerialNumber());
+        public void deviceChanged(IDevice idevice, int changeMask) {
             if ((changeMask & IDevice.CHANGE_STATE) != 0) {
-                if (testDevice != null) {
-                    TestDeviceState newState = TestDeviceState.getStateByDdms(device.getState());
-                    testDevice.setDeviceState(newState);
-                } else if (mCheckDeviceMap.containsKey(device.getSerialNumber())) {
-                    IDeviceStateMonitor monitor = mCheckDeviceMap.get(device.getSerialNumber());
-                    monitor.setState(TestDeviceState.getStateByDdms(device.getState()));
-                } else if (!mAvailableDeviceQueue.contains(device) &&
-                        device.getState() == IDevice.DeviceState.ONLINE) {
-                    checkAndAddAvailableDevice(device);
+                IManagedTestDevice testDevice = mManagedDeviceList.findOrCreate(idevice);
+                if (testDevice == null) {
+                    return;
+                }
+                TestDeviceState newState = TestDeviceState.getStateByDdms(idevice.getState());
+                testDevice.setDeviceState(newState);
+                if (newState == TestDeviceState.ONLINE) {
+                    DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(testDevice,
+                            DeviceEvent.STATE_CHANGE_ONLINE);
+                    if (r.stateChanged && r.allocationState ==
+                            DeviceAllocationState.Checking_Availability) {
+                        checkAndAddAvailableDevice(testDevice);
+                    }
                 }
             }
         }
@@ -1052,30 +856,27 @@ public class DeviceManager implements IDeviceManager {
          * {@inheritDoc}
          */
         @Override
-        public void deviceConnected(IDevice device) {
-            CLog.d("Detected device connect %s, id %d", device.getSerialNumber(),
-                    device.hashCode());
-            IManagedTestDevice testDevice = mAllocatedDeviceMap.get(device.getSerialNumber());
+        public void deviceConnected(IDevice idevice) {
+            CLog.d("Detected device connect %s, id %d", idevice.getSerialNumber(),
+                    idevice.hashCode());
+            IManagedTestDevice testDevice = mManagedDeviceList.findOrCreate(idevice);
             if (testDevice == null) {
-                if (isValidDeviceSerial(device.getSerialNumber()) &&
-                        device.getState() == IDevice.DeviceState.ONLINE) {
-                    checkAndAddAvailableDevice(device);
-                } else if (mCheckDeviceMap.containsKey(device.getSerialNumber())) {
-                    IDeviceStateMonitor monitor = mCheckDeviceMap.get(device.getSerialNumber());
-                    monitor.setState(TestDeviceState.getStateByDdms(device.getState()));
-                }
-            } else {
-                // this device is known already. However DDMS will allocate a new IDevice, so need
-                // to update the TestDevice record with the new device
-                CLog.d("Updating IDevice for device %s", device.getSerialNumber());
-                testDevice.setIDevice(device);
-                TestDeviceState newState = TestDeviceState.getStateByDdms(device.getState());
-                testDevice.setDeviceState(newState);
+                return;
             }
-        }
-
-        private boolean isValidDeviceSerial(String serial) {
-            return serial.length() > 1 && !serial.contains("?");
+            // DDMS will allocate a new IDevice, so need
+            // to update the TestDevice record with the new device
+            CLog.d("Updating IDevice for device %s", idevice.getSerialNumber());
+            testDevice.setIDevice(idevice);
+            TestDeviceState newState = TestDeviceState.getStateByDdms(idevice.getState());
+            testDevice.setDeviceState(newState);
+            if (newState == TestDeviceState.ONLINE) {
+                DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(testDevice,
+                        DeviceEvent.CONNECTED_ONLINE);
+                if (r.stateChanged && r.allocationState ==
+                        DeviceAllocationState.Checking_Availability) {
+                    checkAndAddAvailableDevice(testDevice);
+                }
+            }
         }
 
         /**
@@ -1083,20 +884,11 @@ public class DeviceManager implements IDeviceManager {
          */
         @Override
         public void deviceDisconnected(IDevice disconnectedDevice) {
-            if (mAvailableDeviceQueue.remove(disconnectedDevice)) {
-                CLog.i("Removed disconnected device %s from available queue",
-                        disconnectedDevice.getSerialNumber());
+            IManagedTestDevice d = mManagedDeviceList.find(disconnectedDevice.getSerialNumber());
+            if (d != null) {
+                mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.DISCONNECTED);
+                d.setDeviceState(TestDeviceState.NOT_AVAILABLE);
             }
-            IManagedTestDevice testDevice = mAllocatedDeviceMap.get(
-                    disconnectedDevice.getSerialNumber());
-            if (testDevice != null) {
-                testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-            } else if (mCheckDeviceMap.containsKey(disconnectedDevice.getSerialNumber())) {
-                IDeviceStateMonitor monitor = mCheckDeviceMap.get(
-                        disconnectedDevice.getSerialNumber());
-                monitor.setState(TestDeviceState.NOT_AVAILABLE);
-            }
-            updateDeviceMonitor();
         }
     }
 
@@ -1145,24 +937,8 @@ public class DeviceManager implements IDeviceManager {
                 if (!mFastbootListeners.isEmpty()) {
                     Set<String> serials = getDevicesOnFastboot();
                     if (serials != null) {
-                        for (String serial : serials) {
-                            IManagedTestDevice testDevice = mAllocatedDeviceMap.get(serial);
-                            if (testDevice != null
-                                    && !testDevice.getDeviceState()
-                                            .equals(TestDeviceState.FASTBOOT)) {
-                                testDevice.setDeviceState(TestDeviceState.FASTBOOT);
-                            }
-                        }
-                        // now update devices that are no longer on fastboot
-                        synchronized (mAllocatedDeviceMap) {
-                            for (IManagedTestDevice testDevice : mAllocatedDeviceMap.values()) {
-                                if (!serials.contains(testDevice.getSerialNumber())
-                                        && testDevice.getDeviceState().equals(
-                                                TestDeviceState.FASTBOOT)) {
-                                    testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-                                }
-                            }
-                        }
+                        mManagedDeviceList.updateFastbootStates(serials);
+
                         // create a copy of listeners for notification to prevent deadlocks
                         Collection<IFastbootListener> listenersCopy =
                                 new ArrayList<IFastbootListener>(mFastbootListeners.size());
@@ -1201,10 +977,18 @@ public class DeviceManager implements IDeviceManager {
         return serials;
     }
 
-    @Override
-    public void displayEmulatorStats(PrintWriter printWriter) {
-        printWriter.printf("Average percent utilization in last 24 hours: %d",
-                mEmulatorStats.getTotalUtilization(mNumEmulatorSupported));
-        printWriter.println();
+    @VisibleForTesting
+    List<IManagedTestDevice> getDeviceList() {
+        return mManagedDeviceList.getCopy();
+    }
+
+    @VisibleForTesting
+    void setMaxEmulators(int numEmulators) {
+        mNumEmulatorSupported = numEmulators;
+    }
+
+    @VisibleForTesting
+    void setMaxNullDevices(int nullDevices) {
+        mNumNullDevicesSupported = nullDevices;
     }
 }

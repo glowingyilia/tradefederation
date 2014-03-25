@@ -90,8 +90,6 @@ public class DeviceManagerFuncTest extends DeviceTestCase {
             // ensure device is back on usb
             mUsbDevice.waitForDeviceAvailable();
         } finally {
-
-
             deviceManager.disconnectFromTcpDevice(tcpDevice);
         }
 

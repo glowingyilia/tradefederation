@@ -176,20 +176,24 @@ public class RemoteManagerTest extends TestCase {
         deviceList.add(
             new DeviceDescriptor(
                 "serial",
+                false,
                 DeviceAllocationState.Available,
                 "tuna",
                 "toro",
                 "18",
-                "JWR67C")
+                "JWR67C",
+                "4")
             );
         deviceList.add(
             new DeviceDescriptor(
                 "serial2",
+                false,
                 DeviceAllocationState.Allocated,
                 "herring",
                 "crespo",
                 "15",
-                "IMM767")
+                "IMM767",
+                "5")
             );
         EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(deviceList);
         EasyMock.replay(mMockDeviceManager);
@@ -201,17 +205,21 @@ public class RemoteManagerTest extends TestCase {
         List<DeviceDescriptor> returnedDevices = mRemoteClient.sendListDevices();
         assertEquals(2, returnedDevices.size());
         assertEquals("serial", returnedDevices.get(0).getSerial());
+        assertFalse(returnedDevices.get(0).isStubDevice());
         assertEquals(DeviceAllocationState.Available, returnedDevices.get(0).getState());
         assertEquals("tuna", returnedDevices.get(0).getProduct());
         assertEquals("toro", returnedDevices.get(0).getProductVariant());
         assertEquals("18", returnedDevices.get(0).getSdkVersion());
         assertEquals("JWR67C", returnedDevices.get(0).getBuildId());
+        assertEquals("4", returnedDevices.get(0).getBatteryLevel());
         assertEquals("serial2", returnedDevices.get(1).getSerial());
+        assertFalse(returnedDevices.get(1).isStubDevice());
         assertEquals(DeviceAllocationState.Allocated, returnedDevices.get(1).getState());
         assertEquals("herring", returnedDevices.get(1).getProduct());
         assertEquals("crespo", returnedDevices.get(1).getProductVariant());
         assertEquals("15", returnedDevices.get(1).getSdkVersion());
         assertEquals("IMM767", returnedDevices.get(1).getBuildId());
+        assertEquals("5", returnedDevices.get(1).getBatteryLevel());
         EasyMock.verify(mMockDeviceManager);
     }
 

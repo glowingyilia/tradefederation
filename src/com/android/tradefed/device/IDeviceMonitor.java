@@ -16,9 +16,9 @@
 
 package com.android.tradefed.device;
 
-import com.android.ddmlib.IDevice;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 
-import java.util.Map;
+import java.util.List;
 
 /**
  * Interface for monitoring state of devices.  Intended to be passed to an {@link IDeviceManager}
@@ -38,7 +38,7 @@ public interface IDeviceMonitor {
      * should avoid deadlocks that may occur while listing devices.
      */
     public static abstract class DeviceLister {
-        public abstract Map<IDevice, DeviceAllocationState> listDevices();
+        public abstract List<DeviceDescriptor> listDevices();
     }
 
     /**

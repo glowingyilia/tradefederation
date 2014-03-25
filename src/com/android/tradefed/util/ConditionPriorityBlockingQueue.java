@@ -97,14 +97,14 @@ public class ConditionPriorityBlockingQueue<T> implements Iterable<T> {
     /**
      * Creates a {@link ConditionPriorityBlockingQueue}
      * <p/>
-     * Elements will be prioritized in FIFO order.  Thread safety will be <emph>disabled</emph>.
+     * Elements will be prioritized in FIFO order.
      */
     public ConditionPriorityBlockingQueue() {
         this(null);
     }
 
     /**
-     * Creates a {@link ConditionPriorityBlockingQueue} with thread safety <emph>disabled</emph>
+     * Creates a {@link ConditionPriorityBlockingQueue}
      *
      * @param c the {@link Comparator} used to prioritize the queue.
      */
