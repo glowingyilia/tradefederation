@@ -117,11 +117,12 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
                         }
                     }
                     // get the score out
-                    if (line.contains(" c: ")) {
+                    if (line.contains(" b: ")) {
                         hasScore = true;
-                        String[] results = line.split(" c: ")[1].split(",");
-                        sumScore += Double.parseDouble(results[1]);
-                        CLog.i("%s :: %s", results[0], results[1]);
+                        String[] results = line.split(" b: ")[1].split(",");
+                        sumScore += Double.parseDouble(results[3]);
+                        metrics.put(results[0], results[3]);
+                        CLog.i("%s :: %s", results[0], results[3]);
                     }
                 }
             } catch (IOException e) {
