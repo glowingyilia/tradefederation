@@ -506,14 +506,14 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public void executeShellCommand(final String command, final IShellOutputReceiver receiver,
-            final long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
-            throws DeviceNotAvailableException {
+            final long maxTimeToOutputShellResponse, final TimeUnit timeUnit,
+            final int retryAttempts) throws DeviceNotAvailableException {
         DeviceAction action = new DeviceAction() {
             @Override
             public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException,
                     ShellCommandUnresponsiveException {
                 getIDevice().executeShellCommand(command, receiver,
-                        maxTimeToOutputShellResponse, TimeUnit.MILLISECONDS);
+                        maxTimeToOutputShellResponse, timeUnit);
                 return true;
             }
         };
