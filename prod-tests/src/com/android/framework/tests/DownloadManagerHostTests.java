@@ -17,10 +17,16 @@
 package com.android.framework.tests;
 
 import com.android.ddmlib.Log;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.testtype.DeviceTestCase;
 
 import java.util.Hashtable;
@@ -202,5 +208,45 @@ public class DownloadManagerHostTests extends DeviceTestCase {
                 FILE_DOWNLOAD_CLASS, "runDownloadMultipleSimultaneously",
                 DOWNLOAD_TEST_RUNNER_NAME, mExtraParams);
         assertTrue(testPassed);
+    }
+
+    /**
+     * Saves dumpsys wifi log output if one of the tests fail.
+     */
+    private class WifiLogSaver extends ResultForwarder {
+
+        public WifiLogSaver(ITestInvocationListener listener) {
+            super(listener);
+        }
+
+        /**
+         * Take dumpsys wifi when test fails.
+         */
+        @Override
+        public void testFailed(TestFailure status, TestIdentifier test, String trace) {
+            try {
+                String output = mDevice.executeShellCommand("dumpsys wifi");
+                if (output == null) {
+                    CLog.w("dumpsys wifi did not return output");
+                } else {
+                    String name = test.getTestName() +"-dumpsys-wifi";
+                    ByteArrayInputStreamSource stream =
+                            new ByteArrayInputStreamSource(output.getBytes());
+                    super.testLog(name, LogDataType.TEXT, stream);
+                    stream.cancel();
+                }
+            } catch (DeviceNotAvailableException e) {
+                CLog.e("Error getting dumpsys wifi");
+                CLog.e(e);
+            } finally {
+                super.testFailed(status, test, trace);
+            }
+        }
+    }
+
+    @Override
+    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        WifiLogSaver proxy = new WifiLogSaver(listener);
+        super.run(proxy);
     }
 }
