@@ -111,5 +111,32 @@ public class QuotationAwareTokenizer {
         String[] tokensArray = new String[tokens.size()];
         return tokens.toArray(tokensArray);
     }
-}
 
+    /**
+     * Perform the reverse of {@link tokenizeLine}. <br/>
+     * Given array of tokens, combine them into a single line.
+     *
+     * @param tokens
+     * @return
+     */
+    public static String combineTokens(String... tokens) {
+        final Pattern wsPattern = Pattern.compile("\\s");
+        StringBuilder sb = new StringBuilder();
+        for (int i=0; i < tokens.length; i++) {
+            String token = tokens[i];
+            final Matcher wsMatcher = wsPattern.matcher(token);
+            if (wsMatcher.find()) {
+                sb.append('"');
+                sb.append(token);
+                sb.append('"');
+            } else {
+                sb.append(token);
+            }
+            if (i < (tokens.length - 1)) {
+                // don't output space after last token
+                sb.append(' ');
+            }
+        }
+        return sb.toString();
+    }
+}

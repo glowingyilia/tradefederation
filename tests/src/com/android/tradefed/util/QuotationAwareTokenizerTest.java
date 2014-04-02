@@ -42,27 +42,55 @@ public class QuotationAwareTokenizerTest extends TestCase {
     /**
      * Simple parse
      */
-    public void testParse_simple() throws IllegalArgumentException {
+    public void testTokenizeLine_simple() throws IllegalArgumentException {
         String input = "  one  two three";
         String[] expected = new String[] {"one", "two", "three"};
         verify(input, expected);
     }
 
+    public void testCombineTokens_simple() throws IllegalArgumentException {
+        assertEquals("one two three", QuotationAwareTokenizer.combineTokens("one", "two", "three"));
+    }
+
     /**
-     * Whitespace inside of the quoted section should be preserved. Also, embedded escaped quotation
-     * marks should be ignored.
+     * Whitespace inside of the quoted section should be preserved.
      */
-    public void testParse_quotation() throws IllegalArgumentException {
-        String input = "--foo \"this is a config\" --bar \"escap\\\\ed \\\" quotation\"";
-        String[] expected = new String[] {"--foo", "this is a config", "--bar",
+    public void testTokenizeLine_whitespace() throws IllegalArgumentException {
+        String input = "--foo \"this is a config\"";
+        String[] expected = new String[] {"--foo", "this is a config"};
+        verify(input, expected);
+    }
+
+    /**
+     * Inverse of {@link testTokenizeLine_whitespace}.
+     */
+    public void testCombineTokens_whitespace() throws IllegalArgumentException {
+        assertEquals("--foo \"this is a config\"", QuotationAwareTokenizer.combineTokens("--foo",
+                "this is a config"));
+    }
+
+    /**
+     * Verify embedded escaped quotation marks are be ignored.
+     */
+    public void testTokenizeLine_escapedQuotation() throws IllegalArgumentException {
+        String input = "--bar \"escap\\\\ed \\\" quotation\"";
+        String[] expected = new String[] {"--bar",
                 "escap\\\\ed \\\" quotation"};
         verify(input, expected);
     }
 
     /**
+     * Inverse of {@link testTokenizeLine_whitespace}.
+     */
+    public void testCombineTokens_escapedQuotation() throws IllegalArgumentException {
+        assertEquals("--bar \"escap\\\\ed \\\" quotation\"", QuotationAwareTokenizer.combineTokens(
+                "--bar", "escap\\\\ed \\\" quotation"));
+    }
+
+    /**
      * Test the scenario where the input ends inside a quotation.
      */
-    public void testParseFile_endOnQuote() {
+    public void testTokenizeLine_endOnQuote() {
         String input = "--foo \"this is truncated";
 
         try {
@@ -76,7 +104,7 @@ public class QuotationAwareTokenizerTest extends TestCase {
     /**
      * Test the scenario where the input ends in the middle of an escape character.
      */
-    public void testRun_endWithEscape() {
+    public void testTokenizeLine_endWithEscape() {
         String input = "--foo escape\\";
 
         try {

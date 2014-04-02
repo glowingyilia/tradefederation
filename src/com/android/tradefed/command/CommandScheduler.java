@@ -44,6 +44,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.StubTestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue;
+import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.TableFormatter;
 
 import java.io.PrintWriter;
@@ -629,10 +630,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             getConfigFactory().printHelpForConfig(args, false, System.out);
         } else if (config.getCommandOptions().isDryRunMode()) {
             config.validateOptions();
+            String cmdLine = QuotationAwareTokenizer.combineTokens(args);
+            CLog.d("Dry run mode; skipping adding command: %s", cmdLine);
             if (config.getCommandOptions().isNoisyDryRunMode()) {
-                CLog.logAndDisplay(LogLevel.DEBUG, "DRY RUN: %s", Arrays.toString(args));
-            } else {
-                CLog.d("Dry run mode; skipping adding command: %s", Arrays.toString(args));
+                System.out.println(cmdLine.replace("--noisy-dry-run", ""));
+                System.out.println("");
             }
         } else {
             config.validateOptions();
