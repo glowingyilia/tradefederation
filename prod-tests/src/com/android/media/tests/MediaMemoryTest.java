@@ -42,7 +42,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -85,6 +87,9 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
     @Option(name = "getProcMem", description = "Collect the procmem info ")
     private boolean mGetProcMem = false;
 
+    @Option(name = "testName", description = "Test name to run. May be repeated.")
+    private Collection<String> mTests = new LinkedList<String>();
+
     public MediaMemoryTest() {
         mPatternMap.put("testCameraPreviewMemoryUsage", "CameraPreview");
         mPatternMap.put("testRecordAudioOnlyMemoryUsage", "AudioRecord");
@@ -116,8 +121,14 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
         bugListener.addPredicate(new BugreportCollector.Predicate(
                 Relation.AFTER, Freq.EACH, Noun.TESTRUN));
 
-        mTestDevice.runInstrumentationTests(runner, bugListener);
-
+        if (mTests.size() > 0) {
+            for (String testName : mTests) {
+                runner.setMethodName(TEST_CLASS_NAME, testName);
+                mTestDevice.runInstrumentationTests(runner, bugListener);
+            }
+        } else {
+            mTestDevice.runInstrumentationTests(runner, bugListener);
+        }
         logOutputFiles(listener);
         cleanResultFile();
     }
