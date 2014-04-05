@@ -15,9 +15,10 @@
 -->
 <configuration description="Creates an avd, and launches emulator from a local sdk">
     <option name="new-emulator" value="true" />
-    <target_preparer class="com.android.tradefed.targetprep.SdkAvdPreparer" />
-    <target_preparer class="com.android.sdk.tests.EmulatorGpsPreparer" />
-    <target_preparer class="com.android.sdk.tests.EmulatorSmsPreparer" />
+    <object type="sdk-avd-preparer"  class="com.android.tradefed.targetprep.SdkAvdPreparer" />
+    <object type="gps-preparer" class="com.android.sdk.tests.EmulatorGpsPreparer" />
+    <object type="sms-preparer" class="com.android.sdk.tests.EmulatorSmsPreparer" />
+    <test class="com.android.sdk.EmulatorBootTest" />
     <test class="com.android.tradefed.testtype.InstrumentationTest" >
         <option name="runner" value="android.support.test.runner.AndroidJUnitRunner" />
         <option name="package" value="com.android.emulator.smoketests" />
