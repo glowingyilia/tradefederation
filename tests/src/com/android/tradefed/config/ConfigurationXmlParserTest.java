@@ -15,16 +15,12 @@
  */
 package com.android.tradefed.config;
 
-import com.android.tradefed.testtype.HostTest;
-import com.android.tradefed.testtype.IRemoteTest;
-
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.List;
 
 /**
  * Unit tests for {@link ConfigurationXmlParser}.
@@ -109,14 +105,6 @@ public class ConfigurationXmlParserTest extends TestCase {
         assertEquals("com.android.tradefed.testtype.HostTest", configDef.getObjectClassMap().get("test").get(1));
         assertEquals("com.android.tradefed.testtype.HostTest:2:class", configDef.getOptionList().get(1).name);
         assertEquals("val2", configDef.getOptionList().get(1).value);
-
-        IConfiguration c = configDef.createConfiguration();
-        List<IRemoteTest> testList = c.getTests();
-        HostTest t1 = (HostTest)testList.get(0);
-        HostTest t2 = (HostTest)testList.get(1);
-        assertEquals("val1", t1.mClassName);
-        assertEquals("val2", t2.mClassName);
-
     }
 
     /**

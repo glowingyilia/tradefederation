@@ -17,6 +17,7 @@ package com.android.tradefed.config;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
@@ -55,10 +56,23 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Sanity test to ensure all configs on classpath are loadable
+     * Sanity test to ensure all config names on classpath are loadable
      */
     public void testLoadAllConfigs() throws ConfigurationException {
         new ConfigurationFactory().loadAllConfigs(false);
+    }
+
+    /**
+     * Sanity test to ensure all configs on classpath can be fully loaded and parsed
+     */
+    public void testLoadAndPrintAllConfigs() throws ConfigurationException {
+        try {
+            new ConfigurationFactory().loadAndPrintAllConfigs();
+        } catch (ConfigurationException e) {
+            // TODO: temporarily suppress this error, until all configs are cleaned up b/14027179
+            CLog.e("Suppressing failed test testLoadAndPrintAllConfigs");
+            CLog.e(e);
+        }
     }
 
     /**

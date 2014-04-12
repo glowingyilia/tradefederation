@@ -16,11 +16,14 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
 import com.android.tradefed.util.StreamUtil;
+import com.google.common.io.NullOutputStream;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -294,6 +297,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * @throws ConfigurationException
      */
     void loadAllConfigs(boolean discardExceptions) throws ConfigurationException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        boolean failed = false;
         ClassPathScanner cpScanner = new ClassPathScanner();
         Set<String> configNames = cpScanner.getClassPathEntries(new ConfigClasspathFilter());
         for (String configName : configNames) {
@@ -301,11 +307,18 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 ConfigurationDef configDef = getConfigurationDef(configName, false);
                 mConfigDefMap.put(configName, configDef);
             } catch (ConfigurationException e) {
-                Log.e(LOG_TAG, String.format("Failed to load configuration '%s'. Reason: %s",
-                        configName, e.toString()));
-                if (!discardExceptions) {
-                    throw e;
-                }
+                ps.printf("Failed to load %s: %s", configName, e.getMessage());
+                ps.println();
+                failed = true;
+
+            }
+        }
+        if (failed) {
+            if (discardExceptions) {
+                CLog.e("Failure loading configs");
+                CLog.e(baos.toString());
+            } else {
+                throw new ConfigurationException(baos.toString());
             }
         }
     }
@@ -371,5 +384,31 @@ public class ConfigurationFactory implements IConfigurationFactory {
         }
         // buffer input for performance - just in case config file is large
         return new BufferedInputStream(configStream);
+    }
+
+    /**
+     * Utility method that checks that all configs can be loaded, parsed, and all option values
+     * set.
+     *
+     * @throws ConfigurationException if one or more configs failed to load
+     */
+    void loadAndPrintAllConfigs() throws ConfigurationException {
+       loadAllConfigs(false);
+       boolean failed = false;
+       ByteArrayOutputStream baos = new ByteArrayOutputStream();
+       PrintStream ps = new PrintStream(baos);
+       for (ConfigurationDef def : mConfigDefMap.values()) {
+           try {
+               def.createConfiguration().printCommandUsage(false,
+                       new PrintStream(new NullOutputStream()));
+           } catch (ConfigurationException e) {
+               ps.printf("Failed to print %s: %s", def.getName(), e.getMessage());
+               ps.println();
+               failed = true;
+           }
+       }
+       if (failed) {
+           throw new ConfigurationException(baos.toString());
+       }
     }
 }

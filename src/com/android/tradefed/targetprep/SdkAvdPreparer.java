@@ -88,7 +88,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     private Collection<String> mEmulatorArgs = new ArrayList<String>();
 
     private final IRunUtil mRunUtil;
-    private final IDeviceManager mDeviceManager;
+    private IDeviceManager mDeviceManager;
 
     private File mSdkHome = null;
 
@@ -96,7 +96,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
      * Creates a {@link SdkAvdPreparer}.
      */
     public SdkAvdPreparer() {
-        this(new RunUtil(), GlobalConfiguration.getDeviceManagerInstance());
+        this(new RunUtil(), null);
     }
 
     /**
@@ -115,6 +115,9 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException, BuildError {
+        if (mDeviceManager != null) {
+            mDeviceManager = GlobalConfiguration.getDeviceManagerInstance();
+        }
         Assert.assertTrue("Provided build is not a ISdkBuildInfo",
                 buildInfo instanceof ISdkBuildInfo);
         ISdkBuildInfo sdkBuildInfo = (ISdkBuildInfo)buildInfo;
