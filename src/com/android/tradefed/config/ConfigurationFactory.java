@@ -110,19 +110,26 @@ public class ConfigurationFactory implements IConfigurationFactory {
          */
         @Override
         public ConfigurationDef getConfigurationDef(String name) throws ConfigurationException {
+            // first attempt to load cached config def
+            ConfigurationDef def = mConfigDefMap.get(name);
+            if (def == null) {
+                // not found - load from file
+                def = new ConfigurationDef(name);
+                loadConfiguration(name, def);
+                mConfigDefMap.put(name, def);
+            }
+            return def;
+        }
+
+        @Override
+        public void loadIncludedConfiguration(ConfigurationDef parent, String name)
+                throws ConfigurationException {
             if (mIncludedConfigs.contains(name)) {
                 throw new ConfigurationException(String.format(
                         "Circular configuration include: config '%s' is already included", name));
             }
             mIncludedConfigs.add(name);
-            // first attempt to load cached config def
-            ConfigurationDef def = mConfigDefMap.get(name);
-            if (def == null) {
-                // not found - load from file
-                def = loadConfiguration(name);
-                mConfigDefMap.put(name, def);
-            }
-            return def;
+            loadConfiguration(name, parent);
         }
 
         /**
@@ -134,11 +141,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
          * @throws ConfigurationException if a configuration with given
          *             name/file path cannot be loaded or parsed
          */
-        ConfigurationDef loadConfiguration(String name) throws ConfigurationException {
+        void loadConfiguration(String name, ConfigurationDef def) throws ConfigurationException {
             Log.i(LOG_TAG, String.format("Loading configuration '%s'", name));
             BufferedInputStream bufStream = getConfigStream(name);
             ConfigurationXmlParser parser = new ConfigurationXmlParser(this);
-            return parser.parse(name, bufStream);
+            parser.parse(def, name, bufStream);
         }
 
         /**

@@ -15,12 +15,16 @@
  */
 package com.android.tradefed.config;
 
+import com.android.tradefed.testtype.HostTest;
+import com.android.tradefed.testtype.IRemoteTest;
+
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.List;
 
 /**
  * Unit tests for {@link ConfigurationXmlParser}.
@@ -48,7 +52,8 @@ public class ConfigurationXmlParserTest extends TestCase {
             "  </test>\n" +
             "</configuration>";
         final String configName = "config";
-        ConfigurationDef configDef = xmlParser.parse(configName, getStringAsStream(normalConfig));
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig));
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
         assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
@@ -67,7 +72,8 @@ public class ConfigurationXmlParserTest extends TestCase {
             "  </test>\n" +
             "</configuration>";
         final String configName = "config";
-        ConfigurationDef configDef = xmlParser.parse(configName, getStringAsStream(normalConfig));
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig));
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
         assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
@@ -82,25 +88,35 @@ public class ConfigurationXmlParserTest extends TestCase {
     public void testParse_multiple() throws ConfigurationException {
         final String normalConfig =
             "<configuration description=\"desc\" >\n" +
-            "  <test class=\"junit.framework.TestCase\">\n" +
-            "    <option name=\"opName\" value=\"val1\" />\n" +
+            "  <test class=\"com.android.tradefed.testtype.HostTest\">\n" +
+            "    <option name=\"class\" value=\"val1\" />\n" +
             "  </test>\n" +
-            "  <test class=\"junit.framework.TestCase\">\n" +
-            "    <option name=\"opName\" value=\"val2\" />\n" +
+            "  <test class=\"com.android.tradefed.testtype.HostTest\">\n" +
+            "    <option name=\"class\" value=\"val2\" />\n" +
             "  </test>\n" +
             "</configuration>";
         final String configName = "config";
-        ConfigurationDef configDef = xmlParser.parse(configName, getStringAsStream(normalConfig));
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig));
+
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
 
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
-        assertEquals("junit.framework.TestCase:1:opName", configDef.getOptionList().get(0).name);
+        assertEquals("com.android.tradefed.testtype.HostTest", configDef.getObjectClassMap().get("test").get(0));
+        assertEquals("com.android.tradefed.testtype.HostTest:1:class", configDef.getOptionList().get(0).name);
         assertEquals("val1", configDef.getOptionList().get(0).value);
 
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(1));
-        assertEquals("junit.framework.TestCase:2:opName", configDef.getOptionList().get(1).name);
+        assertEquals("com.android.tradefed.testtype.HostTest", configDef.getObjectClassMap().get("test").get(1));
+        assertEquals("com.android.tradefed.testtype.HostTest:2:class", configDef.getOptionList().get(1).name);
         assertEquals("val2", configDef.getOptionList().get(1).value);
+
+        IConfiguration c = configDef.createConfiguration();
+        List<IRemoteTest> testList = c.getTests();
+        HostTest t1 = (HostTest)testList.get(0);
+        HostTest t2 = (HostTest)testList.get(1);
+        assertEquals("val1", t1.mClassName);
+        assertEquals("val2", t2.mClassName);
+
     }
 
     /**
@@ -110,7 +126,7 @@ public class ConfigurationXmlParserTest extends TestCase {
         final String config =
             "<object name=\"foo\" />";
         try {
-            xmlParser.parse("name", getStringAsStream(config));
+            xmlParser.parse(new ConfigurationDef("foo"), "foo", getStringAsStream(config));
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
@@ -124,7 +140,7 @@ public class ConfigurationXmlParserTest extends TestCase {
         final String config =
             "<option name=\"foo\" />";
         try {
-            xmlParser.parse("name", getStringAsStream(config));
+            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config));
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
@@ -137,7 +153,8 @@ public class ConfigurationXmlParserTest extends TestCase {
     public void testParse_object() throws ConfigurationException {
         final String config =
             "<object type=\"foo\" class=\"junit.framework.TestCase\" />";
-        ConfigurationDef configDef = xmlParser.parse("name", getStringAsStream(config));
+        ConfigurationDef configDef = new ConfigurationDef("name");
+        xmlParser.parse(configDef, "name", getStringAsStream(config));
         assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("foo").get(0));
     }
 
@@ -145,15 +162,12 @@ public class ConfigurationXmlParserTest extends TestCase {
      * Test parsing a include tag.
      */
     public void testParse_include() throws ConfigurationException {
-        final String includedConfig = "<object type=\"foo\" class=\"junit.framework.TestCase\" />";
         String includedName = "includeme";
-        ConfigurationDef includedConfigDef = xmlParser.parse(includedName,
-                getStringAsStream(includedConfig));
-        EasyMock.expect(mMockLoader.getConfigurationDef(includedName)).andReturn(includedConfigDef);
+        ConfigurationDef configDef = new ConfigurationDef("name");
+        mMockLoader.loadIncludedConfiguration(EasyMock.eq(configDef), EasyMock.eq(includedName));
         EasyMock.replay(mMockLoader);
         final String config = "<include name=\"includeme\" />";
-        ConfigurationDef configDef = xmlParser.parse("name", getStringAsStream(config));
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("foo").get(0));
+        xmlParser.parse(configDef, "name", getStringAsStream(config));
     }
 
     /**
@@ -161,12 +175,14 @@ public class ConfigurationXmlParserTest extends TestCase {
      */
     public void testParse_includeMissing() throws ConfigurationException {
         String includedName = "non-existent";
+        ConfigurationDef parent = new ConfigurationDef("name");
         ConfigurationException exception = new ConfigurationException("I don't exist");
-        EasyMock.expect(mMockLoader.getConfigurationDef(includedName)).andThrow(exception);
+        mMockLoader.loadIncludedConfiguration(parent, includedName);
+        EasyMock.expectLastCall().andThrow(exception);
         EasyMock.replay(mMockLoader);
         final String config = String.format("<include name=\"%s\" />", includedName);
         try {
-            xmlParser.parse("name", getStringAsStream(config));
+            xmlParser.parse(parent, "name", getStringAsStream(config));
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
@@ -179,7 +195,7 @@ public class ConfigurationXmlParserTest extends TestCase {
     public void testParse_badTag() throws ConfigurationException {
         final String config = "<blah name=\"foo\" />";
         try {
-            xmlParser.parse("name", getStringAsStream(config));
+            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config));
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
@@ -192,7 +208,7 @@ public class ConfigurationXmlParserTest extends TestCase {
     public void testParse_xml() throws ConfigurationException {
         final String config = "blah";
         try {
-            xmlParser.parse("name", getStringAsStream(config));
+            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config));
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected

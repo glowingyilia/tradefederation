@@ -18,4 +18,8 @@
 
     <include name="test-config" />
 
+    <test class="com.android.tradefed.config.StubOptionTest" >
+        <option name="option" value="valueFromIncludeConfig" />
+    </test>
+
 </configuration>
