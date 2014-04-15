@@ -49,13 +49,9 @@ class ConfigurationXmlParser {
         private final IConfigDefLoader mConfigDefLoader;
         private Boolean isLocalConfig = null;
 
-        ConfigHandler(String name, IConfigDefLoader loader) {
-            mConfigDef = new ConfigurationDef(name);
+        ConfigHandler(ConfigurationDef def, IConfigDefLoader loader) {
+            mConfigDef = def;
             mConfigDefLoader = loader;
-        }
-
-        ConfigurationDef getParsedDef() {
-            return mConfigDef;
         }
 
         @Override
@@ -117,9 +113,7 @@ class ConfigurationXmlParser {
                     throwException("Missing 'name' attribute for include");
                 }
                 try {
-                    ConfigurationDef includedDef = mConfigDefLoader.getConfigurationDef(
-                            includeName);
-                    mConfigDef.includeConfigDef(includedDef);
+                    mConfigDefLoader.loadIncludedConfiguration(mConfigDef, includeName);
                 } catch (ConfigurationException e) {
                     throw new SAXException(e);
                 }
@@ -161,22 +155,24 @@ class ConfigurationXmlParser {
     }
 
     /**
-     * Parses out configuration data contained in given input.
+     * Parses out configuration data contained in given input into the given configdef.
      * <p/>
      * Currently performs limited error checking.
      *
-     * @param name the name of the configuration
+     * @param configDef the {@link ConfigurationDef} to load data into
+     * @param name the name of the configuration currently being loaded. Used for logging only.
+     * Can be different than configDef.getName in cases of included configs
      * @param xmlInput the configuration xml to parse
      * @throws ConfigurationException if input could not be parsed or had invalid format
      */
-    ConfigurationDef parse(String name, InputStream xmlInput) throws ConfigurationException {
+    void parse(ConfigurationDef configDef, String name, InputStream xmlInput)
+            throws ConfigurationException {
         try {
             SAXParserFactory parserFactory = SAXParserFactory.newInstance();
             parserFactory.setNamespaceAware(true);
             SAXParser parser = parserFactory.newSAXParser();
-            ConfigHandler configHandler = new ConfigHandler(name, mConfigDefLoader);
+            ConfigHandler configHandler = new ConfigHandler(configDef, mConfigDefLoader);
             parser.parse(new InputSource(xmlInput), configHandler);
-            return configHandler.getParsedDef();
         } catch (ParserConfigurationException e) {
             throwConfigException(name, e);
         } catch (SAXException e) {
@@ -184,7 +180,6 @@ class ConfigurationXmlParser {
         } catch (IOException e) {
             throwConfigException(name, e);
         }
-        throw new ConfigurationException("should never reach here");
     }
 
     private void throwConfigException(String configName, Throwable e)

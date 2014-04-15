@@ -17,7 +17,6 @@ package com.android.tradefed.config;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.ILeveledLogOutput;
-import com.android.tradefed.testtype.HostTest;
 import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
@@ -225,11 +224,17 @@ public class ConfigurationFactoryTest extends TestCase {
 
     /**
      * Test loading a config that includes another config.
+     * Also ensure options are set correctly.
      */
     public void testCreateConfigurationFromArgs_includeConfig() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
                 new String[]{"include-config"});
-        assertTrue(config.getTests().get(0) instanceof HostTest);
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        StubOptionTest fromTestConfig = (StubOptionTest) config.getTests().get(0);
+        StubOptionTest fromIncludeConfig = (StubOptionTest) config.getTests().get(1);
+        assertEquals("valueFromTestConfig", fromTestConfig.mOption);
+        assertEquals("valueFromIncludeConfig", fromIncludeConfig.mOption);
     }
 
     /**
