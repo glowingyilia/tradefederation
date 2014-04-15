@@ -189,6 +189,7 @@ public class CommandSchedulerTest extends TestCase {
         setCreateConfigExpectations(args2, 1);
         setExpectedInvokeCalls(1);
         mMockConfiguration.validateOptions();
+        EasyMock.expectLastCall().times(2);
 
         replayMocks();
         assertFalse(mScheduler.addCommand(dryRunArgs));
