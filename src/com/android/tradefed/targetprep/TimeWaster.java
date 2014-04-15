@@ -17,6 +17,7 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -26,6 +27,7 @@ import com.android.tradefed.util.RunUtil;
 /**
  * A simple target preparer to waste time and potentially restart the device.
  */
+@OptionClass(alias = "time-waster")
 public class TimeWaster implements ITargetPreparer {
     @Option(name = "delay", description = "Time to delay, in msecs", mandatory = true)
     private long mDelayMsecs = 0;
