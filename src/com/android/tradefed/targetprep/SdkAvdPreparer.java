@@ -115,7 +115,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException, BuildError {
-        if (mDeviceManager != null) {
+        if (mDeviceManager == null) {
             mDeviceManager = GlobalConfiguration.getDeviceManagerInstance();
         }
         Assert.assertTrue("Provided build is not a ISdkBuildInfo",
