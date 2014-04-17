@@ -421,7 +421,8 @@ public class Console extends Thread {
                 "\tl[ogs]             Dump the logs of all invocations to files" + LINE_SEPARATOR +
                 "\tc[onfig] <config>  Dump the content of the specified config" + LINE_SEPARATOR +
                 "\tcommandQueue       Dump the contents of the commmand execution queue" +
-                LINE_SEPARATOR,
+                LINE_SEPARATOR +
+                "\temulatorStats      Dump emulator utilization stats" + LINE_SEPARATOR,
                 DUMP_PATTERN));
 
         commandHelp.put(RUN_PATTERN, String.format(
@@ -516,6 +517,15 @@ public class Console extends Thread {
                 mScheduler.displayCommandQueue(new PrintWriter(System.out, true));
             }
         }, DUMP_PATTERN, "commandQueue");
+
+        trie.put(new Runnable() {
+            @Override
+            public void run() {
+                IDeviceManager manager =
+                        GlobalConfiguration.getDeviceManagerInstance();
+                manager.displayEmulatorStats(new PrintWriter(System.out, true));
+            }
+        }, DUMP_PATTERN, "emulatorStats");
 
 
         // Run commands

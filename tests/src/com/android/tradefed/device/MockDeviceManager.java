@@ -270,4 +270,9 @@ public class MockDeviceManager implements IDeviceManager {
     public List<DeviceDescriptor> listAllDevices() {
         return null;
     }
+
+    @Override
+    public void displayEmulatorStats(PrintWriter printWriter) {
+        // ignore
+    }
 }
