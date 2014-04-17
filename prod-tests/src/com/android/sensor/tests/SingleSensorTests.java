@@ -49,11 +49,20 @@ public class SingleSensorTests extends InstrumentationTest {
         Assert.assertNotNull(getDevice());
 
         try {
+            turnScreenOff();
             super.run(listener);
             pullFiles(listener);
         } finally {
             cleanUp();
         }
+    }
+
+    /**
+     * Helper method to turn screen off.
+     */
+    private void turnScreenOff() throws DeviceNotAvailableException {
+        getDevice().executeShellCommand("svc power stayon false");
+        getDevice().executeShellCommand("input keyevent 26");
     }
 
     /**
