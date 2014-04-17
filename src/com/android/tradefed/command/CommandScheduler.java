@@ -628,6 +628,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         } else if (config.getCommandOptions().isFullHelpMode()) {
             getConfigFactory().printHelpForConfig(args, false, System.out);
         } else if (config.getCommandOptions().isDryRunMode()) {
+            config.validateOptions();
             if (config.getCommandOptions().isNoisyDryRunMode()) {
                 CLog.logAndDisplay(LogLevel.DEBUG, "DRY RUN: %s", Arrays.toString(args));
             } else {
