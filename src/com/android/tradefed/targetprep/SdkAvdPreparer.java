@@ -143,7 +143,10 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
 
     /**
      * Launch an emulator for given avd, and wait for it to become available.
+     * Will launch the emulator on the port specified in the allocated {@link ITestDevice}
      *
+     * @param sdkBuild the {@link ISdkBuildInfo}
+     * @param device the placeholder {@link ITestDevice} representing allocated emulator device
      * @param avd the avd to launch
      * @throws DeviceNotAvailableException
      * @throws TargetSetupError if could not get targets
@@ -154,6 +157,8 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
         if (!device.getDeviceState().equals(TestDeviceState.NOT_AVAILABLE)) {
             CLog.w("Emulator %s is already running, killing", device.getSerialNumber());
             getDeviceManager().killEmulator(device);
+        } else if (!device.getIDevice().isEmulator()) {
+            throw new TargetSetupError("Invalid stub device, it is not of type emulator");
         }
 
         mRunUtil.setEnvVariable("ANDROID_SDK_ROOT", sdkBuild.getSdkDir().getAbsolutePath());
@@ -161,6 +166,16 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
         String emulatorBinary =
             mEmulatorBinary == null ? sdkBuild.getEmulatorToolPath() : mEmulatorBinary;
         List<String> emulatorArgs = ArrayUtil.list(emulatorBinary, "-avd", avd);
+
+        // Ensure the emulator will launch on the same port as the allocated emulator device
+        Integer port = EmulatorConsole.getEmulatorPort(device.getSerialNumber());
+        if (port == null) {
+            // Serial number is not in expected format <type>-<consolePort> as defined by ddmlib
+            throw new TargetSetupError(String.format(
+                    "Failed to determine emulator port for %s", device.getSerialNumber()));
+        }
+        emulatorArgs.add("-port");
+        emulatorArgs.add(port.toString());
 
         if (!mWindow) {
             emulatorArgs.add("-no-window");

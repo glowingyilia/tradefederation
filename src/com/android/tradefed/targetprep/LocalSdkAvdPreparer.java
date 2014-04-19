@@ -39,6 +39,9 @@ public class LocalSdkAvdPreparer extends SdkAvdPreparer {
     @Option(name = "new-emulator", description = "launch a new emulator.")
     private boolean mNewEmulator = false;
 
+    @Option(name = "disable", description = "skip this target preparer")
+    private boolean mDisable = false;
+
     private ISdkBuildInfo mSdkBuildInfo = new SdkBuildInfo();
 
     /**
@@ -54,16 +57,17 @@ public class LocalSdkAvdPreparer extends SdkAvdPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException, BuildError {
+        if (mDisable || !mNewEmulator) {
+            // Note: If we want to launch the emulator, we need to pass the --new-emulator flag
+            // defined in DeviceSelectionOptions, which will create a stub emulator.
+            return;
+        }
         mSdkBuildInfo.setSdkDir(mLocalSdkPath);
         mSdkBuildInfo.setTestsDir(null);
-        // Note: If we want to launch the emulator, we need to pass the --new-emulator flag
-        // defined in DeviceSelectionOptions, which will create a stub emulator.
-        if (mNewEmulator) {
-            if (mLocalSdkPath == null) {
-                throw new TargetSetupError(
-                        "Please set the path of the sdk using --local-sdk-path.");
-            }
-            launchEmulatorForAvd(mSdkBuildInfo, device, createAvd(mSdkBuildInfo));
+        if (mLocalSdkPath == null) {
+            throw new TargetSetupError(
+                    "Please set the path of the sdk using --local-sdk-path.");
         }
+        launchEmulatorForAvd(mSdkBuildInfo, device, createAvd(mSdkBuildInfo));
     }
 }

@@ -102,10 +102,12 @@ public interface IDeviceManager {
     /**
      * Helper method to launch emulator.
      * <p/>
-     * Will launch the emulator on the port specified in the allocated {@link ITestDevice}.
-     * Blocks until emulator launches successfully.
+     * Will launch the emulator as specified by the caller
      *
      * @param device the placeholder {@link ITestDevice} representing allocated emulator device
+     * @param bootTimeout the time in ms to wait for the emulator to boot
+     * @param runUtil
+     * @param emulatorArgs command line arguments to launch the emulator
      * @throws DeviceNotAvailableException if emulator fails to boot or come online
      */
     void launchEmulator(ITestDevice device, long bootTimeout, IRunUtil runUtil,
