@@ -115,9 +115,6 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException, BuildError {
-        if (mDeviceManager == null) {
-            mDeviceManager = GlobalConfiguration.getDeviceManagerInstance();
-        }
         Assert.assertTrue("Provided build is not a ISdkBuildInfo",
                 buildInfo instanceof ISdkBuildInfo);
         ISdkBuildInfo sdkBuildInfo = (ISdkBuildInfo)buildInfo;
@@ -153,7 +150,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             throws DeviceNotAvailableException, TargetSetupError, BuildError {
         if (!device.getDeviceState().equals(TestDeviceState.NOT_AVAILABLE)) {
             CLog.w("Emulator %s is already running, killing", device.getSerialNumber());
-            mDeviceManager.killEmulator(device);
+            getDeviceManager().killEmulator(device);
         }
         List<String> emulatorArgs = ArrayUtil.list(sdkBuild.getEmulatorToolPath(), "-avd", avd);
 
@@ -366,7 +363,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             throws BuildError {
         for (int i = 1; i <= mLaunchAttempts; i++) {
             try {
-                mDeviceManager.launchEmulator(device, mMaxBootTime * 60 * 1000, mRunUtil,
+                getDeviceManager().launchEmulator(device, mMaxBootTime * 60 * 1000, mRunUtil,
                         emulatorArgs);
                 // hack alert! adb to emulator communication on first boot is notoriously flaky
                 // b/4644136
@@ -385,7 +382,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             }
             try {
                 // ensure process has been killed
-                mDeviceManager.killEmulator(device);
+                getDeviceManager().killEmulator(device);
             } catch (DeviceNotAvailableException e) {
                 // ignore
             }
@@ -411,5 +408,12 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             FileUtil.recursiveDelete(mSdkHome);
             mSdkHome = null;
         }
+    }
+
+    private IDeviceManager getDeviceManager() {
+        if (mDeviceManager == null) {
+            mDeviceManager = GlobalConfiguration.getDeviceManagerInstance();
+        }
+        return mDeviceManager;
     }
 }
