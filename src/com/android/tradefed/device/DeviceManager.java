@@ -99,6 +99,7 @@ public class DeviceManager implements IDeviceManager {
     private int mNumNullDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
+    private EmulatorStats mEmulatorStats = new EmulatorStats();
 
     /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
@@ -464,6 +465,9 @@ public class DeviceManager implements IDeviceManager {
         mAllocatedDeviceMap.put(allocatedDevice.getSerialNumber(), testDevice);
         CLog.i("Allocated device %s", testDevice.getSerialNumber());
         updateDeviceMonitor();
+        if (allocatedDevice.isEmulator()) {
+            mEmulatorStats.recordAllocation(allocatedDevice.getSerialNumber());
+        }
         return testDevice;
     }
 
@@ -536,6 +540,9 @@ public class DeviceManager implements IDeviceManager {
                     device.getSerialNumber());
         }
         updateDeviceMonitor();
+        if (ideviceToReturn.isEmulator()) {
+            mEmulatorStats.recordFree(ideviceToReturn.getSerialNumber());
+        }
     }
 
     /**
@@ -1189,5 +1196,12 @@ public class DeviceManager implements IDeviceManager {
             serials.add(fastbootMatcher.group(1));
         }
         return serials;
+    }
+
+    @Override
+    public void displayEmulatorStats(PrintWriter printWriter) {
+        printWriter.printf("Average percent utilization in last 24 hours: %d",
+                mEmulatorStats.getTotalUtilization(mNumEmulatorSupported));
+        printWriter.println();
     }
 }

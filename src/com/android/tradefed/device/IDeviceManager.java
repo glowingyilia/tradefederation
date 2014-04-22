@@ -236,4 +236,10 @@ public interface IDeviceManager {
      */
     public void removeFastbootListener(IFastbootListener listener);
 
+    /**
+     * Write emulator allocation utilization stats
+     * @param printWriter
+     */
+    public void displayEmulatorStats(PrintWriter printWriter);
+
 }
