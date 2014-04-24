@@ -114,7 +114,7 @@ public enum OptionUpdateRule {
      * Check if the objects are {@link Comparable}, and if so, compare them using
      * {@see Comparable#compareTo}.
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static int compare(String optionName, Object current, Object update)
             throws ConfigurationException {
         Comparable compCurrent;

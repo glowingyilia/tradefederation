@@ -884,7 +884,7 @@ public class TestDeviceTest extends TestCase {
     @SuppressWarnings("unchecked")
     private void injectShellResponse(final String expectedCommand, final String response,
             boolean asStub) throws Exception {
-        IAnswer shellAnswer = new IAnswer() {
+        IAnswer<Object> shellAnswer = new IAnswer<Object>() {
             @Override
             public Object answer() throws Throwable {
                 IShellOutputReceiver receiver =
@@ -896,12 +896,12 @@ public class TestDeviceTest extends TestCase {
         };
         if (expectedCommand != null) {
             mMockIDevice.executeShellCommand(EasyMock.eq(expectedCommand),
-                    (IShellOutputReceiver)EasyMock.anyObject(),
-                    EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
+                    EasyMock.<IShellOutputReceiver>anyObject(),
+                    EasyMock.anyLong(), EasyMock.<TimeUnit>anyObject());
         } else {
-            mMockIDevice.executeShellCommand((String)EasyMock.anyObject(),
-                    (IShellOutputReceiver)EasyMock.anyObject(),
-                    EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
+            mMockIDevice.executeShellCommand(EasyMock.<String>anyObject(),
+                    EasyMock.<IShellOutputReceiver>anyObject(),
+                    EasyMock.anyLong(), EasyMock.<TimeUnit>anyObject());
 
         }
         if (asStub) {

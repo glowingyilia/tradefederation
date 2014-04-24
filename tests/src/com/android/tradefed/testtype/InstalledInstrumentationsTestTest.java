@@ -92,7 +92,7 @@ public class InstalledInstrumentationsTestTest extends TestCase {
     @SuppressWarnings("unchecked")
     private void injectShellResponse(final String shellResponse)
             throws DeviceNotAvailableException {
-        IAnswer shellAnswer = new IAnswer() {
+        IAnswer<Object> shellAnswer = new IAnswer<Object>() {
             @Override
             public Object answer() throws Throwable {
                 IShellOutputReceiver receiver =
@@ -103,8 +103,8 @@ public class InstalledInstrumentationsTestTest extends TestCase {
                 return null;
             }
         };
-        mMockTestDevice.executeShellCommand((String)EasyMock.anyObject(),
-                (IShellOutputReceiver)EasyMock.anyObject());
+        mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject(),
+                EasyMock.<IShellOutputReceiver>anyObject());
         EasyMock.expectLastCall().andAnswer(shellAnswer);
     }
 

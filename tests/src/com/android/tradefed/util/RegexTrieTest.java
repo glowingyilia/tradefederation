@@ -38,6 +38,7 @@ public class RegexTrieTest extends TestCase {
         mTrie = new RegexTrie<Integer>();
     }
 
+    @SuppressWarnings("rawtypes")
     private void dumpTrie(RegexTrie trie) {
         System.err.format("Trie is '%s'\n", trie.toString());
     }

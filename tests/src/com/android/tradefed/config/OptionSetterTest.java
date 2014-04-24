@@ -41,6 +41,7 @@ public class OptionSetterTest extends TestCase {
     }
 
     /** Option source with unparameterized type. */
+    @SuppressWarnings("rawtypes")
     private static class CollectionTypeOptionSource {
         @SuppressWarnings("unused")
         @Option(name = "my_option", shortName = 'o')

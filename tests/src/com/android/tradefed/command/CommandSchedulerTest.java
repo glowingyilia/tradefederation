@@ -408,7 +408,7 @@ public class CommandSchedulerTest extends TestCase {
                 mDeviceOptions);
 
         // an ITestInvocationn#invoke response for calling reschedule
-        IAnswer rescheduleAndThrowAnswer = new IAnswer() {
+        IAnswer<Object> rescheduleAndThrowAnswer = new IAnswer<Object>() {
             @Override
             public Object answer() throws Throwable {
                 IRescheduler rescheduler =  (IRescheduler) EasyMock.getCurrentArguments()[2];
@@ -417,9 +417,9 @@ public class CommandSchedulerTest extends TestCase {
             }
         };
 
-        mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
-                (ITestInvocationListener)EasyMock.anyObject());
+        mMockInvocation.invoke(EasyMock.<ITestDevice>anyObject(),
+                EasyMock.<IConfiguration>anyObject(), EasyMock.<IRescheduler>anyObject(),
+                EasyMock.<ITestInvocationListener>anyObject());
         EasyMock.expectLastCall().andAnswer(rescheduleAndThrowAnswer);
 
         // expect one more success call

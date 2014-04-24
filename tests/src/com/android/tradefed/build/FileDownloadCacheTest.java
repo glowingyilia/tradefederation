@@ -173,10 +173,9 @@ public class FileDownloadCacheTest extends TestCase {
     /**
      * Set EasyMock expectations for a downloadFile call
      */
-    @SuppressWarnings("unchecked")
     private void setDownloadExpections(String remotePath)
             throws BuildRetrievalError {
-        IAnswer downloadAnswer = new IAnswer() {
+        IAnswer<Object> downloadAnswer = new IAnswer<Object>() {
             @Override
             public Object answer() throws Throwable {
                 File fileArg =  (File) EasyMock.getCurrentArguments()[1];
@@ -185,7 +184,7 @@ public class FileDownloadCacheTest extends TestCase {
             }
         };
         mMockDownloader.downloadFile(EasyMock.eq(remotePath),
-                (File)EasyMock.anyObject());
+                EasyMock.<File>anyObject());
         EasyMock.expectLastCall().andAnswer(downloadAnswer);
     }
 }

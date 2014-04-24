@@ -36,7 +36,7 @@ class MockTestDeviceHelper {
     @SuppressWarnings("unchecked")
     static void injectShellResponse(ITestDevice mockDevice, final String expectedCommand,
             final String response, boolean asStub) throws Exception {
-        IAnswer shellAnswer = new IAnswer() {
+        IAnswer<Object> shellAnswer = new IAnswer<Object>() {
             @Override
             public Object answer() throws Throwable {
                 IShellOutputReceiver receiver = (IShellOutputReceiver)EasyMock
@@ -49,10 +49,10 @@ class MockTestDeviceHelper {
         };
         if (expectedCommand != null) {
             mockDevice.executeShellCommand(EasyMock.eq(expectedCommand),
-                    (IShellOutputReceiver)EasyMock.anyObject());
+                    EasyMock.<IShellOutputReceiver>anyObject());
         } else {
-            mockDevice.executeShellCommand((String)EasyMock.anyObject(),
-                    (IShellOutputReceiver)EasyMock.anyObject());
+            mockDevice.executeShellCommand(EasyMock.<String>anyObject(),
+                    EasyMock.<IShellOutputReceiver>anyObject());
 
         }
         if (asStub) {

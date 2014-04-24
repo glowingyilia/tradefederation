@@ -66,7 +66,7 @@ public class FileDownloadCacheFuncTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testFetchRemoteFile_concurrent() throws Exception {
         // Simulate a relatively slow file download
-        IAnswer slowDownloadAnswer = new IAnswer() {
+        IAnswer<Object> slowDownloadAnswer = new IAnswer<Object>() {
             @Override
             public Object answer() throws Throwable {
                 Thread.sleep(500);
@@ -76,7 +76,7 @@ public class FileDownloadCacheFuncTest extends TestCase {
             }
         };
         mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH),
-                (File)EasyMock.anyObject());
+                EasyMock.<File>anyObject());
         EasyMock.expectLastCall().andAnswer(slowDownloadAnswer);
         EasyMock.replay(mMockDownloader);
         Thread downloadThread1 = new Thread() {

@@ -105,7 +105,7 @@ public class RegexTrie<V> {
 
     public void clear() {
         mValue = null;
-        for (RegexTrie child : mChildren.values()) {
+        for (RegexTrie<V> child : mChildren.values()) {
             child.clear();
         }
         mChildren.clear();

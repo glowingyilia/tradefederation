@@ -55,6 +55,7 @@ import java.util.Map;
  * ported from dalvik.runner.OptionParser
  * @see {@link ArgsOptionParser}
  */
+@SuppressWarnings("rawtypes")
 public class OptionSetter {
 
     static final String BOOL_FALSE_PREFIX = "no-";

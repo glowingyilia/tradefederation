@@ -23,12 +23,12 @@ public class PairTest extends TestCase {
 
     public void testPairs() throws Exception {
         Object obj1 = new Object();
-        Pair p1 = Pair.create(obj1, obj1);
+        Pair<Object, Object> p1 = Pair.create(obj1, obj1);
         // case 1: One object is not an instance of Pair
         Assert.assertFalse(p1.equals(obj1));
 
         // case 2: one pair is null
-        Pair p2 = null;
+        Pair<Object, Object> p2 = null;
         Assert.assertFalse(p1.equals(p2));
 
         // case 3: two pairs with both objects equal to null;
@@ -55,8 +55,8 @@ public class PairTest extends TestCase {
         p2 = Pair.create(obj1, obj2);
         Assert.assertTrue(p1.equals(p2));
 
-        p1 = Pair.create(new String("abc"), new String("2.4"));
-        p2 = Pair.create(new String("abc"), new String("2.4"));
-        Assert.assertTrue(p1.equals(p2));
+        Pair<String, String> p3 = Pair.create(new String("abc"), new String("2.4"));
+        Pair<String, String> p4 = Pair.create(new String("abc"), new String("2.4"));
+        Assert.assertTrue(p3.equals(p4));
     }
 }
