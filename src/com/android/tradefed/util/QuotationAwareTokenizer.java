@@ -123,7 +123,7 @@ public class QuotationAwareTokenizer {
         final Pattern wsPattern = Pattern.compile("\\s");
         StringBuilder sb = new StringBuilder();
         for (int i=0; i < tokens.length; i++) {
-            String token = tokens[i];
+            final String token = tokens[i];
             final Matcher wsMatcher = wsPattern.matcher(token);
             if (wsMatcher.find()) {
                 sb.append('"');
