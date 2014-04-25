@@ -406,8 +406,14 @@ public class CommandFileParser {
             for (int i = 0; i < args.size(); ++outIdx, ++i) {
                 aryCmdLine[outIdx] = args.get(i);
             }
-            CLog.d("Adding line: %s", Arrays.toString(aryCmdLine));
-            scheduler.addCommand(aryCmdLine);
+            final String prettyCmdLine = QuotationAwareTokenizer.combineTokens(aryCmdLine);
+            CLog.d("Adding line: %s", prettyCmdLine);
+            try {
+                scheduler.addCommand(aryCmdLine);
+            } catch (ConfigurationException e) {
+                CLog.e("Failed to add command: '%s'. Reason: %s", prettyCmdLine, e.getMessage());
+                throw e;
+            }
         }
     }
 
