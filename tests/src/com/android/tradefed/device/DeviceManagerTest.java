@@ -442,9 +442,11 @@ public class DeviceManagerTest extends TestCase {
         setCheckAvailableDeviceExpectations();
         IManagedTestDevice testDevice = EasyMock.createNiceMock(IManagedTestDevice.class);
         EasyMock.expect(testDevice.getSerialNumber()).andReturn("dontexist");
-        EasyMock.expect(testDevice.getIDevice()).andReturn(EasyMock.createNiceMock(IDevice.class));
+        IDevice mockIDevice = EasyMock.createNiceMock(IDevice.class);
+        EasyMock.expect(testDevice.getIDevice()).andReturn(mockIDevice);
+        EasyMock.expect(mockIDevice.isEmulator()).andReturn(Boolean.FALSE);
 
-        replayMocks(testDevice);
+        replayMocks(testDevice, mockIDevice);
         DeviceManager manager = createDeviceManager(null,mMockIDevice);
         manager.freeDevice(testDevice, FreeDeviceState.AVAILABLE);
     }
