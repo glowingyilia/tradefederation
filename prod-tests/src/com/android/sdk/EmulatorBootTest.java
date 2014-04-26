@@ -18,22 +18,21 @@ package com.android.sdk;
 
 import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.sdk.tests.EmulatorGpsPreparer;
+import com.android.sdk.tests.EmulatorSmsPreparer;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.SdkAvdPreparer;
-import com.android.sdk.tests.EmulatorSmsPreparer;
-import com.android.sdk.tests.EmulatorGpsPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
-import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.StreamUtil;
 
 import java.util.HashMap;
@@ -106,9 +105,13 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
         }
         catch(BuildError b) {
             listener.testFailed(TestFailure.ERROR, bootTest, StreamUtil.getStackTrace(b));
-            throw new DeviceNotAvailableException("The emulator failed to boot", b);
+            // throw exception to prevent other tests from executing needlessly
+            throw new DeviceUnresponsiveException("The emulator failed to boot", b);
         }
-        catch(Exception e) {
+        catch(RuntimeException e) {
+            listener.testFailed(TestFailure.ERROR, bootTest, StreamUtil.getStackTrace(e));
+            throw e;
+        } catch (TargetSetupError e) {
             listener.testFailed(TestFailure.ERROR, bootTest, StreamUtil.getStackTrace(e));
             throw new RuntimeException(e);
         }
