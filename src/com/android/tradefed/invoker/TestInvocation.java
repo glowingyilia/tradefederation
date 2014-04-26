@@ -602,7 +602,7 @@ public class TestInvocation implements ITestInvocation {
     private void reportFailure(Throwable exception, ITestInvocationListener listener,
             IConfiguration config, IBuildInfo info, IRescheduler rescheduler) {
         listener.invocationFailed(exception);
-        if (!(exception instanceof BuildError)) {
+        if (!(exception instanceof BuildError) && !(exception.getCause() instanceof BuildError)) {
             config.getBuildProvider().buildNotTested(info);
             rescheduleTest(config, rescheduler);
         }
