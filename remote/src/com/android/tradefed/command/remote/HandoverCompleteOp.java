@@ -19,40 +19,30 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * A remote operation for starting handover with another Remote Manager at a given port.
+ * A remote operation for informing remote TF that handover is now complete.
  */
-public class HandoverCloseOp extends RemoteOperation<Void> {
-
-    private static final String PORT = "port";
-    private final int mPort;
-
-    HandoverCloseOp(int port) {
-        mPort = port;
+public class HandoverCompleteOp extends RemoteOperation<Void> {
+    HandoverCompleteOp() {
     }
 
     /**
-     * Factory method for creating a {@link HandoverCloseOp} from JSON data.
+     * Factory method for creating a {@link HandoverCompleteOp} from JSON data.
      *
      * @param json the data as a {@link JSONObject}
-     * @return a {@link HandoverCloseOp}
+     * @return a {@link HandoverCompleteOp}
      * @throws JSONException if failed to extract out data
      */
-    static HandoverCloseOp createFromJson(JSONObject json) throws JSONException {
-        return new HandoverCloseOp(json.getInt(PORT));
+    static HandoverCompleteOp createFromJson(JSONObject json) throws JSONException {
+        return new HandoverCompleteOp();
     }
 
     @Override
     protected OperationType getType() {
-        return OperationType.HANDOVER_CLOSE;
+        return OperationType.HANDOVER_COMPLETE;
     }
 
     @Override
     protected void packIntoJson(JSONObject j) throws JSONException {
-        j.put(PORT, mPort);
+        // ignore
     }
-
-    public int getPort() {
-        return mPort;
-    }
-
 }

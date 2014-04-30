@@ -77,7 +77,7 @@ public class RemoteManager extends Thread {
 
     @Option(name = "remote-mgr-socket-timeout-ms",
             description = "Timeout for when accepting connections with the remote manager socket.")
-    private static int mSocketTimeout = 5000;
+    private static int mSocketTimeout = 2000;
 
     public boolean getStartRemoteMgrOnBoot() {
         return mStartRemoteManagerOnBoot;
@@ -149,7 +149,7 @@ public class RemoteManager extends Thread {
         try {
             return new ServerSocket(port);
         } catch (IOException e) {
-            CLog.e("Failed to open server socket: %s", e);
+            CLog.w("Failed to open server socket: %s", e);
             return null;
         }
     }
@@ -228,6 +228,7 @@ public class RemoteManager extends Thread {
         while ((line = in.readLine()) != null && !mCancel) {
             JSONObject result = new JSONObject();
             RemoteOperation rc;
+            Thread postOp = null;
             try {
                 rc = RemoteOperation.createRemoteOpFromString(line);
                 switch (rc.getType()) {
@@ -243,8 +244,11 @@ public class RemoteManager extends Thread {
                     case FREE_DEVICE:
                         processFree((FreeDeviceOp)rc, result);
                         break;
-                    case HANDOVER_CLOSE:
-                        processHandoverClose((HandoverCloseOp)rc, result);
+                    case START_HANDOVER:
+                        postOp = processStartHandover((StartHandoverOp)rc, result);
+                        break;
+                    case HANDOVER_COMPLETE:
+                        postOp = processHandoverComplete((HandoverCompleteOp)rc, result);
                         break;
                     case LIST_DEVICES:
                         processListDevices((ListDevicesOp)rc, result);
@@ -267,6 +271,9 @@ public class RemoteManager extends Thread {
                 addErrorToResult(result, e);
             }
             sendAck(result, out);
+            if (postOp != null) {
+                postOp.start();
+            }
         }
     }
 
@@ -290,21 +297,36 @@ public class RemoteManager extends Thread {
         }
     }
 
-    private void processHandoverClose(HandoverCloseOp c, JSONObject result) throws JSONException {
-        int port = c.getPort();
-        CLog.logAndDisplay(LogLevel.INFO, "Handling Handover Close OP with port %d", port);
-        if (!mScheduler.handoverShutdown(port)) {
-            result.put(RemoteOperation.ERROR,
-                    "failed to perform handover shutdown with port " + port);
-        }
+    private Thread processStartHandover(StartHandoverOp c, JSONObject result) throws JSONException {
+        final int port = c.getPort();
+        CLog.logAndDisplay(LogLevel.INFO, "Performing handover to remote TF at port %d", port);
+        // handle the handover as an async operation
+        Thread t = new Thread("handover thread") {
+            @Override
+            public void run() {
+                if (!mScheduler.handoverShutdown(port)) {
+                    // TODO: send handover failed
+                }
+            }
+        };
+        return t;
+    }
+
+    private Thread processHandoverComplete(HandoverCompleteOp c, JSONObject result) throws JSONException {
+        // handle the handover as an async operation
+        Thread t = new Thread("handover thread") {
+            @Override
+            public void run() {
+                mScheduler.completeHandover();
+            }
+        };
+        return t;
     }
 
     private void processAllocate(AllocateDeviceOp c, JSONObject result) throws JSONException {
         ITestDevice allocatedDevice = mDeviceManager.forceAllocateDevice(c.getDeviceSerial());
         if (allocatedDevice != null) {
-            CLog.logAndDisplay(LogLevel.INFO,
-                    "Remotely allocating device %s",
-                            c.getDeviceSerial());
+            CLog.logAndDisplay(LogLevel.INFO, "Remotely allocating device %s", c.getDeviceSerial());
             DeviceTracker.getInstance().allocateDevice(allocatedDevice);
         } else {
             String msg = "Failed to allocate device " + c.getDeviceSerial();
@@ -410,12 +432,24 @@ public class RemoteManager extends Thread {
     }
 
     /**
-     * Cancel the remote manager.
+     * Request to cancel the remote manager.
      */
     public synchronized void cancel() {
         if (!mCancel) {
             mCancel  = true;
             CLog.logAndDisplay(LogLevel.INFO, "Closing remote manager at port %d", getPort());
+        }
+    }
+
+    /**
+     * Convenience method to request a remote manager shutdown and wait for it to complete.
+     */
+    public void cancelAndWait() {
+        cancel();
+        try {
+            join();
+        } catch (InterruptedException e) {
+            CLog.e(e);
         }
     }
 

@@ -73,7 +73,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class CommandScheduler extends Thread implements ICommandScheduler {
 
-
     /** the queue of commands ready to be executed. */
     private ConditionPriorityBlockingQueue<ExecutableCommand> mCommandQueue;
 
@@ -108,6 +107,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     private boolean mShutdownOnEmpty = false;
 
     private boolean mStarted = false;
+
+    // flag to indicate this scheduler is currently handing over control to another remote TF
+    private boolean mPerformingHandover = false;
 
     private enum CommandState {
         WAITING_FOR_DEVICE("Wait_for_device"),
@@ -524,10 +526,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
 
             IDeviceManager manager = getDeviceManager();
 
-            if(startRemoteManager()) {
-                CLog.logAndDisplay(LogLevel.INFO, "Remote Manager is up and running at port %d",
-                        mRemoteManager.getPort());
-            }
+            startRemoteManager();
 
             while (!isShutdown()) {
                 ExecutableCommand cmd = dequeueConfigCommand();
@@ -561,7 +560,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             }
             closeRemoteClient();
             if (mRemoteManager != null) {
-                mRemoteManager.cancel();
+                mRemoteManager.cancelAndWait();
             }
             exit(manager);
             cleanUp();
@@ -586,7 +585,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     private void closeRemoteClient() {
         if (mRemoteClient != null) {
             try {
-                mRemoteClient.sendClose();
+                mRemoteClient.sendHandoverComplete();
                 mRemoteClient.close();
             } catch (RemoteException e) {
                 CLog.e(e);
@@ -906,10 +905,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     @Override
     public synchronized boolean handoverShutdown(int handoverPort) {
         assertStarted();
-        if (mRemoteClient != null) {
+        if (mRemoteClient != null || mPerformingHandover) {
             CLog.e("A handover has already been initiated");
             return false;
         }
+        mPerformingHandover = true;
         try {
             mRemoteClient = RemoteClient.connect(handoverPort);
             CLog.d("Connected to remote manager at %d", handoverPort);
@@ -927,7 +927,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             for (CommandTracker cmd : cmdCopy) {
                 mRemoteClient.sendAddCommand(cmd.getTotalExecTime(), cmd.mArgs);
             }
-            mRemoteClient.close();
             shutdown();
             return true;
         } catch (RemoteException e) {
@@ -958,13 +957,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     private void remoteFreeDevice(ITestDevice device) {
         // TODO: send freed device state too
-        if (mRemoteClient != null) {
+        if (mPerformingHandover && mRemoteClient != null) {
             try {
                 mRemoteClient.sendFreeDevice(device.getSerialNumber());
             } catch (RemoteException e) {
                 CLog.e("Failed to send unfilter device %s to remote manager",
                         device.getSerialNumber());
                 CLog.e(e);
+                // TODO: send handover failed op?
             }
         }
     }
@@ -1095,10 +1095,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     /**
      * Starts remote manager to listen to remote commands.
      * <p/>
-     * @return true if the remote manager is started up successfully, false otherwise.
      * TODO: refactor to throw exception on failure
      */
-    private boolean startRemoteManager() {
+    private void startRemoteManager() {
         if (mRemoteManager != null && !mRemoteManager.isCanceled()) {
             String error = String.format("A remote manager is already running at port %d",
                     mRemoteManager.getPort());
@@ -1112,13 +1111,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
 
         if (!startRmtMgrOnBoot) {
             mRemoteManager = null;
-            return false;
+            return;
         }
         if (mRemoteManager.connect()) {
             mRemoteManager.start();
             CLog.logAndDisplay(LogLevel.INFO, "Started remote manager at port %d",
                     mRemoteManager.getPort());
-            return true;
+            return;
         }
         CLog.logAndDisplay(LogLevel.INFO, "Failed to start remote manager at port %d",
                 defaultRmtMgrPort);
@@ -1128,56 +1127,71 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                CLog.logAndDisplay(LogLevel.INFO,
                        "Started remote manager at port %d with no handover",
                        mRemoteManager.getPort());
-               return true;
+               return;
            } else {
                CLog.logAndDisplay(LogLevel.ERROR, "Failed to auto start a remote manager on boot.");
-               return false;
+               return;
            }
         }
         try {
-            forceHandover(defaultRmtMgrPort);
+            CLog.logAndDisplay(LogLevel.INFO,
+                    "Initiating handover with remote TF instance!");
+            initiateHandover(defaultRmtMgrPort);
         } catch (RemoteException e) {
             CLog.e(e);
-            return false;
         }
-        mRemoteClient.close();
-        mRemoteClient = null;
-        mRemoteManager.cancel();
-        mRemoteManager = null;
+    }
+
+    @Override
+    public void completeHandover() {
+        CLog.logAndDisplay(LogLevel.INFO, "Completing handover.");
+        if (mRemoteClient != null) {
+            mRemoteClient.close();
+            mRemoteClient = null;
+        } else {
+            CLog.e("invalid state: received handover complete when remote client is null");
+        }
+
+        if (mRemoteManager != null) {
+            mRemoteManager.cancelAndWait();
+            mRemoteManager = null;
+        } else {
+            CLog.e("invalid state: received handover complete when remote manager is null");
+        }
 
         // Start a new remote manager and attempt to capture the original default port.
         mRemoteManager = new RemoteManager(getDeviceManager(), this);
-        CLog.logAndDisplay(LogLevel.INFO,
-                "Successfully initiated auto handover with remote TF instance!");
-        while (!mRemoteManager.connect()) {
+        boolean success = false;
+        for (int i=0; i < 10 && !success; i++) {
             try {
                 sleep(2000);
             } catch (InterruptedException e) {
                 CLog.e(e);
-                return false;
+                return;
             }
+            success = mRemoteManager.connect();
+        }
+        if (!success) {
+            CLog.e("failed to connect to default remote manager port");
+            return;
         }
 
         mRemoteManager.start();
         CLog.logAndDisplay(LogLevel.INFO,
                 "Successfully started remote manager after handover on port %d",
                 mRemoteManager.getPort());
-        return true;
     }
 
-
-    private void forceHandover(int port) throws RemoteException {
+    private void initiateHandover(int port) throws RemoteException {
         mRemoteClient = RemoteClient.connect(port);
-        CLog.logAndDisplay(LogLevel.INFO,
-                "Connecting local client with existing remote TF at %d - Attempting takeover",
-                port);
+        CLog.i("Connecting local client with existing remote TF at %d - Attempting takeover", port);
         // Start up a temporary local remote manager for handover.
         if (mRemoteManager.connectAnyPort()) {
             mRemoteManager.start();
             CLog.logAndDisplay(LogLevel.INFO,
-                    "Started local tmp remote manager for handover at %d",
+                    "Started local tmp remote manager for handover at port %d",
                     mRemoteManager.getPort());
-            mRemoteClient.sendHandoverClose(mRemoteManager.getPort());
+            mRemoteClient.sendStartHandover(mRemoteManager.getPort());
         }
     }
 

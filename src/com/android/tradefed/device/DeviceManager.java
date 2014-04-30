@@ -79,10 +79,13 @@ public class DeviceManager implements IDeviceManager {
     private IDeviceMonitor mDvcMon;
 
     private boolean mIsInitialized = false;
+
+
     /** A thread-safe map that tracks the devices currently allocated for testing.*/
     private Map<String, IManagedTestDevice> mAllocatedDeviceMap;
     /** A FIFO, thread-safe queue for holding devices visible on adb available for testing */
     private ConditionPriorityBlockingQueue<IDevice> mAvailableDeviceQueue;
+
     private IAndroidDebugBridge mAdbBridge;
     private ManagedDeviceListener mManagedDeviceListener;
     private boolean mFastbootEnabled;
