@@ -17,7 +17,6 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.AdbCommandRejectedException;
-import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.FileListingService.FileEntry;
 import com.android.ddmlib.IDevice;
@@ -77,8 +76,13 @@ class TestDevice implements IManagedTestDevice {
     /** the default number of command retry attempts to perform */
     static final int MAX_RETRY_ATTEMPTS = 2;
     private static final String BUGREPORT_CMD = "bugreport";
+    /** command to test input dispatch readiness **/
+    private static final String TEST_INPUT_CMD = "dumpsys input";
     static final String LIST_PACKAGES_CMD = "pm list packages -f";
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
+    /** regex to match input dispatch readiness line **/
+    static final Pattern INPUT_DISPATCH_STATE_REGEX =
+            Pattern.compile("DispatchEnabled:\\s?([01])");
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.  Note that dumpsys may pause up to
      * a minute while waiting for unresponsive components, but should bail after that minute, if it
@@ -92,6 +96,8 @@ class TestDevice implements IManagedTestDevice {
     private static final int ENCRYPTION_INPLACE_TIMEOUT = 2 * 60 * 60 * 1000;
     /** Encrypting with wipe can take up to 5 minutes. */
     private static final int ENCRYPTION_WIPE_TIMEOUT = 5 * 60 * 1000;
+    /** Timeout to wait for input dispatch to become ready **/
+    private static final long INPUT_DISPATCH_READY_TIMEOUT = 5 * 1000;
     /** Beginning of the string returned by vdc for "vdc cryptfs enablecrypto". */
     private static final String ENCRYPTION_SUPPORTED_CODE = "500";
     /** Message in the string returned by vdc for "vdc cryptfs enablecrypto". */
@@ -1935,9 +1941,7 @@ class TestDevice implements IManagedTestDevice {
     public void postBootSetup() throws DeviceNotAvailableException  {
         postOnlineSetup();
         if (mOptions.isDisableKeyguard()) {
-            CLog.i("Attempting to disable keyguard on %s using %s", getSerialNumber(),
-                    getDisableKeyguardCmd());
-            executeShellCommand(getDisableKeyguardCmd());
+            disableKeyguard();
         }
         if (mWifiSsid != null) {
             // mWifiSsid and mWifiPsk can get cleared in disconnectFromWifi()
@@ -1975,6 +1979,58 @@ class TestDevice implements IManagedTestDevice {
      */
     String getDisableKeyguardCmd() {
         return mOptions.getDisableKeyguardCmd();
+    }
+
+    /**
+     * Attempts to disable the keyguard.
+     * <p>
+     * First wait for the input dispatch to become ready, this happens around the same time when the
+     * device reports BOOT_COMPLETE, apparently asynchronously, because current framework
+     * implementation has occasional race condition. Then command is sent to dismiss keyguard (works
+     * on non-secure ones only)
+     * @throws DeviceNotAvailableException
+     */
+    void disableKeyguard() throws DeviceNotAvailableException {
+        long start = System.currentTimeMillis();
+        while (true) {
+            Boolean ready = isDeviceInputReady();
+            if (ready == null) {
+                // unsupported API level, bail
+                break;
+            }
+            if (ready) {
+                // input dispatch is ready, bail
+                break;
+            }
+            long timeSpent = System.currentTimeMillis() - start;
+            if (timeSpent > INPUT_DISPATCH_READY_TIMEOUT) {
+                CLog.w("Timeout after waiting %dms on enabling of input dispatch", timeSpent);
+                // break & proceed anyway
+                break;
+            } else {
+                getRunUtil().sleep(1000);
+            }
+        }
+        CLog.i("Attempting to disable keyguard on %s using %s", getSerialNumber(),
+                getDisableKeyguardCmd());
+        executeShellCommand(getDisableKeyguardCmd());
+    }
+
+    /**
+     * Tests the device to see if input dispatcher is ready
+     * @return <code>null</code> if not supported by platform, or the actual readiness state
+     * @throws DeviceNotAvailableException
+     */
+    Boolean isDeviceInputReady() throws DeviceNotAvailableException {
+        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        executeShellCommand(TEST_INPUT_CMD, receiver);
+        String output = receiver.getOutput();
+        Matcher m = INPUT_DISPATCH_STATE_REGEX.matcher(output);
+        if (!m.find()) {
+            // output does not contain the line at all, implying unsupported API level, bail
+            return null;
+        }
+        return "1".equals(m.group(1));
     }
 
     /**

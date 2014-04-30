@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 
 /**
  * Unit tests for {@link TestDevice}.
@@ -1081,6 +1082,56 @@ public class TestDeviceTest extends TestCase {
         assertNotNull("Failed to parse integer free space size",
                 mTestDevice.parseFreeSpaceFromFree("/storage/emulated/legacy",
                 "/storage/emulated/legacy     13G   395M    12G   4096"));
+    }
+
+    public void testIsDeviceInputReady_Ready() throws Exception {
+        injectShellResponse("dumpsys input", ArrayUtil.join("\r\n", getDumpsysInputHeader(),
+                "  DispatchEnabled: 1",
+                "  DispatchFrozen: 0",
+                "  FocusedApplication: <null>",
+                "  FocusedWindow: name='Window{2920620f u0 com.android.launcher/"
+                + "com.android.launcher2.Launcher}'",
+                "  TouchStates: <no displays touched>"
+                ));
+        replayMocks();
+        assertTrue(mTestDevice.isDeviceInputReady());
+    }
+
+    public void testIsDeviceInputReady_NotReady() throws Exception {
+        injectShellResponse("dumpsys input", ArrayUtil.join("\r\n", getDumpsysInputHeader(),
+                "  DispatchEnabled: 0",
+                "  DispatchFrozen: 0",
+                "  FocusedApplication: <null>",
+                "  FocusedWindow: name='Window{2920620f u0 com.android.launcher/"
+                + "com.android.launcher2.Launcher}'",
+                "  TouchStates: <no displays touched>"
+                ));
+        replayMocks();
+        assertFalse(mTestDevice.isDeviceInputReady());
+    }
+
+    public void testIsDeviceInputReady_NotSupported() throws Exception {
+        injectShellResponse("dumpsys input", ArrayUtil.join("\r\n",
+                "foo",
+                "bar",
+                "foobar",
+                "barfoo"
+                ));
+        replayMocks();
+        assertNull(mTestDevice.isDeviceInputReady());
+    }
+
+    private static String getDumpsysInputHeader() {
+        return ArrayUtil.join("\r\n",
+                "INPUT MANAGER (dumpsys input)",
+                "",
+                "Event Hub State:",
+                "  BuiltInKeyboardId: -2",
+                "  Devices:",
+                "    -1: Virtual",
+                "      Classes: 0x40000023",
+                "Input Dispatcher State:"
+                );
     }
 }
 
