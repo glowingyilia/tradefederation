@@ -28,7 +28,7 @@ import com.android.tradefed.log.LogUtil.CLog;
  * Unlike {@link DeviceSetup}, this preparer works when adb is not root aka user builds.
  */
 @OptionClass(alias = "wifi")
-public class WifiPreparer implements ITargetPreparer {
+public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
 
     @Option(name="wifi-network", description="the name of wifi network to connect to.")
     private String mWifiNetwork = null;
@@ -39,6 +39,10 @@ public class WifiPreparer implements ITargetPreparer {
     @Option(name = "wifi-attempts", description =
         "maximum number of attempts to connect to wifi network.")
     private int mWifiAttempts = 2;
+
+    @Option(name = "disconnect-wifi-after-test", description =
+            "disconnect from wifi network after test completes.")
+    private boolean mDisconnectWifiAfterTest = false;
 
     @Option(name = "skip", description = "skip the connectivity check and wifi setup")
     private boolean mSkip = false;
@@ -68,5 +72,23 @@ public class WifiPreparer implements ITargetPreparer {
         }
         throw new TargetSetupError(String.format("Failed to connect to wifi network %s on %s",
                 mWifiNetwork, device.getSerialNumber()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        if (mSkip) {
+            return;
+        }
+        if (mDisconnectWifiAfterTest && device.isWifiEnabled()) {
+            if (!device.disconnectFromWifi()) {
+                CLog.w("Failed to disconnect from wifi network on %s", device.getSerialNumber());
+                return;
+            }
+            CLog.i("Successfully disconnected from wifi network on %s", device.getSerialNumber());
+        }
     }
 }

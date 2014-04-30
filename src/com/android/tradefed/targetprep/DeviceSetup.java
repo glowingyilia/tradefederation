@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
  * Should be performed *after* a new build is flashed.
  */
 @OptionClass(alias = "device-setup")
-public class DeviceSetup implements ITargetPreparer {
+public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
     private static final String LOG_TAG = "DeviceSetup";
     private static final Pattern RELEASE_BUILD_NAME_PATTERN =
@@ -54,6 +54,10 @@ public class DeviceSetup implements ITargetPreparer {
     @Option(name = "wifi-attempts", description =
         "maximum number of attempts to connect to wifi network.")
     private int mWifiAttempts = 5;
+
+    @Option(name = "disconnect-wifi-after-test", description =
+            "disconnect from wifi network after test completes.")
+    private boolean mDisconnectWifiAfterTest = false;
 
     @Option(name="min-external-store-space", description="the minimum amount of free space in KB" +
             " that must be present on device's external storage.")
@@ -315,5 +319,28 @@ public class DeviceSetup implements ITargetPreparer {
 
     protected boolean isReleaseBuildName(String name) {
         return RELEASE_BUILD_NAME_PATTERN.matcher(name).matches();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        Log.i(LOG_TAG, String.format("Performing teardown on %s", device.getSerialNumber()));
+
+        if (mDisconnectWifiAfterTest) {
+            disconnectFromWifi(device);
+        }
+    }
+
+    private void disconnectFromWifi(ITestDevice device) throws DeviceNotAvailableException {
+        if (device.isWifiEnabled()) {
+            if (!device.disconnectFromWifi()) {
+                CLog.w("Failed to disconnect from wifi network on %s", device.getSerialNumber());
+                return;
+            }
+            CLog.i("Successfully disconnected from wifi network on %s", device.getSerialNumber());
+        }
     }
 }

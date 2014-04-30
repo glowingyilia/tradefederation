@@ -710,6 +710,8 @@ public interface ITestDevice {
      * Connects to a wifi network.
      * <p/>
      * Turns on wifi and blocks until a successful connection is made to the specified wifi network.
+     * Once a connection is made, the instance will try to restore the connection after every reboot
+     * until {@link ITestDevice#disconnectFromWifi()} is called.
      *
      * @param wifiSsid the wifi ssid to connect to
      * @param wifiPsk PSK passphrase or null if unencrypted

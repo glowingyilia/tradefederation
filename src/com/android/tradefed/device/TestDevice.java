@@ -136,6 +136,9 @@ class TestDevice implements IManagedTestDevice {
 
     private Boolean mIsEncryptionSupported = null;
 
+    private String mWifiSsid = null;
+    private String mWifiPsk = null;
+
     /**
      * Interface for a generic device communication attempt.
      */
@@ -1713,6 +1716,11 @@ class TestDevice implements IManagedTestDevice {
                         getSerialNumber());
                 return false;
             }
+
+            // stores ssid and psk to re-establish the connection after reboot
+            mWifiSsid = wifiSsid;
+            mWifiPsk = wifiPsk;
+
             return true;
         } catch (TargetSetupError e) {
             CLog.e(e);
@@ -1813,6 +1821,9 @@ class TestDevice implements IManagedTestDevice {
     public boolean disconnectFromWifi() throws DeviceNotAvailableException {
         CLog.i("Disconnecting from wifi on %s", getSerialNumber());
         try {
+            mWifiSsid = null;
+            mWifiPsk = null;
+
             boolean success = true;
             IWifiHelper wifi = createWifiHelper();
             if (!wifi.removeAllNetworks()) {
@@ -1820,6 +1831,10 @@ class TestDevice implements IManagedTestDevice {
                 CLog.w("Failed to remove all wifi networks from %s", getSerialNumber());
             }
             if (!wifi.disableWifi()) {
+                success = false;
+                CLog.w("Failed to disable wifi on %s", getSerialNumber());
+            }
+            if (!wifi.waitForWifiDisabled()) {
                 success = false;
                 CLog.w("Failed to disable wifi on %s", getSerialNumber());
             }
@@ -1923,6 +1938,26 @@ class TestDevice implements IManagedTestDevice {
             CLog.i("Attempting to disable keyguard on %s using %s", getSerialNumber(),
                     getDisableKeyguardCmd());
             executeShellCommand(getDisableKeyguardCmd());
+        }
+        if (mWifiSsid != null) {
+            // mWifiSsid and mWifiPsk can get cleared in disconnectFromWifi()
+            final String wifiSsid = mWifiSsid;
+            final String wifiPsk = mWifiPsk;
+            for (int i = 1; i <= MAX_RETRY_ATTEMPTS; i++) {
+                if (!connectToWifiNetworkIfNeeded(wifiSsid, wifiPsk)) {
+                    CLog.w("Failed to connect to wifi network %s on %s on attempt %d of %d",
+                            wifiSsid, getSerialNumber(), i, MAX_RETRY_ATTEMPTS);
+                    if (i == MAX_RETRY_ATTEMPTS) {
+                        throw new DeviceUnresponsiveException(
+                                String.format("Failed to connect to wifi network %s on %s",
+                                        mWifiSsid, getSerialNumber()));
+                    }
+                } else {
+                    CLog.w("Successfully connected to wifi network %s on %s",
+                            wifiSsid, getSerialNumber());
+                    break;
+                }
+            }
         }
     }
 

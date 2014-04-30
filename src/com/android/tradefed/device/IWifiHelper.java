@@ -123,13 +123,30 @@ interface IWifiHelper {
     boolean waitForWifiEnabled() throws DeviceNotAvailableException;
 
     /**
-     * Wait for {@link #isWifiEnabled()}  to be true.
+     * Wait for {@link #isWifiEnabled()} to be true.
      *
      * @param timeout time in ms to wait
      * @return <code>true</code> if wifi was enabled before timeout, <code>false</code> otherwise.
      * @throws DeviceNotAvailableException
      */
     boolean waitForWifiEnabled(long timeout) throws DeviceNotAvailableException;
+
+    /**
+     * Wait for {@link #isWifiEnabled()} to be false with a default timeout.
+     *
+     * @return <code>true</code> if wifi was disabled before timeout, <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    boolean waitForWifiDisabled() throws DeviceNotAvailableException;
+
+    /**
+     * Wait for {@link #isWifiEnabled()} to be false.
+     *
+     * @param timeout time in ms to wait
+     * @return <code>true</code> if wifi was disabled before timeout, <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    boolean waitForWifiDisabled(long timeout) throws DeviceNotAvailableException;
 
     /**
      * @return <code>true</code> if device has a valid IP address

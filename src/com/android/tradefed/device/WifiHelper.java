@@ -296,6 +296,27 @@ public class WifiHelper implements IWifiHelper {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean waitForWifiDisabled() throws DeviceNotAvailableException {
+        return waitForWifiDisabled(DEFAULT_WIFI_STATE_TIMEOUT);
+    }
+
+    @Override
+    public boolean waitForWifiDisabled(long timeout) throws DeviceNotAvailableException {
+        long startTime = System.currentTimeMillis();
+
+        while (System.currentTimeMillis() < (startTime + timeout)) {
+            if (!isWifiEnabled()) {
+                return true;
+            }
+            getRunUtil().sleep(getPollTime());
+        }
+        return false;
+    }
+
+    /**
      * Run a WifiUtil command and return the result
      *
      * @param method the WifiUtil method to call
