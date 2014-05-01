@@ -45,6 +45,10 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
             "to \"PFPFPFPF\".", importance = Importance.IF_UNSET)
     private Map<String, String> mRuns = new LinkedHashMap<String, String>();
 
+    @Option(name = "fail-invocation-with-cause", description = "If set, the invocation will be " +
+            "reported as a failure, with the specified message as the cause.")
+    private String mFailInvocationWithCause = null;
+
     /** A pattern to identify an innermost pair of parentheses */
     private static final Pattern INNER_PAREN_SEGMENT = Pattern.compile(
     /*       prefix  inner parens    count     suffix */
@@ -205,6 +209,11 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
             final String name = run.getKey();
             final String testSpec = decode(run.getValue());
             executeTestRun(listener, name, testSpec);
+        }
+
+        if (mFailInvocationWithCause != null) {
+            // Goodbye, cruel world
+            throw new RuntimeException(mFailInvocationWithCause);
         }
     }
 }
