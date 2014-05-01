@@ -122,7 +122,9 @@ public class DeviceCleaner implements ITargetCleaner {
     private void turnScreenOff(ITestDevice device) throws DeviceNotAvailableException {
         String output = device.executeShellCommand("dumpsys power");
         int retries = 1;
-        while (output.contains("mScreenOn=true")) {
+        // screen on semantics have changed in newest API platform, checking for both signatures
+        // to detect screen on state
+        while (output.contains("mScreenOn=true") || output.contains("mInteractive=true")) {
             // KEYCODE_POWER = 26
             device.executeShellCommand("input keyevent 26");
             // due to framework initialization, device may not actually turn off screen
