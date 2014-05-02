@@ -123,8 +123,8 @@ public class FileUtil {
         }
 
         if (file.isDirectory()) {
-            File[] childs = file.listFiles();
-            for(File child : childs) {
+            File[] children = file.listFiles();
+            for (File child : children) {
                 if (!chmodRWXRecursively(child)) {
                     success = false;
                 }
@@ -137,17 +137,17 @@ public class FileUtil {
     public static boolean chmod(File file, String perms) {
         Log.d(LOG_TAG, String.format("Attempting to chmod %s to %s",
                 file.getAbsolutePath(), perms));
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10*1000, "chmod", perms,
+        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, "chmod", perms,
                 file.getAbsolutePath());
         return result.getStatus().equals(CommandStatus.SUCCESS);
     }
 
     /**
      * Performs a best effort attempt to make given file group readable and writable.
-     * <p />
+     * <p/>
      * Note that the execute permission is required to make directories accessible.  See
      * {@link #chmodGroupRWX(File)}.
-     * <p/ >
+     * <p/>
      * If 'chmod' system command is not supported by underlying OS, will set file to writable by
      * all.
      *
@@ -168,7 +168,7 @@ public class FileUtil {
 
     /**
      * Performs a best effort attempt to make given file group executable, readable, and writable.
-     * <p/ >
+     * <p/>
      * If 'chmod' system command is not supported by underlying OS, will attempt to set permissions
      * for all users.
      *
@@ -196,7 +196,7 @@ public class FileUtil {
             file.setExecutable(true);
             File[] children = file.listFiles();
             if (children != null) {
-                for (File childFile: file.listFiles()) {
+                for (File childFile : file.listFiles()) {
                     setReadableRecursive(childFile);
                 }
             }
@@ -228,11 +228,36 @@ public class FileUtil {
     public static File createTempDir(String prefix, File parentDir) throws IOException {
         // create a temp file with unique name, then make it a directory
         File tmpDir = File.createTempFile(prefix, "", parentDir);
+        return deleteFileAndCreateDirWithSameName(tmpDir);
+    }
+
+    private static File deleteFileAndCreateDirWithSameName(File tmpDir) throws IOException {
         tmpDir.delete();
+        return createDir(tmpDir);
+    }
+
+    private static File createDir(File tmpDir) throws IOException {
         if (!tmpDir.mkdirs()) {
             throw new IOException("unable to create directory");
         }
         return tmpDir;
+    }
+
+    /**
+     * Helper function to create a named directory inside your temp folder.
+     * <p/>
+     * This directory will not have it's name randomized. If the directory already exists it will
+     * be returned.
+     *
+     * @param name The name of the directory to create in your tmp folder.
+     * @return the created directory
+     */
+    public static File createNamedTempDir(String name) throws IOException {
+        File namedTmpDir = new File(System.getProperty("java.io.tmpdir"), name);
+        if (!namedTmpDir.exists()) {
+            createDir(namedTmpDir);
+        }
+        return namedTmpDir;
     }
 
     /**
@@ -278,7 +303,7 @@ public class FileUtil {
         // `ln src dest` will create a hardlink (note: not `ln -s src dest`, which creates symlink)
         // note that this will fail across filesystem boundaries
         // FIXME: should probably just fall back to normal copy if this fails
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10*1000, "ln",
+        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, "ln",
                 origFile.getAbsolutePath(), destFile.getAbsolutePath());
         if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
             throw new IOException(String.format(
@@ -501,7 +526,7 @@ public class FileUtil {
             throws IOException {
         String[] segments = remoteFilePath.split("/");
         // take last segment as base name
-        String remoteFileName = segments[segments.length-1];
+        String remoteFileName = segments[segments.length - 1];
         String prefix = getBaseName(remoteFileName);
         if (prefix.length() < 3) {
             // prefix must be at least 3 characters long
@@ -511,7 +536,7 @@ public class FileUtil {
 
         // create a unique file name. Add a underscore to prefix so file name is more readable
         // e.g. myfile_57588758.img rather than myfile57588758.img
-        File tmpFile =  FileUtil.createTempFile(prefix + "_", fileExt, parentDir);
+        File tmpFile = FileUtil.createTempFile(prefix + "_", fileExt, parentDir);
         return tmpFile;
     }
 
@@ -640,13 +665,13 @@ public class FileUtil {
         if (sizeString.isEmpty()) {
             throw new IllegalArgumentException("invalid empty string");
         }
-        char sizeSpecifier = sizeString.charAt(sizeString.length()-1);
+        char sizeSpecifier = sizeString.charAt(sizeString.length() - 1);
         long multiplier = findMultiplier(sizeSpecifier);
         try {
             String numberString = sizeString;
             if (multiplier != 1) {
                 // strip off last char
-                numberString = sizeString.substring(0, sizeString.length()-1);
+                numberString = sizeString.substring(0, sizeString.length() - 1);
             }
             return multiplier * Long.parseLong(numberString);
         } catch (NumberFormatException e) {
@@ -656,7 +681,7 @@ public class FileUtil {
 
     private static long findMultiplier(char sizeSpecifier) {
         long multiplier = 1;
-        for (int i=1; i < SIZE_SPECIFIERS.length; i++) {
+        for (int i = 1; i < SIZE_SPECIFIERS.length; i++) {
             multiplier *= 1024;
             if (sizeSpecifier == SIZE_SPECIFIERS[i]) {
                 return multiplier;
@@ -684,7 +709,7 @@ public class FileUtil {
          */
         @Override
         public boolean accept(File dir, String name) {
-           return name.endsWith(".jar");
+            return name.endsWith(".jar");
         }
     }
 
@@ -696,7 +721,7 @@ public class FileUtil {
      * @param zipFile the {@link ZipFile} to extract
      * @param destDir the local dir to extract file to
      * @throws IOException if failed to extract file
-     * @deprecated Moved to {@link ZipUtil.extractZip(ZipFile, File)}.
+     * @deprecated Moved to {@link ZipUtil#extractZip(ZipFile, File)}.
      */
     @Deprecated
     public static void extractZip(ZipFile zipFile, File destDir) throws IOException {
@@ -706,11 +731,11 @@ public class FileUtil {
     /**
      * Utility method to extract one specific file from zip file into a tmp file
      *
-     * @param zipFile the {@link ZipFile} to extract
+     * @param zipFile  the {@link ZipFile} to extract
      * @param filePath the filePath of to extract
-     * @throws IOException if failed to extract file
      * @return the {@link File} or null if not found
-     * @deprecated Moved to {@link ZipUtil.extractFileFromZip(ZipFile, String)}.
+     * @throws IOException if failed to extract file
+     * @deprecated Moved to {@link ZipUtil#extractFileFromZip(ZipFile, String)}.
      */
     @Deprecated
     public static File extractFileFromZip(ZipFile zipFile, String filePath) throws IOException {
@@ -724,7 +749,7 @@ public class FileUtil {
      * @param dir the directory to zip
      * @return a temporary zip {@link File} containing directory contents
      * @throws IOException if failed to create zip file
-     * @deprecated Moved to {@link ZipUtil.createZip(File)}.
+     * @deprecated Moved to {@link ZipUtil#createZip(File)}.
      */
     @Deprecated
     public static File createZip(File dir) throws IOException {
@@ -738,7 +763,7 @@ public class FileUtil {
      * @param dir the directory to zip
      * @param zipFile the zip file to create - it should not already exist
      * @throws IOException if failed to create zip file
-     * @deprecated Moved to {@link ZipUtil.createZip(File, File)}.
+     * @deprecated Moved to {@link ZipUtil#createZip(File, File)}.
      */
     @Deprecated
     public static void createZip(File dir, File zipFile) throws IOException {
@@ -749,7 +774,7 @@ public class FileUtil {
      * Close an open {@link ZipFile}, ignoring any exceptions.
      *
      * @param zipFile the file to close
-     * @deprecated Moved to {@link ZipUtil.closeZip(ZipFile)}.
+     * @deprecated Moved to {@link ZipUtil#closeZip(ZipFile)}.
      */
     @Deprecated
     public static void closeZip(ZipFile zipFile) {
@@ -759,10 +784,10 @@ public class FileUtil {
     /**
      * Helper method to create a gzipped version of a single file.
      *
-     * @param file the original file
+     * @param file     the original file
      * @param gzipFile the file to place compressed contents in
      * @throws IOException
-     * @deprecated Moved to {@link ZipUtil.gzipFile(File, File)}.
+     * @deprecated Moved to {@link ZipUtil#gzipFile(File, File)}.
      */
     @Deprecated
     public static void gzipFile(File file, File gzipFile) throws IOException {

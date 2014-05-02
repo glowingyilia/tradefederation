@@ -532,13 +532,10 @@ public class TestInvocation implements ITestInvocation {
 
     private void doTeardown(IConfiguration config, ITestDevice device, IBuildInfo info,
             Throwable exception) throws DeviceNotAvailableException {
+
         for (ITargetPreparer preparer : config.getTargetPreparers()) {
-            // Note: adjusted indentation below for legibility.  If preparer is an
-            // ITargetCleaner and we didn't hit DeviceNotAvailableException, then...
-            if (preparer instanceof ITargetCleaner &&
-                    !(exception != null &&
-                      exception instanceof DeviceNotAvailableException)) {
-                ITargetCleaner cleaner = (ITargetCleaner) preparer;
+            ITargetCleaner cleaner = (ITargetCleaner) preparer;
+            if (cleaner != null) {
                 cleaner.tearDown(device, info, exception);
             }
         }
