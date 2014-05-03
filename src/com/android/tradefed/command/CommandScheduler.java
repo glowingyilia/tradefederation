@@ -210,6 +210,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
 
         public void commandFinished(long elapsedTime) {
             getCommandTracker().incrementExecTime(elapsedTime);
+            CLog.d("removing exec command for id %d", getCommandTracker().getId());
             mAllCommands.remove(this);
         }
 
@@ -273,6 +274,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
         @Override
         public boolean rescheduleCommand() {
             try {
+                CLog.d("rescheduling for command %d", mCmdTracker.getId());
                 IConfiguration config = getConfigFactory().createConfigurationFromArgs(
                         mCmdTracker.getArgs());
                 ExecutableCommand execCmd = createExecutableCommand(mCmdTracker, config, true);
@@ -413,8 +415,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                 CLog.e(e);
             } finally {
                 long elapsedTime = System.currentTimeMillis() - mStartTime;
-                CLog.i("Updating command '%s' with elapsed time %d ms",
-                        getArgString(mCmd.getCommandTracker().getArgs()), elapsedTime);
+                CLog.i("Updating command %d with elapsed time %d ms",
+                       mCmd.getCommandTracker().getId(), elapsedTime);
                 // remove invocation thread first so another invocation can be started on device
                 // when freed
                 removeInvocationThread(this);
@@ -683,6 +685,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
      */
     private synchronized CommandTracker createCommandTracker(String[] args) {
         mCurrentCommandId++;
+        CLog.d("Creating command tracker id %d for command args: '%s'", mCurrentCommandId,
+                ArrayUtil.join(" ", args));
         return new CommandTracker(mCurrentCommandId, args);
     }
 
@@ -692,7 +696,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     private ExecutableCommand createExecutableCommand(CommandTracker cmdTracker,
             IConfiguration config, boolean rescheduled) {
         ExecutableCommand cmd = new ExecutableCommand(cmdTracker, config, rescheduled);
-        CLog.d("adding command");
+        CLog.d("creating exec command for id %d", cmdTracker.getId());
         mAllCommands.add(cmd);
         return cmd;
     }
@@ -875,6 +879,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
     @Override
     public synchronized void removeAllCommands() {
         assertStarted();
+        CLog.d("removing all commands");
         if (mCommandTimer != null) {
             for (Runnable task : mCommandTimer.getQueue()) {
                 mCommandTimer.remove(task);
