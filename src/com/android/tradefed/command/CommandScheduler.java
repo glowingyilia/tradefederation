@@ -813,6 +813,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                     String.format("Attempting invocation on device %s when one is already running",
                             device.getSerialNumber()));
         }
+        CLog.d("starting invocation for command id %d", cmd.getCommandTracker().getId());
         final String invocationName = String.format("Invocation-%s", device.getSerialNumber());
         InvocationThread invocationThread = new InvocationThread(invocationName, listener, device,
                 cmd);
