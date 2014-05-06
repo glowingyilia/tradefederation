@@ -345,31 +345,39 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         mTestCases = new LinkedList<TestInfo>();
 
         if (mRunSimpleInternalTest) {
-            addSimpleTest("read", true);
-            addSimpleTest("write", true);
-            addSimpleTest("randread", true);
-            addSimpleTest("randwrite", true);
+            addSimpleTest("read", "sync", true);
+            addSimpleTest("write", "sync", true);
+            addSimpleTest("randread", "sync", true);
+            addSimpleTest("randwrite", "sync", true);
+            addSimpleTest("randread", "mmap", true);
+            addSimpleTest("randwrite", "mmap", true);
         }
 
         if (mRunSimpleExternalTest) {
-            addSimpleTest("read", false);
-            addSimpleTest("write", false);
-            addSimpleTest("randread", false);
-            addSimpleTest("randwrite", false);
+            addSimpleTest("read", "sync", false);
+            addSimpleTest("write", "sync", false);
+            addSimpleTest("randread", "sync", false);
+            addSimpleTest("randwrite", "sync", false);
+            addSimpleTest("randread", "mmap", false);
+            addSimpleTest("randwrite", "mmap", false);
         }
 
         if (mRunStorageInternalTest) {
-            addStorageTest("read", true);
-            addStorageTest("write", true);
-            addStorageTest("randread", true);
-            addStorageTest("randwrite", true);
+            addStorageTest("read", "sync", true);
+            addStorageTest("write", "sync", true);
+            addStorageTest("randread", "sync", true);
+            addStorageTest("randwrite", "sync", true);
+            addStorageTest("randread", "mmap", true);
+            addStorageTest("randwrite", "mmap", true);
         }
 
         if (mRunStorageExternalTest) {
-            addStorageTest("read", false);
-            addStorageTest("write", false);
-            addStorageTest("randread", false);
-            addStorageTest("randwrite", false);
+            addStorageTest("read", "sync", false);
+            addStorageTest("write", "sync", false);
+            addStorageTest("randread", "sync", false);
+            addStorageTest("randwrite", "sync", false);
+            addStorageTest("randread", "mmap", false);
+            addStorageTest("randwrite", "mmap", false);
         }
 
         if (mRunMediaServerTest) {
@@ -390,10 +398,12 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
      *
      * @param rw the type of IO pattern. One of {@code read}, {@code write}, {@code randread}, or
      * {@code randwrite}.
+     * @param ioengine defines how the job issues I/O. Such as {@code sync}, {@code vsync},
+     * {@code mmap}, or {@code cpuio} and others.
      * @param internal whether the test should be run on the internal (/data) partition or the
      * external partition.
      */
-    private void addSimpleTest(String rw, boolean internal) {
+    private void addSimpleTest(String rw, String ioengine, boolean internal) {
         String fileName = "testfile";
         String jobName = "job";
 
@@ -402,12 +412,12 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
 
         TestInfo t = new TestInfo();
         if (internal) {
-            t.mTestName = String.format("SimpleBenchmark-int-%s", rw);
+            t.mTestName = String.format("SimpleBenchmark-int-%s-%s", ioengine, rw);
             t.mKey = "fio_simple_int_benchmark";
             directory = mInternalTestDir;
             fileSize = mSimpleInternalFileSize;
         } else {
-            t.mTestName = String.format("SimpleBenchmark-ext-%s", rw);
+            t.mTestName = String.format("SimpleBenchmark-ext-%s-%s", ioengine, rw);
             t.mKey = "fio_simple_ext_benchmark";
             directory = mExternalTestDir;
             fileSize = mSimpleExternalFileSize;
@@ -423,14 +433,18 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         j.mParameters.put("directory", directory);
         j.mParameters.put("filename", fileName);
         j.mParameters.put("fsync", "1024");
-        j.mParameters.put("ioengine", "sync");
+        j.mParameters.put("ioengine", ioengine);
         j.mParameters.put("rw", rw);
         j.mParameters.put("size", String.format("%dM",fileSize));
         t.mJobs.add(j);
 
         PerfMetricInfo m = new PerfMetricInfo();
         m.mJobName = jobName;
-        m.mPostKey = String.format("%s_bandwidth", rw);
+        if ("sync".equals(ioengine)) {
+            m.mPostKey = String.format("%s_bandwidth", rw);
+        } else {
+            m.mPostKey = String.format("%s_%s_bandwidth", rw, ioengine);
+        }
         m.mType = PerfMetricInfo.ResultType.FLOAT;
         if (rw.endsWith("read")) {
             m.mFieldName = "read-bandwidth-mean";
@@ -450,10 +464,12 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
      *
      * @param rw the type of IO pattern. One of {@code read}, {@code write}, {@code randread}, or
      * {@code randwrite}.
+     * @param ioengine defines how the job issues I/O. Such as {@code sync}, {@code vsync},
+     * {@code mmap}, or {@code cpuio} and others.
      * @param internal whether the test should be run on the internal (/data) partition or the
      * external partition.
      */
-    private void addStorageTest(String rw, boolean internal) {
+    private void addStorageTest(String rw, String ioengine, boolean internal) {
         String fileName = "testfile";
         String jobName = "workers";
 
@@ -463,13 +479,13 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
 
         TestInfo t = new TestInfo();
         if (internal) {
-            t.mTestName = String.format("StorageBenchmark-int-%s", rw);
+            t.mTestName = String.format("StorageBenchmark-int-%s-%s", ioengine, rw);
             t.mKey = "fio_storage_int_benchmark";
             directory = mInternalTestDir;
             fileSize = mStorageInternalFileSize;
             jobCount = mStorageInternalJobCount;
         } else {
-            t.mTestName = String.format("StorageBenchmark-ext-%s", rw);
+            t.mTestName = String.format("StorageBenchmark-ext-%s-%s", ioengine, rw);
             t.mKey = "fio_storage_ext_benchmark";
             directory = mExternalTestDir;
             fileSize = mStorageExternalFileSize;
@@ -487,7 +503,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         j.mParameters.put("filename", fileName);
         j.mParameters.put("fsync", "1024");
         j.mParameters.put("group_reporting", null);
-        j.mParameters.put("ioengine", "sync");
+        j.mParameters.put("ioengine", ioengine);
         j.mParameters.put("new_group", null);
         j.mParameters.put("numjobs", String.format("%d", jobCount));
         j.mParameters.put("rw", rw);
@@ -496,7 +512,11 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
 
         PerfMetricInfo m = new PerfMetricInfo();
         m.mJobName = jobName;
-        m.mPostKey = String.format("%s_bandwidth", rw);
+        if ("sync".equals(ioengine)) {
+            m.mPostKey = String.format("%s_bandwidth", rw);
+        } else {
+            m.mPostKey = String.format("%s_%s_bandwidth", rw, ioengine);
+        }
         m.mType = PerfMetricInfo.ResultType.FLOAT;
         if (rw.endsWith("read")) {
             m.mFieldName = "read-bandwidth-mean";
@@ -507,7 +527,11 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
 
         m = new PerfMetricInfo();
         m.mJobName = jobName;
-        m.mPostKey = String.format("%s_latency", rw);
+        if ("sync".equals(ioengine)) {
+            m.mPostKey = String.format("%s_latency", rw);
+        } else {
+            m.mPostKey = String.format("%s_%s_latency", rw, ioengine);
+        }
         m.mType = PerfMetricInfo.ResultType.FLOAT;
         if (rw.endsWith("read")) {
             m.mFieldName = "read-clat-mean";
