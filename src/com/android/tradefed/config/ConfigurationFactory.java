@@ -20,7 +20,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
 import com.android.tradefed.util.StreamUtil;
-import com.google.common.io.NullOutputStream;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -400,7 +399,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
        for (ConfigurationDef def : mConfigDefMap.values()) {
            try {
                def.createConfiguration().printCommandUsage(false,
-                       new PrintStream(new NullOutputStream()));
+                       new PrintStream(StreamUtil.nullOutputStream()));
            } catch (ConfigurationException e) {
                ps.printf("Failed to print %s: %s", def.getName(), e.getMessage());
                ps.println();
