@@ -231,8 +231,10 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      *
      * @param device
      * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
      */
-    protected void changeSettings(ITestDevice device) throws DeviceNotAvailableException {
+    protected void changeSettings(ITestDevice device) throws DeviceNotAvailableException,
+            TargetSetupError {
         // ignore
     }
 
