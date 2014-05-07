@@ -117,6 +117,9 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
     private String mRunnerName =
         "android.support.test.uiautomator.UiAutomatorInstrumentationTestRunner";
 
+    @Option(name="final-screenshot", description="Take a screenshot at the end of a test")
+    private boolean mFinalScreenshot = false;
+
     /**
      * {@inheritDoc}
      */
@@ -182,6 +185,10 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
                     new LoggingWrapper(listener));
         } else {
             getDevice().runInstrumentationTests(getTestRunner(), listener);
+        }
+
+        if (mFinalScreenshot) {
+            saveScreenshot(listener, "final_screenshot");
         }
     }
 
@@ -302,16 +309,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
             // get screen shot
             if (mFailureAction == TestFailureAction.SCREENSHOT ||
                     mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
-                try {
-                    data = getDevice().getScreenshot();
-                    mListener.testLog(prefix + "_screenshot", LogDataType.PNG, data);
-                } catch (DeviceNotAvailableException e) {
-                    CLog.e(e);
-                } finally {
-                    if (data != null) {
-                        data.cancel();
-                    }
-                }
+                saveScreenshot(mListener, prefix + "_screenshot");
             }
             // get bugreport
             if (mFailureAction == TestFailureAction.BUGREPORT ||
@@ -321,6 +319,20 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
                 if (data != null) {
                     data.cancel();
                 }
+            }
+        }
+    }
+
+    private void saveScreenshot(ITestInvocationListener listener, String name) {
+        InputStreamSource screenshot = null;
+        try {
+            screenshot = getDevice().getScreenshot();
+            listener.testLog(name, LogDataType.PNG, screenshot);
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+        } finally {
+            if (screenshot != null) {
+                screenshot.cancel();
             }
         }
     }
