@@ -16,6 +16,7 @@
 package com.android.tradefed.targetprep;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.ISdkBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
@@ -33,7 +34,7 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Unit tests for {@link SdkAvePreparer}.
+ * Unit tests for {@link SdkAvdPreparer}.
  */
 public class SdkAvdPreparerTest extends TestCase {
 
@@ -64,7 +65,7 @@ public class SdkAvdPreparerTest extends TestCase {
     }
 
     /**
-     * Test for {@link SdkAvdPreparer#setUp(ISdkBuildInfo)} when no SDK targets are found.
+     * Test for {@link SdkAvdPreparer#setUp(ITestDevice, IBuildInfo)} when no SDK targets are found.
      */
     public void testSetUp_noTargets() throws Exception {
         setGetTargetsResponse("");
@@ -79,7 +80,7 @@ public class SdkAvdPreparerTest extends TestCase {
     }
 
     /**
-     * Test normal success case for {@link SdkAvdPreparer#setUp(ISdkBuildInfo)}
+     * Test normal success case for {@link SdkAvdPreparer#setUp(ITestDevice,IBuildInfo)}
      */
     @SuppressWarnings("unchecked")
     public void testSetUp() throws Exception {
@@ -104,7 +105,7 @@ public class SdkAvdPreparerTest extends TestCase {
     }
 
     /**
-     * Test {@link SdkAvdPreparer#setUp(ISdkBuildInfo)} when emulator launches with unknown avd name
+     * Test {@link SdkAvdPreparer#setUp(ITestDevice, IBuildInfo)} when emulator launches with unknown avd name
      */
     @SuppressWarnings("unchecked")
     public void testSetUp_noAvdName() throws Exception {
@@ -134,7 +135,7 @@ public class SdkAvdPreparerTest extends TestCase {
     }
 
     /**
-     * Test {@link SdkAvdPreparer#setUp(ISdkBuildInfo)} when emulator fails to boot
+     * Test {@link SdkAvdPreparer#setUp(ITestDevice, IBuildInfo)} when emulator fails to boot
      */
     @SuppressWarnings("unchecked")
     public void testSetUp_failedBoot() throws Exception {
@@ -161,7 +162,7 @@ public class SdkAvdPreparerTest extends TestCase {
     }
 
     /**
-     * Test {@link SdkAvdPreparer#setUp(ISdkBuildInfo)} when avd creation fails
+     * Test {@link SdkAvdPreparer#setUp(ITestDevice, IBuildInfo)} when avd creation fails
      */
     public void testSetUp_failedCreateAvd() throws Exception {
         mMockRunUtil.setEnvVariable(EasyMock.eq("ANDROID_SDK_HOME"), (String)EasyMock.anyObject());
