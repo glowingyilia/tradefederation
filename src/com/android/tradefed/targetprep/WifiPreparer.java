@@ -42,7 +42,7 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
 
     @Option(name = "disconnect-wifi-after-test", description =
             "disconnect from wifi network after test completes.")
-    private boolean mDisconnectWifiAfterTest = false;
+    private boolean mDisconnectWifiAfterTest = true;
 
     @Option(name = "skip", description = "skip the connectivity check and wifi setup")
     private boolean mSkip = false;

@@ -57,7 +57,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
     @Option(name = "disconnect-wifi-after-test", description =
             "disconnect from wifi network after test completes.")
-    private boolean mDisconnectWifiAfterTest = false;
+    private boolean mDisconnectWifiAfterTest = true;
 
     @Option(name="min-external-store-space", description="the minimum amount of free space in KB" +
             " that must be present on device's external storage.")
