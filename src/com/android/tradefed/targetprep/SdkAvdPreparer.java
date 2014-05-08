@@ -83,6 +83,9 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     @Option(name = "prop", description = "pass key-value pairs of system props")
     private Map<String,String> mProps = new HashMap<String, String>();
 
+    @Option(name = "emulator-binary", description = "location of the emulator binary")
+    private String mEmulatorBinary = null;
+
     @Option(name = "emulator-arg",
             description = "Additional argument to launch the emulator with. Can be repeated.")
     private Collection<String> mEmulatorArgs = new ArrayList<String>();
@@ -152,7 +155,12 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             CLog.w("Emulator %s is already running, killing", device.getSerialNumber());
             getDeviceManager().killEmulator(device);
         }
-        List<String> emulatorArgs = ArrayUtil.list(sdkBuild.getEmulatorToolPath(), "-avd", avd);
+
+        mRunUtil.setEnvVariable("ANDROID_SDK_ROOT", sdkBuild.getSdkDir().getAbsolutePath());
+
+        String emulatorBinary =
+            mEmulatorBinary == null ? sdkBuild.getEmulatorToolPath() : mEmulatorBinary;
+        List<String> emulatorArgs = ArrayUtil.list(emulatorBinary, "-avd", avd);
 
         if (!mWindow) {
             emulatorArgs.add("-no-window");
