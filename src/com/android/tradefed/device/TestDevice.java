@@ -1954,7 +1954,7 @@ class TestDevice implements IManagedTestDevice {
                     if (i == MAX_RETRY_ATTEMPTS) {
                         throw new DeviceUnresponsiveException(
                                 String.format("Failed to connect to wifi network %s on %s",
-                                        mWifiSsid, getSerialNumber()));
+                                        wifiSsid, getSerialNumber()));
                     }
                 } else {
                     CLog.w("Successfully connected to wifi network %s on %s",
