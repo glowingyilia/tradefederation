@@ -534,9 +534,11 @@ public class TestInvocation implements ITestInvocation {
             Throwable exception) throws DeviceNotAvailableException {
 
         for (ITargetPreparer preparer : config.getTargetPreparers()) {
-            ITargetCleaner cleaner = (ITargetCleaner) preparer;
-            if (cleaner != null) {
-                cleaner.tearDown(device, info, exception);
+            if(preparer instanceof ITargetCleaner) {
+                ITargetCleaner cleaner = (ITargetCleaner) preparer;
+                if (cleaner != null) {
+                    cleaner.tearDown(device, info, exception);
+                }
             }
         }
     }
