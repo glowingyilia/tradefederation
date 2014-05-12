@@ -270,7 +270,10 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
      */
     private void setAndroidSdkHome() throws TargetSetupError {
         try {
-            mSdkHome = FileUtil.createTempDir("SDK_home");
+            // if necessary, create a dir to group the tmp sdk homes
+            File tmpParent = FileUtil.createNamedTempDir("SDK_homes");
+            // create a temp dir inside the grouping folder
+            mSdkHome = FileUtil.createTempDir("SDK_home", tmpParent);
             // store avds etc in tmp location, and clean up on teardown
             mRunUtil.setEnvVariable("ANDROID_SDK_HOME", mSdkHome.getAbsolutePath());
         } catch (IOException e) {

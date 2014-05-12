@@ -18,6 +18,9 @@
     <object type="sdk-avd-preparer"  class="com.android.tradefed.targetprep.SdkAvdPreparer" />
     <object type="gps-preparer" class="com.android.sdk.tests.EmulatorGpsPreparer" />
     <object type="sms-preparer" class="com.android.sdk.tests.EmulatorSmsPreparer" />
+    <target_preparer class="com.android.tradefed.targetprep.TearDownPassThroughPreparer" >
+        <option name="preparer" value="sdk-avd-preparer"/>
+    </target_preparer>
     <test class="com.android.sdk.EmulatorBootTest" />
     <test class="com.android.tradefed.testtype.InstrumentationTest" >
         <option name="runner" value="android.support.test.runner.AndroidJUnitRunner" />
