@@ -73,6 +73,10 @@ public class TestDeviceOptions {
             + "connectivity checks.")
     private String mPingIpOrHost = "www.google.com";
 
+    @Option(name = "wifi-attempts",
+            description = "default number of attempts to connect to wifi network.")
+    private int mWifiAttempts = 5;
+
     /**
      * Check whether adb root should be enabled on boot for this device
      */
@@ -237,4 +241,16 @@ public class TestDeviceOptions {
     public boolean isLogcatCaptureEnabled() {
         return mEnableLogcat;
     }
+
+    /**
+     * @return the default number of attempts to connect to wifi network.
+     */
+    public int getWifiAttempts() {
+        return mWifiAttempts;
+    }
+
+    public void setWifiAttempts(int wifiAttempts) {
+        mWifiAttempts = wifiAttempts;
+    }
+
 }

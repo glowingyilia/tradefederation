@@ -36,10 +36,6 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
     @Option(name="wifi-psk", description="WPA-PSK passphrase of wifi network to connect to.")
     private String mWifiPsk = null;
 
-    @Option(name = "wifi-attempts", description =
-        "maximum number of attempts to connect to wifi network.")
-    private int mWifiAttempts = 2;
-
     @Option(name = "disconnect-wifi-after-test", description =
             "disconnect from wifi network after test completes.")
     private boolean mDisconnectWifiAfterTest = true;
@@ -59,19 +55,11 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
         if (mWifiNetwork == null) {
             throw new TargetSetupError("wifi-network not specified");
         }
-        for (int i=1; i <= mWifiAttempts; i++) {
-            if (!device.connectToWifiNetworkIfNeeded(mWifiNetwork, mWifiPsk)) {
-                CLog.w("Failed to connect to wifi network %s on %s on attempt %d of %d",
-                        mWifiNetwork, device.getSerialNumber(), i, mWifiAttempts);
 
-            } else {
-                CLog.w("Successfully connected to wifi network %s on %s",
-                        mWifiNetwork, device.getSerialNumber());
-                return;
-            }
+        if (!device.connectToWifiNetworkIfNeeded(mWifiNetwork, mWifiPsk)) {
+            throw new TargetSetupError(String.format("Failed to connect to wifi network %s on %s",
+                    mWifiNetwork, device.getSerialNumber()));
         }
-        throw new TargetSetupError(String.format("Failed to connect to wifi network %s on %s",
-                mWifiNetwork, device.getSerialNumber()));
     }
 
     /**
