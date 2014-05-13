@@ -34,6 +34,10 @@ public class DeviceWiper implements ITargetPreparer {
     @Option(name = "disable", description = "disables the device wiper")
     private boolean mDisable = false;
 
+    @Option(name = "use-erase", description =
+            "instruct wiper to use fastboot erase instead of format")
+    private boolean mUseErase = false;
+
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
@@ -42,19 +46,17 @@ public class DeviceWiper implements ITargetPreparer {
         }
         CLog.i("Wiping device");
         device.rebootIntoBootloader();
-        doFormat(device);
+        if (mUseErase) {
+            doErase(device);
+        } else {
+            doFormat(device);
+        }
         device.executeFastbootCommand("reboot");
         device.waitForDeviceAvailable();
     }
 
     private void doFormat(ITestDevice device) throws DeviceNotAvailableException, TargetSetupError {
-        CommandResult r = device.executeLongFastbootCommand("format", "cache");
-        if (r.getStatus() != CommandStatus.SUCCESS) {
-            // kind of hacky, but if format fails, try an erase because device may not support
-            // format
-            doErase(device);
-            return;
-        }
+        performFastbootOp(device, "format", "cache");
         performFastbootOp(device, "format", "userdata");
     }
 
