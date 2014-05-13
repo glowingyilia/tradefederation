@@ -57,6 +57,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -120,7 +121,6 @@ class TestDevice implements IManagedTestDevice {
     private static final String BUILD_TYPE_PROP = "ro.build.type";
     private static final String BUILD_ALIAS_PROP = "ro.build.id";
 
-
     /** The time in ms to wait for a command to complete. */
     private int mCmdTimeout = 2 * 60 * 1000;
     /** The time in ms to wait for a 'long' command to complete. */
@@ -141,6 +141,12 @@ class TestDevice implements IManagedTestDevice {
     private RecoveryMode mRecoveryMode = RecoveryMode.AVAILABLE;
 
     private Boolean mIsEncryptionSupported = null;
+
+    /** Command to dump wifi information for a device. **/
+    private static final String WIFI_INFO_COMMAND = "dumpsys wifi";
+    /** Regex to match wifi information line from WIFI_INFO_COMMAND output. **/
+    private static final Pattern WIFI_INFO_REGEX = Pattern.compile(
+            "^mWifiInfo:\\s*\\[(.*)\\]$|^(SSID:.*)$", Pattern.MULTILINE);
 
     private String mWifiSsid = null;
     private String mWifiPsk = null;
@@ -1684,6 +1690,35 @@ class TestDevice implements IManagedTestDevice {
     @Override
     public boolean connectToWifiNetwork(String wifiSsid, String wifiPsk)
             throws DeviceNotAvailableException {
+
+        for (int i = 1; i <= mOptions.getWifiAttempts() ; i++) {
+            if (!disconnectFromWifi()) {
+                CLog.w("Failed to disconnect from wifi on %s; wifi connection may fail",
+                        getSerialNumber());
+            }
+            if (!internalConnectToWifiNetwork(wifiSsid, wifiPsk)) {
+                final Map<String, String> wifiInfo = getWifiInfo();
+                CLog.w("Failed to connect to wifi network %s(%s) on %s on attempt %d of %d",
+                        wifiSsid, wifiInfo.get("BSSID"), getSerialNumber(), i, mOptions.getWifiAttempts());
+                if (i == mOptions.getWifiAttempts()) {
+                    return false;
+                }
+            } else {
+                final Map<String, String> wifiInfo = getWifiInfo();
+                CLog.i("Successfully connected to wifi network %s(%s) on %s",
+                        wifiSsid, wifiInfo.get("BSSID"), getSerialNumber());
+                break;
+            }
+        }
+
+        // stores ssid and psk to re-establish the connection after reboot
+        mWifiSsid = wifiSsid;
+        mWifiPsk = wifiPsk;
+        return true;
+    }
+
+    private boolean internalConnectToWifiNetwork(String wifiSsid, String wifiPsk)
+            throws DeviceNotAvailableException {
         CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
         try {
             IWifiHelper wifi = createWifiHelper();
@@ -1711,6 +1746,7 @@ class TestDevice implements IManagedTestDevice {
                 CLog.e("wifi network %s failed to associate on %s", wifiSsid, getSerialNumber());
                 return false;
             }
+
             // TODO: make timeout configurable
             if (!wifi.waitForIp(30 * 1000)) {
                 CLog.e("dhcp timeout when connecting to wifi network %s on %s", wifiSsid,
@@ -1722,10 +1758,6 @@ class TestDevice implements IManagedTestDevice {
                         getSerialNumber());
                 return false;
             }
-
-            // stores ssid and psk to re-establish the connection after reboot
-            mWifiSsid = wifiSsid;
-            mWifiPsk = wifiPsk;
 
             return true;
         } catch (TargetSetupError e) {
@@ -1754,16 +1786,46 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
+     * Returns the current wifi information.
+     * This method parses info from the output of a 'dumpsys wifi' command.
+     * <p/>
+     * Assumes one of below output formats:
+     * <br>/
+     * <code>
+     * mWifiInfo: [SSID: WL-asl2, BSSID: 24:de:c6:e0:9a:c0, MAC: cc:fa:00:ff:bb:47, ...]
+     * SSID: WL-asl2, BSSID: 24:de:c6:e0:9a:c0, MAC: B4:07:F9:DB:AF:80, ...
+     * </code>
+     */
+    private Map<String, String> getWifiInfo() throws DeviceNotAvailableException {
+        Map<String, String> info = new HashMap<String, String>();
+        String output = executeShellCommand(WIFI_INFO_COMMAND);
+        Matcher patternMatcher = WIFI_INFO_REGEX.matcher(output);
+        if (patternMatcher.find()) {
+            String match = patternMatcher.group(1);
+            if (match == null) {
+                match = patternMatcher.group(2);
+            }
+
+            if (match != null) {
+                for (final String token : match.split(",")) {
+                    final String[] values = token.split(":", 2);
+                    if (values.length < 2) {
+                        continue;
+                    }
+                    info.put(values[0].trim(), values[1].trim());
+                }
+            }
+        }
+        return info;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public boolean connectToWifiNetworkIfNeeded(String wifiSsid, String wifiPsk)
             throws DeviceNotAvailableException {
         if (!checkConnectivity())  {
-            if (!disconnectFromWifi()) {
-                CLog.w("Failed to disconnect from wifi on %s; wifi connection may fail",
-                        getSerialNumber());
-            }
             return connectToWifiNetwork(wifiSsid, wifiPsk);
         }
         return true;
@@ -1944,23 +2006,10 @@ class TestDevice implements IManagedTestDevice {
             disableKeyguard();
         }
         if (mWifiSsid != null) {
-            // mWifiSsid and mWifiPsk can get cleared in disconnectFromWifi()
-            final String wifiSsid = mWifiSsid;
-            final String wifiPsk = mWifiPsk;
-            for (int i = 1; i <= MAX_RETRY_ATTEMPTS; i++) {
-                if (!connectToWifiNetworkIfNeeded(wifiSsid, wifiPsk)) {
-                    CLog.w("Failed to connect to wifi network %s on %s on attempt %d of %d",
-                            wifiSsid, getSerialNumber(), i, MAX_RETRY_ATTEMPTS);
-                    if (i == MAX_RETRY_ATTEMPTS) {
-                        throw new DeviceUnresponsiveException(
-                                String.format("Failed to connect to wifi network %s on %s",
-                                        wifiSsid, getSerialNumber()));
-                    }
-                } else {
-                    CLog.w("Successfully connected to wifi network %s on %s",
-                            wifiSsid, getSerialNumber());
-                    break;
-                }
+            if (!connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
+                throw new DeviceUnresponsiveException(
+                        String.format("Failed to connect to wifi network %s on %s",
+                                mWifiSsid, getSerialNumber()));
             }
         }
     }
