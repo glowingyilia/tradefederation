@@ -103,6 +103,14 @@ interface IWifiHelper {
     String getSSID() throws DeviceNotAvailableException;
 
     /**
+     * Gets the basic service set identifier (BSSID) of the currently access point.
+     *
+     * @see http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getBSSID()
+     * @throws DeviceNotAvailableException
+     */
+    String getBSSID() throws DeviceNotAvailableException;
+
+    /**
      * Removes all known networks.
      *
      * @throws DeviceNotAvailableException

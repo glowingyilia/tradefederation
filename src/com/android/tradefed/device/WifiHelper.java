@@ -256,6 +256,14 @@ public class WifiHelper implements IWifiHelper {
      * {@inheritDoc}
      */
     @Override
+    public String getBSSID() throws DeviceNotAvailableException {
+        return runWifiUtil("getBSSID");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean removeAllNetworks() throws DeviceNotAvailableException {
         if (!asBool(runWifiUtil("removeAllNetworks"))) {
             return false;

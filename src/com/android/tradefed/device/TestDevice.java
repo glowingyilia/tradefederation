@@ -142,12 +142,6 @@ class TestDevice implements IManagedTestDevice {
 
     private Boolean mIsEncryptionSupported = null;
 
-    /** Command to dump wifi information for a device. **/
-    private static final String WIFI_INFO_COMMAND = "dumpsys wifi";
-    /** Regex to match wifi information line from WIFI_INFO_COMMAND output. **/
-    private static final Pattern WIFI_INFO_REGEX = Pattern.compile(
-            "^mWifiInfo:\\s*\\[(.*)\\]$|^(SSID:.*)$", Pattern.MULTILINE);
-
     private String mWifiSsid = null;
     private String mWifiPsk = null;
 
@@ -1787,34 +1781,15 @@ class TestDevice implements IManagedTestDevice {
 
     /**
      * Returns the current wifi information.
-     * This method parses info from the output of a 'dumpsys wifi' command.
-     * <p/>
-     * Assumes one of below output formats:
-     * <br>/
-     * <code>
-     * mWifiInfo: [SSID: WL-asl2, BSSID: 24:de:c6:e0:9a:c0, MAC: cc:fa:00:ff:bb:47, ...]
-     * SSID: WL-asl2, BSSID: 24:de:c6:e0:9a:c0, MAC: B4:07:F9:DB:AF:80, ...
-     * </code>
      */
     private Map<String, String> getWifiInfo() throws DeviceNotAvailableException {
+        // TODO Add more information by extending WifiUtil
         Map<String, String> info = new HashMap<String, String>();
-        String output = executeShellCommand(WIFI_INFO_COMMAND);
-        Matcher patternMatcher = WIFI_INFO_REGEX.matcher(output);
-        if (patternMatcher.find()) {
-            String match = patternMatcher.group(1);
-            if (match == null) {
-                match = patternMatcher.group(2);
-            }
-
-            if (match != null) {
-                for (final String token : match.split(",")) {
-                    final String[] values = token.split(":", 2);
-                    if (values.length < 2) {
-                        continue;
-                    }
-                    info.put(values[0].trim(), values[1].trim());
-                }
-            }
+        try {
+            final IWifiHelper wifi = createWifiHelper();
+            info.put("BSSID", wifi.getBSSID());
+        } catch (TargetSetupError e) {
+            CLog.e(e);
         }
         return info;
     }
@@ -1894,17 +1869,19 @@ class TestDevice implements IManagedTestDevice {
 
             boolean success = true;
             IWifiHelper wifi = createWifiHelper();
-            if (!wifi.removeAllNetworks()) {
-                success = false;
-                CLog.w("Failed to remove all wifi networks from %s", getSerialNumber());
-            }
-            if (!wifi.disableWifi()) {
-                success = false;
-                CLog.w("Failed to disable wifi on %s", getSerialNumber());
-            }
-            if (!wifi.waitForWifiDisabled()) {
-                success = false;
-                CLog.w("Failed to disable wifi on %s", getSerialNumber());
+            if (wifi.isWifiEnabled()) {
+                if (!wifi.removeAllNetworks()) {
+                    success = false;
+                    CLog.w("Failed to remove all wifi networks from %s", getSerialNumber());
+                }
+                if (!wifi.disableWifi()) {
+                    success = false;
+                    CLog.w("Failed to disable wifi on %s", getSerialNumber());
+                }
+                if (!wifi.waitForWifiDisabled()) {
+                    success = false;
+                    CLog.w("Failed to disable wifi on %s", getSerialNumber());
+                }
             }
             return success;
         } catch (TargetSetupError e) {
@@ -2006,10 +1983,12 @@ class TestDevice implements IManagedTestDevice {
             disableKeyguard();
         }
         if (mWifiSsid != null) {
-            if (!connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
+            // mWifiSsid is set to null if connection fails
+            final String wifiSsid = mWifiSsid;
+            if (!connectToWifiNetworkIfNeeded(mWifiSsid, mWifiPsk)) {
                 throw new DeviceUnresponsiveException(
                         String.format("Failed to connect to wifi network %s on %s",
-                                mWifiSsid, getSerialNumber()));
+                                wifiSsid, getSerialNumber()));
             }
         }
     }
