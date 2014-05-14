@@ -174,4 +174,20 @@ public class DeviceSetupTest extends TestCase {
         assertFalse("failed to reject empty string", mDeviceSetup.isReleaseBuildName(""));
         assertFalse("failed to reject random stuff", mDeviceSetup.isReleaseBuildName("!@#$%^&*("));
     }
+
+    public void testTearDown() throws Exception {
+        EasyMock.expect(mMockDevice.isWifiEnabled()).andReturn(Boolean.TRUE);
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+    }
+
+    public void testTearDown_disconnectFromWifi() throws Exception {
+        EasyMock.expect(mMockDevice.isWifiEnabled()).andReturn(Boolean.TRUE);
+        EasyMock.expect(mMockDevice.disconnectFromWifi()).andReturn(Boolean.TRUE);
+        mDeviceSetup.setWifiNetwork("wifi_network");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+    }
 }

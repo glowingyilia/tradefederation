@@ -322,7 +322,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             throws DeviceNotAvailableException {
         Log.i(LOG_TAG, String.format("Performing teardown on %s", device.getSerialNumber()));
 
-        if (mDisconnectWifiAfterTest) {
+        if (mWifiNetwork != null && mDisconnectWifiAfterTest) {
             disconnectFromWifi(device);
         }
     }

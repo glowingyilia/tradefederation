@@ -71,7 +71,7 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
         if (mSkip) {
             return;
         }
-        if (mDisconnectWifiAfterTest && device.isWifiEnabled()) {
+        if (mWifiNetwork != null && mDisconnectWifiAfterTest && device.isWifiEnabled()) {
             if (!device.disconnectFromWifi()) {
                 CLog.w("Failed to disconnect from wifi network on %s", device.getSerialNumber());
                 return;
