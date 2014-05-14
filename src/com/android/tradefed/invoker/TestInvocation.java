@@ -60,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.ListIterator;
 
 /**
  * Default implementation of {@link ITestInvocation}.
@@ -533,7 +534,10 @@ public class TestInvocation implements ITestInvocation {
     private void doTeardown(IConfiguration config, ITestDevice device, IBuildInfo info,
             Throwable exception) throws DeviceNotAvailableException {
 
-        for (ITargetPreparer preparer : config.getTargetPreparers()) {
+        List<ITargetPreparer> preparers = config.getTargetPreparers();
+        ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
+        while (itr.hasPrevious()) {
+            ITargetPreparer preparer = itr.previous();
             if(preparer instanceof ITargetCleaner) {
                 ITargetCleaner cleaner = (ITargetCleaner) preparer;
                 if (cleaner != null) {
