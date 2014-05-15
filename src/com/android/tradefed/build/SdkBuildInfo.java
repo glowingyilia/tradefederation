@@ -128,6 +128,7 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
                 cloneSdkDir = FileUtil.createTempDir("cloneSdk");
                 FileUtil.recursiveCopy(getSdkDir(), cloneSdkDir);
                 cloneBuild.setSdkDir(cloneSdkDir);
+                cloneBuild.makeToolsExecutable();
             }
             return cloneBuild;
         } catch (IOException e) {
