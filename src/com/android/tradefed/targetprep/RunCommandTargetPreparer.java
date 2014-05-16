@@ -22,6 +22,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.RunUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,10 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
     @Option(name = "disable", description = "Disable this preparer")
     private boolean mDisable = false;
 
+    @Option(name = "delay-after-commands",
+            description = "Time to delay after running commands, in msecs")
+    private long mDelayMsecs = 0;
+
     /**
      * {@inheritDoc}
      */
@@ -50,6 +55,9 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
             CLog.d("About to run setup command on device %s: %s", device.getSerialNumber(), cmd);
             device.executeShellCommand(cmd);
         }
+
+        CLog.d("Sleeping %d msecs on device %s", mDelayMsecs, device.getSerialNumber());
+        RunUtil.getDefault().sleep(mDelayMsecs);
     }
 
     /**
