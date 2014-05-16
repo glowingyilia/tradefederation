@@ -38,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 class DeviceStateMonitor implements IDeviceStateMonitor {
 
     private static final String LOG_TAG = "DeviceStateMonitor";
+    static final String BOOTCOMPLETE_PROP = "dev.bootcomplete";
+
     private IDevice mDevice;
     private TestDeviceState mDeviceState;
 
@@ -233,7 +235,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
     private boolean waitForBootComplete(final long waitTime) {
         CLog.i("Waiting %d ms for device %s boot complete", waitTime, getSerialNumber());
         long startTime = System.currentTimeMillis();
-        final String cmd = "getprop dev.bootcomplete";
+        final String cmd = "getprop " + BOOTCOMPLETE_PROP;
         while ((System.currentTimeMillis() - startTime) < waitTime) {
             try {
                 String bootFlag = getIDevice().getPropertySync("dev.bootcomplete");
