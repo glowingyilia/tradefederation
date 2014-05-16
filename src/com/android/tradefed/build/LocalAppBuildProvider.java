@@ -20,6 +20,8 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * A {@link IBuildProvider} that constructs a {@link IAppBuildInfo} based on a provided local
@@ -33,23 +35,25 @@ public class LocalAppBuildProvider extends StubBuildProvider {
     @Option(name = APP_OPTION_NAME, description =
             "the local filesystem path to apk.",
             importance = Importance.IF_UNSET, mandatory=true)
-    private File mApkPath = null;
+    private Collection<File> mApkPaths = new ArrayList<File>();
 
     /**
      * {@inheritDoc}
      */
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
-        if (!mApkPath.exists()) {
-            throw new IllegalArgumentException(String.format("path '%s' does not exist. " +
-                    "Please provide a valid file via --%s",
-                    mApkPath.getAbsolutePath(), APP_OPTION_NAME));
-        }
         // utilize parent build provider to set build id, test target name etc attributes if
         // desired
         IBuildInfo parentBuild = super.getBuild();
         IAppBuildInfo appBuild = new AppBuildInfo((BuildInfo)parentBuild);
-        appBuild.addAppPackageFile(mApkPath, parentBuild.getBuildId());
+        for (File apkPath : mApkPaths) {
+            if (!apkPath.exists()) {
+                throw new IllegalArgumentException(String.format("path '%s' does not exist. "
+                        + "Please provide a valid file via --%s", apkPath.getAbsolutePath(),
+                        APP_OPTION_NAME));
+            }
+            appBuild.addAppPackageFile(apkPath, parentBuild.getBuildId());
+        }
         return appBuild;
     }
 

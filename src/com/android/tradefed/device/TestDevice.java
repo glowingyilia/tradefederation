@@ -2223,6 +2223,8 @@ class TestDevice implements IManagedTestDevice {
         if (getIDevice().isEmulator()) {
             CLog.i("since emulator, performing shell stop & start instead of reboot");
             executeShellCommand("stop");
+            executeShellCommand(String.format("setprop %s 0",
+                    DeviceStateMonitor.BOOTCOMPLETE_PROP));
             executeShellCommand("start");
             return;
         }

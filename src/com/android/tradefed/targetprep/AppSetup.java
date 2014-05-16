@@ -117,6 +117,9 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
+        if (e instanceof DeviceNotAvailableException) {
+            return;
+        }
         // reboot device before uninstalling apps, in case device is wedged
         if (mReboot) {
             device.reboot();
