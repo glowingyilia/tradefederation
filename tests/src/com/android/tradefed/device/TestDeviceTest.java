@@ -1139,6 +1139,9 @@ public class TestDeviceTest extends TestCase {
      * Simple test for {@link TestDevice#handleAllocationEvent(DeviceEvent)}
      */
     public void testHandleAllocationEvent() {
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.replay(mMockIDevice);
+
         assertEquals(DeviceAllocationState.Unknown, mTestDevice.getAllocationState());
 
         assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.CONNECTED_ONLINE));

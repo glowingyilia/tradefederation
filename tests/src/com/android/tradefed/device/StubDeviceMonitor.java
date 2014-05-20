@@ -31,7 +31,8 @@ public class StubDeviceMonitor implements IDeviceMonitor {
     }
 
     @Override
-    public void notifyDeviceStateChange() {
+    public void notifyDeviceStateChange(String serial, DeviceAllocationState oldState,
+            DeviceAllocationState newState) {
         // ignore
     }
 }

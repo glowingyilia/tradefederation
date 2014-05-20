@@ -17,7 +17,6 @@
 package com.android.tradefed.targetprep.companion;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.ITestDevice;
@@ -33,10 +32,6 @@ import com.android.tradefed.targetprep.TargetSetupError;
  */
 public abstract class CompanionAllocator implements ITargetCleaner {
 
-    @Option(name = "allocation-timeout", description = "max timeout (in min) to wait for an "
-            + "available companion device; defaults to 3")
-    private long mAllocationTimeout = 3;
-
     /**
      * Sets up the device.
      * <p>
@@ -49,7 +44,7 @@ public abstract class CompanionAllocator implements ITargetCleaner {
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
         ITestDevice companionDevice = getCompanionDeviceTracker().allocateCompanionDevice(
-                device, getCompanionDeviceSelectionOptions(), mAllocationTimeout * 60 * 1000);
+                device, getCompanionDeviceSelectionOptions());
         if (companionDevice == null) {
             throw new TargetSetupError(String.format("failed to allocate companion device for %s",
                     device.getSerialNumber()));

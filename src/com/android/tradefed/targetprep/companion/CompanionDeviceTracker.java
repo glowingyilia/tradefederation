@@ -59,9 +59,8 @@ public class CompanionDeviceTracker {
      * @param timeout time to wait before giving up on allocation
      * @return the device allocated or <code>null</code> if none available
      */
-    public ITestDevice allocateCompanionDevice(ITestDevice device, DeviceSelectionOptions opt,
-            long timeout) {
-        ITestDevice companion = getDeviceManager().allocateDevice(timeout, opt);
+    public ITestDevice allocateCompanionDevice(ITestDevice device, DeviceSelectionOptions opt) {
+        ITestDevice companion = getDeviceManager().allocateDevice(opt);
         if (companion != null) {
             if (mDeviceMapping.containsKey(device)) {
                 CLog.w("device %s already has an allocated companion %s",

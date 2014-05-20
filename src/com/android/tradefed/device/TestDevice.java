@@ -2831,9 +2831,10 @@ class TestDevice implements IManagedTestDevice {
 
     /**
      * {@inheritDoc}
-     * <p/>
+     * <p>
      * Process the DeviceEvent, which may or may not transition this device to a new allocation
      * state.
+     * </p>
      */
     @Override
     public DeviceEventResponse handleAllocationEvent(DeviceEvent event) {
@@ -2841,11 +2842,13 @@ class TestDevice implements IManagedTestDevice {
         // keep track of whether state has actually changed or not
         boolean stateChanged = false;
         DeviceAllocationState newState;
+        DeviceAllocationState oldState = mAllocationState;
         mAllocationStateLock.lock();
         try {
-            // fire the event into the allocation state machine
+            // update oldState here, just in case in changed before we got lock
+            oldState = mAllocationState;
             newState = mAllocationState.handleDeviceEvent(event);
-            if (mAllocationState != newState) {
+            if (oldState != newState) {
                 // state has changed! record this fact, and store the new state
                 stateChanged = true;
                 mAllocationState = newState;
@@ -2855,7 +2858,7 @@ class TestDevice implements IManagedTestDevice {
         }
         if (stateChanged && mAllocationMonitor != null) {
             // state has changed! Lets inform the allocation monitor listener
-            mAllocationMonitor.notifyDeviceStateChange();
+            mAllocationMonitor.notifyDeviceStateChange(getSerialNumber(), oldState, newState);
         }
         return new DeviceEventResponse(newState, stateChanged);
     }

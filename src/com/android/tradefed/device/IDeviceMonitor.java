@@ -48,13 +48,12 @@ public interface IDeviceMonitor {
     public void setDeviceLister(DeviceLister lister);
 
     /**
-     * Signals the {@link IDeviceMonitor} that device states may have been updated.
+     * Signals the {@link IDeviceMonitor} that a device state has been changed.
      * Monitor implementations should limit the amount of processing and
      * IDeviceManager/DeviceLister interaction they do in this method.
-     *
-     * TODO: consider passing in serial and new state.
      */
-    public void notifyDeviceStateChange();
+    public void notifyDeviceStateChange(String serial, DeviceAllocationState oldState,
+            DeviceAllocationState newState);
 
 }
 
