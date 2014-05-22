@@ -145,6 +145,12 @@ class TestDevice implements IManagedTestDevice {
     private String mWifiSsid = null;
     private String mWifiPsk = null;
 
+    private static final Pattern PING_REGEX = Pattern.compile(
+            "(?<send>\\d+) packets transmitted, (?<recv>\\d+) received, (?<loss>\\d+)% packet loss");
+    private static final Pattern PING_RTT_REGEX = Pattern.compile(
+            "rtt min/avg/max/mdev = " +
+            "(?<min>\\d+\\.\\d+)/(?<avg>\\d+\\.\\d+)/(?<max>\\d+\\.\\d+)/(?<mdev>\\d+\\.\\d+) ms");
+
     /**
      * Interface for a generic device communication attempt.
      */
@@ -1769,13 +1775,34 @@ class TestDevice implements IManagedTestDevice {
         // wait for ping success
         CLog.i("checking ping to " + mOptions.getPingIpOrHost());
         for (int i = 0; i < 10; i++) {
-            String pingOutput = executeShellCommand("ping -c 1 -w 5 " + mOptions.getPingIpOrHost());
-            if (pingOutput.contains("1 packets transmitted, 1 received")) {
+            if (checkPing()) {
                 return true;
             }
             getRunUtil().sleep(1 * 1000);
         }
         CLog.i("could not ping " + mOptions.getPingIpOrHost());
+        return false;
+    }
+
+    /**
+     * Perform a ping check to an internet host and log connection status.
+     */
+    boolean checkPing() throws DeviceNotAvailableException {
+        final String output = executeShellCommand(
+                "ping -c 5 -w 5 -s 1024 " + mOptions.getPingIpOrHost());
+        final Matcher stat = PING_REGEX.matcher(output);
+        final Matcher latency = PING_RTT_REGEX.matcher(output);
+        if (stat.find() && latency.find()) {
+            final int pingLoss = Integer.parseInt(stat.group("loss"));
+            // consider ping successful if packet loss < 50%
+            if (pingLoss < 50) {
+                final Map<String, String> wifiInfo = getWifiInfo();
+                CLog.d("[conn] ssid=%s, bssid=%s, ping_loss=%s%%, ping_avg=%s, ping_mdev=%s",
+                        wifiInfo.get("SSID"), wifiInfo.get("BSSID"), stat.group("loss"),
+                        latency.group("avg"), latency.group("mdev"));
+                return true;
+            }
+        }
         return false;
     }
 
@@ -1787,6 +1814,7 @@ class TestDevice implements IManagedTestDevice {
         Map<String, String> info = new HashMap<String, String>();
         try {
             final IWifiHelper wifi = createWifiHelper();
+            info.put("SSID", wifi.getSSID());
             info.put("BSSID", wifi.getBSSID());
         } catch (TargetSetupError e) {
             CLog.e(e);
@@ -1986,8 +2014,8 @@ class TestDevice implements IManagedTestDevice {
             // mWifiSsid is set to null if connection fails
             final String wifiSsid = mWifiSsid;
             if (!connectToWifiNetworkIfNeeded(mWifiSsid, mWifiPsk)) {
-                throw new DeviceUnresponsiveException(
-                        String.format("Failed to connect to wifi network %s on %s",
+                throw new NetworkNotAvailableException(
+                        String.format("Failed to connect to wifi network %s on %s after reboot",
                                 wifiSsid, getSerialNumber()));
             }
         }
