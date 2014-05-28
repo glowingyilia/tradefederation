@@ -94,9 +94,9 @@ class TestDevice implements IManagedTestDevice {
     /** The password for encrypting and decrypting the device. */
     private static final String ENCRYPTION_PASSWORD = "android";
     /** Encrypting with inplace can take up to 2 hours. */
-    private static final int ENCRYPTION_INPLACE_TIMEOUT = 2 * 60 * 60 * 1000;
+    private static final int ENCRYPTION_INPLACE_TIMEOUT_MIN = 2 * 60;
     /** Encrypting with wipe can take up to 5 minutes. */
-    private static final int ENCRYPTION_WIPE_TIMEOUT = 5 * 60 * 1000;
+    private static final int ENCRYPTION_WIPE_TIMEOUT_MIN = 5;
     /** Timeout to wait for input dispatch to become ready **/
     private static final long INPUT_DISPATCH_READY_TIMEOUT = 5 * 1000;
     /** Beginning of the string returned by vdc for "vdc cryptfs enablecrypto". */
@@ -2339,15 +2339,26 @@ class TestDevice implements IManagedTestDevice {
         int timeout;
         if (inplace) {
             encryptMethod = "inplace";
-            timeout = ENCRYPTION_INPLACE_TIMEOUT;
+            timeout = ENCRYPTION_INPLACE_TIMEOUT_MIN;
         } else {
             encryptMethod = "wipe";
-            timeout = ENCRYPTION_WIPE_TIMEOUT;
+            timeout = ENCRYPTION_WIPE_TIMEOUT_MIN;
         }
 
         CLog.i("Encrypting device %s via %s", getSerialNumber(), encryptMethod);
-        executeShellCommand(String.format("vdc cryptfs enablecrypto %s \"%s\"", encryptMethod,
-                ENCRYPTION_PASSWORD), new NullOutputReceiver(), timeout, 1);
+
+        // enable crypto takes one of the following formats:
+        // cryptfs enablecrypto <wipe|inplace> <passwd>
+        // cryptfs enablecrypto <wipe|inplace> default|password|pin|pattern [passwd]
+        // Try the first one first, if it outputs "500 0 Usage: ...", try the second.
+        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        String command = String.format("vdc cryptfs enablecrypto %s \"%s\"", encryptMethod,
+                ENCRYPTION_PASSWORD);
+        executeShellCommand(command, receiver, timeout, TimeUnit.MINUTES, 1);
+        if (receiver.getOutput().startsWith("500 0 Usage:")) {
+            command = String.format("vdc cryptfs enablecrypto %s default", encryptMethod);
+            executeShellCommand(command, new NullOutputReceiver(), timeout, TimeUnit.MINUTES, 1);
+        }
 
         waitForDeviceNotAvailable("reboot", getCommandTimeout());
         waitForDeviceOnline();  // Device will not become available until the user data is unlocked.
