@@ -288,10 +288,12 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
                 "for this test:\nadb shell %s\n\n", new Date().toString(), getUptime(), command));
 
         try {
+            onMonkeyStart();
             long start = System.currentTimeMillis();
             commandHelper.runCommand(mTestDevice, command, getMonkeyTimeoutMs());
             duration = System.currentTimeMillis() - start;
         } finally {
+            onMonkeyFinish();
             outputBuilder.append(commandHelper.getOutput());
 
             // Generate the monkey log suffix, which includes the device uptime.
@@ -315,6 +317,20 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
         }
 
         checkResults();
+    }
+
+    /**
+     * A hook to allow subclasses to perform actions just before the monkey starts.
+     */
+    protected void onMonkeyStart() {
+       // empty
+    }
+
+    /**
+     * A hook to allow sublaccess to perform actions just after the monkey finished.
+     */
+    protected void onMonkeyFinish() {
+        // empty
     }
 
     /**
