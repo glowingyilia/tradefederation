@@ -18,6 +18,7 @@
           package="com.android.tradefed.utils.wifi">
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <uses-sdk android:minSdkVersion="1"
               android:targetSdkVersion="7" />
