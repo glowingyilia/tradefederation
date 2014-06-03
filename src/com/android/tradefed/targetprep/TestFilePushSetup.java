@@ -44,6 +44,10 @@ public class TestFilePushSetup implements ITargetPreparer {
             importance = Importance.IF_UNSET)
     private Collection<String> mTestPaths = new ArrayList<String>();
 
+    @Option(name = "throw-if-not-found", description =
+            "Throw exception if the specified file is not found.")
+    private boolean mThrowIfNoFile = true;
+
     /**
      * Adds a file to the list of items to push
      *
@@ -74,12 +78,17 @@ public class TestFilePushSetup implements ITargetPreparer {
             throw new TargetSetupError(
                     "Provided buildInfo does not contain a valid tests directory");
         }
-
+        int filePushed = 0;
         for (String fileName : mTestPaths) {
             File localFile = FileUtil.getFileForPath(testsDir, "DATA", fileName);
             if (!localFile.exists()) {
-                throw new TargetSetupError(String.format(
-                        "Could not find test file %s directory in extracted tests.zip", localFile));
+                if (mThrowIfNoFile) {
+                    throw new TargetSetupError(String.format(
+                            "Could not find test file %s directory in extracted tests.zip",
+                            localFile));
+                } else {
+                    continue;
+                }
             }
             fileName = getDevicePathFromUserData(fileName);
             CLog.d("Pushing file: %s -> %s", localFile.getAbsoluteFile(), fileName);
@@ -90,6 +99,10 @@ public class TestFilePushSetup implements ITargetPreparer {
             }
             // there's no recursive option for 'chown', best we can do here
             device.executeShellCommand(String.format("chown system.system %s", fileName));
+            filePushed++;
+        }
+        if (filePushed == 0) {
+            throw new TargetSetupError("No file is pushed from tests.zip");
         }
     }
 
