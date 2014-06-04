@@ -564,29 +564,16 @@ public class DeviceManager implements IDeviceManager {
                     "Emulator device %s is in state %s. Expected: %s", device.getSerialNumber(),
                     device.getDeviceState(), TestDeviceState.NOT_AVAILABLE));
         }
-        Integer port = EmulatorConsole.getEmulatorPort(device.getSerialNumber());
-        if (port == null) {
-            // serial number is not in expected format
-            throw new IllegalArgumentException(String.format(
-                    "Failed to determine emulator port for %s", device.getSerialNumber()));
-        }
-
         List<String> fullArgs = new ArrayList<String>(emulatorArgs);
-        // add port first to avoid qemu problems
-        final int firstAfterTheCommand=1;
-        final int secondAfterCommand=2;
-        fullArgs.add(firstAfterTheCommand, "-port");
-        fullArgs.add(secondAfterCommand, port.toString());
 
         try {
-            CLog.i("launching emulator with %s",fullArgs.toString());
+            CLog.i("launching emulator with %s", fullArgs.toString());
             Process p = runUtil.runCmdInBackground(fullArgs);
             // sleep a small amount to wait for process to start successfully
             getRunUtil().sleep(500);
             assertEmulatorProcessAlive(p);
             IManagedTestDevice managedDevice = (IManagedTestDevice)device;
             managedDevice.setEmulatorProcess(p);
-            managedDevice.startLogcat();
         } catch (IOException e) {
             // TODO: is this the most appropriate exception to throw?
             throw new DeviceNotAvailableException("Failed to start emulator process", e);
