@@ -222,7 +222,6 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(RegexTrieTest.class);
         addTestSuite(RunUtilTest.class);
         addTestSuite(SizeLimitedOutputStreamTest.class);
-        addTestSuite(StringUtilTest.class);
 
         // util subdirs
         addTestSuite(AndroidManifestWriterTest.class);
