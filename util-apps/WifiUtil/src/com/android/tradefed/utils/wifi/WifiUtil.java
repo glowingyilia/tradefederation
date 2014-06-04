@@ -467,6 +467,20 @@ public class WifiUtil extends Instrumentation {
             } else if ("getWifiInfo".equals(method)) {
                 result.putString("result", getWifiInfo().toString());
 
+            } else if ("startMonitor".equals(method)) {
+                final int interval = expectInteger("interval");
+                final String urlToCheck = getString("urlToCheck", DEFAULT_URL_TO_CHECK);
+
+                WifiMonitorService.enable(getContext(), interval, urlToCheck);
+
+                result.putBoolean("result", true);
+
+            } else if ("stopMonitor".equals(method)) {
+                final Context context = getContext();
+                WifiMonitorService.disable(context);
+
+                result.putString("result", WifiMonitorService.getData(context));
+
             } else {
                 fail(String.format("Didn't recognize method '%s'", method));
                 return;

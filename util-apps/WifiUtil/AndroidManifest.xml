@@ -20,11 +20,12 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <uses-sdk android:minSdkVersion="1"
+    <uses-sdk android:minSdkVersion="3"
               android:targetSdkVersion="7" />
 
     <application>
         <uses-library android:name="android.test.runner" />
+        <service android:name=".WifiMonitorService" />
     </application>
 
     <instrumentation android:name="WifiUtil"
