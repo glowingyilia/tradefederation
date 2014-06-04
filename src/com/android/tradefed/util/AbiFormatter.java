@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  */
 public class AbiFormatter {
 
-    public final String FORCE_ABI_STRING = "force-abi";
+    public static final String FORCE_ABI_STRING = "force-abi";
 
     /**
      * Special marker to be used as a placeholder in strings, that can be then

@@ -88,6 +88,7 @@ import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
+import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
