@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 public class AbiFormatter {
 
     public static final String FORCE_ABI_STRING = "force-abi";
+    public static final String FORCE_ABI_DESCRIPTION = "The abi to use, can be either 32 or 64.";
 
     /**
      * Special marker to be used as a placeholder in strings, that can be then
