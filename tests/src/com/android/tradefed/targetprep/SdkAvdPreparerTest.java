@@ -90,6 +90,7 @@ public class SdkAvdPreparerTest extends TestCase {
         setCreateAvdResponse("target");
         EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.NOT_AVAILABLE);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("emulator-5554").anyTimes();
+        EasyMock.expect(mMockIDevice.isEmulator()).andReturn(true);
         mMockDeviceManager.launchEmulator(EasyMock.eq(mMockDevice), EasyMock.anyLong(),
                 EasyMock.eq(mMockRunUtil), (List<String>)EasyMock.anyObject());
         // expect the commands to test emulator-adb connectivity
@@ -116,6 +117,7 @@ public class SdkAvdPreparerTest extends TestCase {
         setCreateAvdResponse("target");
         EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.NOT_AVAILABLE);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("emulator-5554").anyTimes();
+        EasyMock.expect(mMockIDevice.isEmulator()).andReturn(true);
         mMockDeviceManager.launchEmulator(EasyMock.eq(mMockDevice), EasyMock.anyLong(),
                 EasyMock.eq(mMockRunUtil), (List<String>)EasyMock.anyObject());
 
@@ -148,6 +150,7 @@ public class SdkAvdPreparerTest extends TestCase {
         setCreateAvdResponse("target");
         EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.NOT_AVAILABLE);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("emulator-5554").anyTimes();
+        EasyMock.expect(mMockIDevice.isEmulator()).andReturn(true);
         mMockDeviceManager.launchEmulator(EasyMock.eq(mMockDevice), EasyMock.anyLong(),
                 EasyMock.eq(mMockRunUtil), (List<String>)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
