@@ -92,6 +92,15 @@ public interface IGlobalConfiguration {
             throws ConfigurationException;
 
     /**
+     * Get a list of option's values.
+     *
+     * @param optionName the map option name
+     * @returns a list of the given option's values. <code>null</code> if the option name does not
+     *          exist.
+     */
+    public List<String> getOptionValues(String optionName);
+
+    /**
      * Set the global config {@link Option} fields with given set of command line arguments
      * <p/>
      * @see {@link ArgsOptionParser} for expected format
