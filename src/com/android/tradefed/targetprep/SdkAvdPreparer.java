@@ -97,6 +97,9 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     @Option(name = "prop", description = "pass key-value pairs of system props")
     private Map<String,String> mProps = new HashMap<String, String>();
 
+    @Option(name = "hw-options", description = "pass key-value pairs of avd hardware options")
+    private Map<String,String> mHwOptions = new HashMap<String, String>();
+
     @Option(name = "emulator-binary", description = "location of the emulator binary")
     private String mEmulatorBinary = null;
 
@@ -348,7 +351,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
      *
      */
     private String createAvdForTarget(ISdkBuildInfo sdkBuild, String target)
-            throws BuildError {
+            throws BuildError, TargetSetupError {
         // answer 'no' when prompted for creating a custom hardware profile
         final String cmdInput = "no\r\n";
         final String targetName = createAvdName(target);
@@ -380,6 +383,12 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
                     "Unable to create avd for target '%s'. stderr: '%s'", target,
                     result.getStderr()));
         }
+
+        // Further customise hardware options after AVD was created
+        if (!mHwOptions.isEmpty()) {
+            addHardwareOptions();
+        }
+
         return targetName;
     }
 
@@ -389,6 +398,37 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             return null;
         }
         return target.replaceAll("[^a-zA-Z0-9\\.\\-]", "");
+    }
+
+    // Overwrite or add AVD hardware options by appending them to the config file used by the AVD
+    private void addHardwareOptions() throws TargetSetupError {
+        if (mHwOptions.isEmpty()) {
+            CLog.d("No hardware options to add");
+            return;
+        }
+
+        // config.ini file contains all the hardware options loaded on the AVD
+        final String configFileName = "config.ini";
+        File configFile = FileUtil.findFile(mSdkHome, configFileName);
+        if (configFile == null) {
+            // Shouldn't happened if AVD was created successfully
+            throw new RuntimeException("Failed to find " + configFileName);
+        }
+
+        for (Map.Entry<String, String> hwOption : mHwOptions.entrySet()) {
+            // if the config file contain the same option more then once, the last one will take
+            // precedence. Also, all unsupported hardware options will be ignores.
+            String cmd = "echo " + hwOption.getKey() + "=" + hwOption.getValue() + " >> "
+                    + configFile.getAbsolutePath();
+            CommandResult result = mRunUtil.runTimedCmd(ANDROID_TIMEOUT_MS, "sh", "-c", cmd);
+            if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
+                CLog.d("Failed to add AVD hardware option '%s' stdout: '%s'", result.getStatus(),
+                        result.getStdout());
+                // treat as TargetSetupError
+                throw new TargetSetupError(String.format(
+                        "Unable to add hardware option to AVD. stderr: '%s'", result.getStderr()));
+            }
+        }
     }
 
 
