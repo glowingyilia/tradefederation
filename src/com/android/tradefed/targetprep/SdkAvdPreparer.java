@@ -67,6 +67,12 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     @Option(name = "sdcard-size", description = "capacity of the SD card")
     private String mSdcardSize = "10M";
 
+    @Option(name = "tag", description = "The sys-img tag to use for the AVD.")
+    private String mAvdTag = null;
+
+    @Option(name = "skin", description = "AVD skin")
+    private String mAvdSkin = null;
+
     @Option(name = "gpu", description = "launch emulator with GPU on")
     private boolean mGpu = false;
 
@@ -79,6 +85,14 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
 
     @Option(name = "abi", description = "abi to select for the avd")
     private String mAbi = null;
+
+    @Option(name = "emulator-system-image",
+            description = "system image will be loaded into emulator.")
+    private String mEmulatorSystemImage = null;
+
+    @Option(name = "emulator-ramdisk-image",
+            description = "ramdisk image will be loaded into emulator.")
+    private String mEmulatorRamdiskImage = null;
 
     @Option(name = "prop", description = "pass key-value pairs of system props")
     private Map<String,String> mProps = new HashMap<String, String>();
@@ -206,6 +220,10 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
                         "The emulator arg '%s' is invalid.", arg));
             }
         }
+
+        setCommandList(emulatorArgs, "-system", mEmulatorSystemImage);
+        setCommandList(emulatorArgs, "-ramdisk", mEmulatorRamdiskImage);
+
         // qemu must be the last parameter, it assumes params that follow it are it's own
         if(mForceKvm) {
             emulatorArgs.add("-qemu");
@@ -337,19 +355,16 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
         final String successPattern = String.format("Created AVD '%s'", targetName);
         CLog.d("Creating avd for target %s with name %s", target, targetName);
 
-        List<String> avdCommand = ArrayUtil.list(sdkBuild.getAndroidToolPath(),
-              "create", "avd", "--target", target, "--name", targetName, "--sdcard",
-              mSdcardSize, "--force");
+        List<String> avdCommand = ArrayUtil.list(sdkBuild.getAndroidToolPath(), "create", "avd");
 
-        if (mAbi != null) {
-            avdCommand.add("--abi");
-            avdCommand.add(mAbi);
-        }
-
-        if (mDevice != null) {
-            avdCommand.add("--device");
-            avdCommand.add(mDevice);
-        }
+        setCommandList(avdCommand, "--abi", mAbi);
+        setCommandList(avdCommand, "--device", mDevice);
+        setCommandList(avdCommand, "--sdcard", mSdcardSize);
+        setCommandList(avdCommand, "--target", target);
+        setCommandList(avdCommand, "--name", targetName);
+        setCommandList(avdCommand, "--tag", mAvdTag);
+        setCommandList(avdCommand, "--skin", mAvdSkin);
+        avdCommand.add("--force");
 
         CommandResult result = mRunUtil.runTimedCmdWithInput(ANDROID_TIMEOUT_MS,
               cmdInput, avdCommand);
@@ -441,5 +456,12 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             mDeviceManager = GlobalConfiguration.getDeviceManagerInstance();
         }
         return mDeviceManager;
+    }
+
+    private void setCommandList(List<String> commands, String option, String value) {
+        if (value != null) {
+            commands.add(option);
+            commands.add(value);
+        }
     }
 }
