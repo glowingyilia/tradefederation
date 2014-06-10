@@ -16,6 +16,9 @@
 
 package com.android.tradefed.device;
 
+import java.util.List;
+import java.util.Map;
+
 
 /**
  * Helper interface for manipulating wifi services on device.
@@ -161,4 +164,63 @@ interface IWifiHelper {
      * @throws DeviceNotAvailableException
      */
     boolean hasValidIp() throws DeviceNotAvailableException;
+
+    /**
+     * Gets the current wifi connection information.
+     * <p/>
+     * This includes SSID, BSSID, IP address, link speed, and RSSI.
+     * @return a map containing wifi connection information.
+     * @throws DeviceNotAvailableException
+     */
+    Map<String, String> getWifiInfo() throws DeviceNotAvailableException;
+
+    /**
+     * Checks connectivity by sending HTTP request to the given url.
+     *
+     * @param urlToCheck a destination url for a HTTP request check
+     * @return <code>true</code> if the device pass connectivity check.
+     * @throws DeviceNotAvailableException
+     */
+    boolean checkConnectivity(String urlToCheck) throws DeviceNotAvailableException;
+
+    /**
+     * Connects to a wifi network and check connectivity.
+     *
+     * @param ssid the ssid of network to connect
+     * @param psk the WPA-PSK passphrase to use. This can be null.
+     * @param urlToCheck a destination url for a HTTP request check
+     * @return <code>true</code> if the device pass connectivity check.
+     * @throws DeviceNotAvailableException
+     */
+    boolean connectToNetwork(String ssid, String psk, String urlToCheck)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Disconnect from the current wifi network and disable wifi.
+     *
+     * @return <code>true</code> if the operation succeeded.
+     * @throws DeviceNotAvailableException
+     */
+    boolean disconnectFromNetwork() throws DeviceNotAvailableException;
+
+    /**
+     * Starts network connectivity monitoring.
+     *
+     * @param interval interval between connectivity checks.
+     * @param urlToCheck a URL to check connectivity with.
+     * @return <code>true</code> if the operation succeeded.
+     * @throws DeviceNotAvailableException
+     */
+    boolean startMonitor(long interval, String urlToCheck) throws DeviceNotAvailableException;
+
+    /**
+     * Stops network connectivity monitoring.
+     * <p/>
+     * This also returns the latency history since the last
+     * {@link IWifiHelper#startMonitor(long, String)} call.
+     *
+     * @return the latency history.
+     * @throws DeviceNotAvailableException
+     */
+    List<Long> stopMonitor() throws DeviceNotAvailableException;
 }

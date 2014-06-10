@@ -770,6 +770,26 @@ public interface ITestDevice {
     public String getIpAddress() throws DeviceNotAvailableException;
 
     /**
+     * Enables network monitoring on device.
+     *
+     * @return <code>true</code> if monitoring is enabled successfully. <code>false</code>
+     *         if it failed.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *             recovered.
+     */
+    public boolean enableNetworkMonitor() throws DeviceNotAvailableException;
+
+    /**
+     * Disables network monitoring on device.
+     *
+     * @return <code>true</code> if monitoring is disabled successfully. <code>false</code>
+     *         if it failed.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *             recovered.
+     */
+    public boolean disableNetworkMonitor() throws DeviceNotAvailableException;
+
+    /**
      * Attempt to dismiss any error dialogs currently displayed on device UI.
      *
      * @return <code>true</code> if no dialogs were present or dialogs were successfully cleared.

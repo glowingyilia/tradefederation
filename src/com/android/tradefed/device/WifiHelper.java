@@ -16,15 +16,22 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.MultiLineReceiver;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,6 +41,7 @@ import java.util.regex.Pattern;
  */
 public class WifiHelper implements IWifiHelper {
 
+    private static final String NULL = "null";
     private static final String NULL_IP_ADDR = "0.0.0.0";
     private static final String INSTRUMENTATION_CLASS = ".WifiUtil";
     public static final String INSTRUMENTATION_PKG = "com.android.tradefed.utils.wifi";
@@ -325,6 +333,82 @@ public class WifiHelper implements IWifiHelper {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, String> getWifiInfo() throws DeviceNotAvailableException {
+        Map<String, String> info = new HashMap<>();
+
+        final String result = runWifiUtil("getWifiInfo");
+        try {
+            final JSONObject json = new JSONObject(result);
+            final Iterator keys = json.keys();
+            while (keys.hasNext()) {
+                final String key = (String) keys.next();
+                info.put(key, json.getString(key));
+            }
+
+        } catch(final JSONException e) {
+            CLog.e(e);
+        }
+
+        return info;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean checkConnectivity(String urlToCheck) throws DeviceNotAvailableException {
+        return asBool(runWifiUtil("checkConnectivity", "urlToCheck", urlToCheck));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean connectToNetwork(String ssid, String psk, String urlToCheck)
+            throws DeviceNotAvailableException {
+        return asBool(runWifiUtil("connectToNetwork", "ssid", ssid, "psk", psk, "urlToCheck",
+                urlToCheck));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean disconnectFromNetwork() throws DeviceNotAvailableException {
+        return asBool(runWifiUtil("disconnectFromNetwork"));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean startMonitor(long interval, String urlToCheck) throws DeviceNotAvailableException {
+        return asBool(runWifiUtil("startMonitor", "interval", Long.toString(interval), "urlToCheck",
+                urlToCheck));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Long> stopMonitor() throws DeviceNotAvailableException {
+        final String output = runWifiUtil("stopMonitor");
+        if (output == null || output.isEmpty() || NULL.equals(output)) {
+            return new ArrayList<Long>(0);
+        }
+
+        String[] tokens = output.split(",");
+        List<Long> values = new ArrayList<Long>(tokens.length);
+        for (final String token : tokens) {
+            values.add(Long.parseLong(token));
+        }
+        return values;
+    }
+
+    /**
      * Run a WifiUtil command and return the result
      *
      * @param method the WifiUtil method to call
@@ -337,6 +421,9 @@ public class WifiHelper implements IWifiHelper {
 
         WifiUtilOutput parser = new WifiUtilOutput();
         mDevice.executeShellCommand(cmd, parser);
+        if (parser.getError() != null) {
+            CLog.e(parser.getError());
+        }
         return parser.getResult();
     }
 
@@ -355,6 +442,10 @@ public class WifiHelper implements IWifiHelper {
                     "args should have even length, consisting of key and value pairs");
         }
         for (int i = 0; i < args.length; i += 2) {
+            // Skip null parameters
+            if (args[i+1] == null) {
+                continue;
+            }
             argMap.put(args[i], args[i+1]);
         }
         return buildWifiUtilCmdFromMap(argMap);
@@ -419,8 +510,11 @@ public class WifiHelper implements IWifiHelper {
     private static class WifiUtilOutput extends MultiLineReceiver {
         private static final Pattern RESULT_PAT =
                 Pattern.compile("INSTRUMENTATION_RESULT: result=(.*)");
+        private static final Pattern ERROR_PAT =
+                Pattern.compile("INSTRUMENTATION_RESULT: error=(.*)");
 
         private String mResult = null;
+        private String mError = null;
 
         /**
          * {@inheritDoc}
@@ -431,16 +525,26 @@ public class WifiHelper implements IWifiHelper {
                 Matcher resultMatcher = RESULT_PAT.matcher(line);
                 if (resultMatcher.matches()) {
                     mResult = resultMatcher.group(1);
+                    continue;
+                }
+
+                Matcher errorMatcher = ERROR_PAT.matcher(line);
+                if (errorMatcher.matches()) {
+                    mError = errorMatcher.group(1);
                 }
             }
         }
 
         /**
-         * Return the result flag parsed from instrmentation output. <code>null</code> is returned
+         * Return the result flag parsed from instrumentation output. <code>null</code> is returned
          * if result output was not present.
          */
         String getResult() {
             return mResult;
+        }
+
+        String getError() {
+            return mError;
         }
 
         /**
@@ -451,5 +555,6 @@ public class WifiHelper implements IWifiHelper {
             return false;
         }
     }
+
 }
 

@@ -21,6 +21,8 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.util.List;
+
 /**
  * Unit tests for {@link WifiHelper}.
  */
@@ -92,6 +94,42 @@ public class WifiHelperTest extends TestCase {
         };
         assertTrue(wifiHelper.waitForIp(10 * 60 * 1000));
         // verify that two executeCommand attempt were made
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testStartMonitor() throws Exception {
+        final long interval = 30 * 1000;
+        final String urlToCheck = "urlToCheck";
+        String expectedCommand = WifiHelper.buildWifiUtilCmd("startMonitor",
+                "interval", Long.toString(interval), "urlToCheck", urlToCheck);
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, expectedCommand,
+                "INSTRUMENTATION_RESULT: result=true", false);
+        EasyMock.replay(mMockDevice);
+        WifiHelper wifiHelper = new WifiHelper(mMockDevice);
+        assertTrue(wifiHelper.startMonitor(interval, urlToCheck));
+        // verify that executeCommand attempt were made
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testStopMonitor() throws Exception {
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, null,
+                "INSTRUMENTATION_RESULT: result=1,2,3,4,", false);
+        EasyMock.replay(mMockDevice);
+        WifiHelper wifiHelper = new WifiHelper(mMockDevice);
+        List<Long> result = wifiHelper.stopMonitor();
+        assertEquals(4, result.size());
+        // verify that executeCommand attempt were made
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testStopMonitor_nullResult() throws Exception {
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, null,
+                "INSTRUMENTATION_RESULT: result=null", false);
+        EasyMock.replay(mMockDevice);
+        WifiHelper wifiHelper = new WifiHelper(mMockDevice);
+        List<Long> result = wifiHelper.stopMonitor();
+        assertEquals(0, result.size());
+        // verify that executeCommand attempt were made
         EasyMock.verify(mMockDevice);
     }
 }

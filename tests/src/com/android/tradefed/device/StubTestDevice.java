@@ -433,6 +433,24 @@ public class StubTestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public boolean enableNetworkMonitor() throws DeviceNotAvailableException {
+        // ignore
+        return false;
+    }
+    /**
+     * {@inheritDoc}
+     */
+
+    @Override
+    public boolean disableNetworkMonitor() throws DeviceNotAvailableException {
+        // ignore
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean clearErrorDialogs() throws DeviceNotAvailableException {
         // ignore
         return false;

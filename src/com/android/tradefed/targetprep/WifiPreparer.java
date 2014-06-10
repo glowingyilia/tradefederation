@@ -60,6 +60,8 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
             throw new TargetSetupError(String.format("Failed to connect to wifi network %s on %s",
                     mWifiNetwork, device.getSerialNumber()));
         }
+
+        device.enableNetworkMonitor();
     }
 
     /**
@@ -71,6 +73,9 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
         if (mSkip) {
             return;
         }
+
+        device.disableNetworkMonitor();
+
         if (mWifiNetwork != null && mDisconnectWifiAfterTest && device.isWifiEnabled()) {
             if (!device.disconnectFromWifi()) {
                 CLog.w("Failed to disconnect from wifi network on %s", device.getSerialNumber());
