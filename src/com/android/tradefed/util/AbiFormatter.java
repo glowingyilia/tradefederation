@@ -16,14 +16,19 @@
 
 package com.android.tradefed.util;
 
+import com.android.ddmlib.IDevice;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Utility class for string manipulations.
+ * Utility class for abi.
  */
 public class AbiFormatter {
 
+    private static final String PRODUCT_CPU_ABILIST_KEY = "ro.product.cpu.abilist";
     public static final String FORCE_ABI_STRING = "force-abi";
     public static final String FORCE_ABI_DESCRIPTION = "The abi to use, can be either 32 or 64.";
 
@@ -61,5 +66,24 @@ public class AbiFormatter {
         }
         m.appendTail(sb);
         return sb.toString();
+    }
+
+    /**
+     * Helper method to get the default abi name for the given abi
+     * @param device
+     * @param requestedAbi
+     * @return the default abi name for the given abi
+     * @throws DeviceNotAvailableException
+     */
+    public static String getDefaultAbi(ITestDevice device, String requestedAbi)
+            throws DeviceNotAvailableException {
+        String abiList = device.getProperty(PRODUCT_CPU_ABILIST_KEY + requestedAbi);
+        if (abiList != null) {
+            String []abis = abiList.split(",");
+            if (abis.length > 0 && abis[0].length() > 0) {
+                return abis[0];
+            }
+        }
+        return null;
     }
 }

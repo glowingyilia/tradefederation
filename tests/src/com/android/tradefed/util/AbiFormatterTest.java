@@ -13,28 +13,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.util;
 
+import com.android.tradefed.device.ITestDevice;
 import junit.framework.TestCase;
+import org.easymock.EasyMock;
 
 /**
  * Unit tests for the {@link StringUtil} utility class
  */
 public class AbiFormatterTest extends TestCase {
     /**
-    * Verify that {@link StringUtil#formatCmdForAbi} works as expected.
-    */
-   public void testFormatCmdForAbi() throws Exception {
-       String a = "test foo|#ABI#| bar|#ABI32#| foobar|#ABI64#|";
-       // if abi is null, remove all place holders.
-       assertEquals("test foo bar foobar", AbiFormatter.formatCmdForAbi(a, null));
-       // if abi is "", remove all place holders.
-       assertEquals("test foo bar foobar", AbiFormatter.formatCmdForAbi(a, ""));
-       // if abi is 32
-       assertEquals("test foo32 bar foobar32", AbiFormatter.formatCmdForAbi(a, "32"));
-       // if abi is 64
-       assertEquals("test foo64 bar64 foobar", AbiFormatter.formatCmdForAbi(a, "64"));
-       // test null input string
-       assertNull(AbiFormatter.formatCmdForAbi(null, "32"));
+     * Verify that {@link AbiFormatter#formatCmdForAbi} works as expected.
+     */
+    public void testFormatCmdForAbi() throws Exception {
+        String a = "test foo|#ABI#| bar|#ABI32#| foobar|#ABI64#|";
+        // if abi is null, remove all place holders.
+        assertEquals("test foo bar foobar", AbiFormatter.formatCmdForAbi(a, null));
+        // if abi is "", remove all place holders.
+        assertEquals("test foo bar foobar", AbiFormatter.formatCmdForAbi(a, ""));
+        // if abi is 32
+        assertEquals("test foo32 bar foobar32", AbiFormatter.formatCmdForAbi(a, "32"));
+        // if abi is 64
+        assertEquals("test foo64 bar64 foobar", AbiFormatter.formatCmdForAbi(a, "64"));
+        // test null input string
+        assertNull(AbiFormatter.formatCmdForAbi(null, "32"));
+    }
+
+    /**
+     * Verify that {@link AbiFormatter#getDefaultAbi} works as expected.
+     */
+    public void testGetDefaultAbi() throws Exception {
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+
+        EasyMock.expect(device.getProperty("ro.product.cpu.abilist32")).andReturn(null);
+        EasyMock.replay(device);
+        assertEquals(null, AbiFormatter.getDefaultAbi(device, "32"));
+
+        EasyMock.reset(device);
+        EasyMock.expect(device.getProperty(EasyMock.eq("ro.product.cpu.abilist32")))
+                .andReturn("abi,abi2,abi3");
+        EasyMock.replay(device);
+        assertEquals("abi", AbiFormatter.getDefaultAbi(device, "32"));
+
+        EasyMock.reset(device);
+        EasyMock.expect(device.getProperty(EasyMock.eq("ro.product.cpu.abilist64"))).andReturn("");
+        EasyMock.replay(device);
+        assertEquals(null, AbiFormatter.getDefaultAbi(device, "64"));
     }
 }

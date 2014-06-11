@@ -33,6 +33,7 @@ import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import junit.framework.Assert;
@@ -119,6 +120,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             "there is _no feedback mechanism_ between the test runner and the bugreport " +
             "collector, so use the EACH setting with due caution.")
     private BugreportCollector.Freq mBugreportFrequency = null;
+
+    @Option(name = AbiFormatter.FORCE_ABI_STRING,
+            description = AbiFormatter.FORCE_ABI_DESCRIPTION,
+            importance = Importance.IF_UNSET)
+    private String mForceAbi = null;
 
     private ITestDevice mDevice = null;
 
@@ -382,10 +388,22 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
 
     /**
      * @return the {@link IRemoteAndroidTestRunner} to use.
+     * @throws DeviceNotAvailableException
      */
     IRemoteAndroidTestRunner createRemoteAndroidTestRunner(String packageName, String runnerName,
-            IDevice device) {
-        return new RemoteAndroidTestRunner(packageName, runnerName, device);
+            IDevice device) throws DeviceNotAvailableException {
+        RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
+                packageName, runnerName, device);
+        if (mForceAbi != null && !mForceAbi.isEmpty()) {
+            String abi = AbiFormatter.getDefaultAbi(mDevice, mForceAbi);
+            if (abi != null) {
+                runner.setRunOptions(String.format("--abi %s", abi));
+            } else {
+                throw new RuntimeException(
+                        String.format("Cannot find abi for force-abi %s", mForceAbi));
+            }
+        }
+        return runner;
     }
 
     /**
@@ -498,6 +516,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         if (mRemainingTests.size() > 0) {
             InstrumentationListTest testRerunner = new InstrumentationListTest(mPackageName,
                     mRunnerName, mRemainingTests);
+            if (mForceAbi != null) {
+                testRerunner.setForceAbi(mForceAbi);
+            }
             testRerunner.setDevice(getDevice());
             testRerunner.setTestTimeout(getTestTimeout());
             testRerunner.setRunName(mRunName);
@@ -602,5 +623,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         CLog.e("Failed to collect tests to run for %s on device %s.",
                 mPackageName, mDevice.getSerialNumber());
         return null;
+    }
+
+    /**
+     * Sets force-abi option.
+     * @param abi
+     */
+    public void setForceAbi(String abi) {
+        mForceAbi = abi;
     }
 }
