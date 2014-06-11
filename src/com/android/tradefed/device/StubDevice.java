@@ -422,4 +422,12 @@ class StubDevice implements IDevice {
             IShellOutputReceiver receiver) throws TimeoutException, AdbCommandRejectedException,
             IOException, ShellCommandUnresponsiveException {
     }
+
+    /* (non-Javadoc)
+     * @see com.android.ddmlib.IDevice#supportsFeature(com.android.ddmlib.IDevice.HardwareFeature)
+     */
+    @Override
+    public boolean supportsFeature(HardwareFeature arg0) {
+        return true;
+    }
 }
