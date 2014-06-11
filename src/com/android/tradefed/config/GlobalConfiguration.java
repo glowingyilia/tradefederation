@@ -25,6 +25,7 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
 import java.io.PrintStream;
@@ -57,6 +58,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
+    private MultiMap<String, String> mOptionMap;
     private final String mName;
     private final String mDescription;
 
@@ -208,6 +210,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mName = name;
         mDescription = description;
         mConfigMap = new LinkedHashMap<String, List<Object>>();
+        mOptionMap = new MultiMap<String, String>();
         setDeviceRequirements(new DeviceSelectionOptions());
         setDeviceManager(new DeviceManager());
         setCommandScheduler(new CommandScheduler());
@@ -317,6 +320,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             throws ConfigurationException {
         OptionSetter optionSetter = new OptionSetter(getAllConfigurationObjects());
         optionSetter.setOptionValue(optionName, optionValue);
+
+        mOptionMap.put(optionName, optionValue);
     }
 
     /**
@@ -327,6 +332,16 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             throws ConfigurationException {
         OptionSetter optionSetter = new OptionSetter(getAllConfigurationObjects());
         optionSetter.setOptionMapValue(optionName, optionKey, optionValue);
+
+        mOptionMap.put(optionName, optionKey + "=" + optionValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getOptionValues(String optionName) {
+        return mOptionMap.get(optionName);
     }
 
     /**
