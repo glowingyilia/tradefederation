@@ -153,7 +153,7 @@ public class TestInvocation implements ITestInvocation {
          */
         @Override
         public void invocationEnded(long elapsedTime) {
-            InvocationSummaryHelper.reportInvocationEnded(getListeners(), 0);
+            InvocationSummaryHelper.reportInvocationEnded(getListeners(), elapsedTime);
             // Intentionally call invocationEnded for the log saver last.
             mLogSaver.invocationEnded(elapsedTime);
         }
