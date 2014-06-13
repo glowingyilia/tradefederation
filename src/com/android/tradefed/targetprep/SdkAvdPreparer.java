@@ -48,7 +48,6 @@ import java.util.Map;
  */
 public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
 
-    private static final int ANDROID_TIMEOUT_MS = 30 * 1000;
 
     @Option(name = "sdk-target", description = "the name of SDK target to launch. " +
             "If unspecified, will use first target found")
@@ -78,6 +77,10 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
 
     @Option(name = "force-kvm", description = "require kvm for emulator launch")
     private boolean mForceKvm = false;
+
+    @Option(name = "avd-timeout", description = "the maximum time in seconds to wait for avd " +
+            "creation")
+    private int mAvdTimeoutSeconds = 30;
 
     @Option(name = "emulator-device-type", description = "emulator device type to launch." +
             "If unspecified, will launch generic version")
@@ -125,6 +128,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
         mRunUtil = runUtil;
         mDeviceManager = deviceManager;
     }
+
 
     /**
      * {@inheritDoc}
@@ -277,7 +281,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     private String[] getSdkTargets(ISdkBuildInfo sdkBuild) throws TargetSetupError {
         // Need to set the ANDROID_SWT environment variable needed by android tool.
         mRunUtil.setEnvVariable("ANDROID_SWT", getSWTDirPath(sdkBuild));
-        CommandResult result = mRunUtil.runTimedCmd(ANDROID_TIMEOUT_MS,
+        CommandResult result = mRunUtil.runTimedCmd(getAvdTimeoutMS(),
                 sdkBuild.getAndroidToolPath(), "list", "targets", "--compact");
         if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
             throw new TargetSetupError(String.format(
@@ -366,7 +370,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
         setCommandList(avdCommand, "--skin", mAvdSkin);
         avdCommand.add("--force");
 
-        CommandResult result = mRunUtil.runTimedCmdWithInput(ANDROID_TIMEOUT_MS,
+        CommandResult result = mRunUtil.runTimedCmdWithInput(getAvdTimeoutMS(),
               cmdInput, avdCommand);
         if (!result.getStatus().equals(CommandStatus.SUCCESS) || result.getStdout() == null ||
                 !result.getStdout().contains(successPattern)) {
@@ -456,6 +460,10 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             mDeviceManager = GlobalConfiguration.getDeviceManagerInstance();
         }
         return mDeviceManager;
+    }
+
+    private int getAvdTimeoutMS() {
+        return mAvdTimeoutSeconds * 1000;
     }
 
     private void setCommandList(List<String> commands, String option, String value) {
