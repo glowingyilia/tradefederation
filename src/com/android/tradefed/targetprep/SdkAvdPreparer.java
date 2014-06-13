@@ -424,7 +424,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             // precedence. Also, all unsupported hardware options will be ignores.
             String cmd = "echo " + hwOption.getKey() + "=" + hwOption.getValue() + " >> "
                     + configFile.getAbsolutePath();
-            CommandResult result = mRunUtil.runTimedCmd(ANDROID_TIMEOUT_MS, "sh", "-c", cmd);
+            CommandResult result = mRunUtil.runTimedCmd(getAvdTimeoutMS(), "sh", "-c", cmd);
             if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
                 CLog.d("Failed to add AVD hardware option '%s' stdout: '%s'", result.getStatus(),
                         result.getStdout());
