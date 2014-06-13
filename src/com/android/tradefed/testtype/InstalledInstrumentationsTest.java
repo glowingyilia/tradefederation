@@ -28,6 +28,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
+import com.android.tradefed.util.AbiFormatter;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -95,6 +96,11 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
     private List<InstrumentationTest> mTests = null;
+
+    @Option(name = AbiFormatter.FORCE_ABI_STRING,
+            description = AbiFormatter.FORCE_ABI_DESCRIPTION,
+            importance = Importance.IF_UNSET)
+    private String mForceAbi = null;
 
     /**
      * {@inheritDoc}
@@ -270,6 +276,9 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                         t.setPackageName(m.group(1));
                         t.setRunnerName(runner);
                         t.setCoverageTarget(m.group(3));
+                        if (mForceAbi != null) {
+                            t.setForceAbi(mForceAbi);
+                        }
                         mTests.add(t);
                     }
                 }

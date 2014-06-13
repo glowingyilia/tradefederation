@@ -18,11 +18,14 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.util.AbiFormatter;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -50,6 +53,9 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
     private int mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
     private ITestDevice mDevice = null;
     private String mRunName = null;
+
+    private String mForceAbi = null;
+
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
     /**
@@ -90,6 +96,14 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
     }
 
     /**
+     * Sets the force-abi option.
+     * @param abi
+     */
+    public void setForceAbi(String abi) {
+        mForceAbi = abi;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -121,6 +135,9 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
             runner.setClassName(testToRun.getClassName());
             runner.setMethodName(testToRun.getTestName());
             runner.setTestTimeout(mTestTimeout);
+            if (mForceAbi != null) {
+                runner.setForceAbi(mForceAbi);
+            }
             // no need to rerun when executing tests one by one
             runner.setRerunMode(false);
             runner.setRunName(mRunName);
