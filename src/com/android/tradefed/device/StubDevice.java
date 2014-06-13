@@ -36,12 +36,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * Stub placeholder implementation of a {@link IDevice}.
  */
-class StubDevice implements IDevice {
+public class StubDevice implements IDevice {
 
     private final String mSerial;
     private final boolean mIsEmulator;
 
-    StubDevice(String serial) {
+    public StubDevice(String serial) {
         this(serial, false);
     }
 

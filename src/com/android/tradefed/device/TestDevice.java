@@ -65,6 +65,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.imageio.ImageIO;
 
 /**
@@ -129,7 +130,7 @@ class TestDevice implements IManagedTestDevice {
 
     private IDevice mIDevice;
     private IDeviceRecovery mRecovery = new WaitDeviceRecovery();
-    private final IDeviceStateMonitor mMonitor;
+    private final IDeviceStateMonitor mStateMonitor;
     private TestDeviceState mState = TestDeviceState.ONLINE;
     private final ReentrantLock mFastbootLock = new ReentrantLock();
     private LogcatReceiver mLogcatReceiver;
@@ -142,6 +143,10 @@ class TestDevice implements IManagedTestDevice {
     private RecoveryMode mRecoveryMode = RecoveryMode.AVAILABLE;
 
     private Boolean mIsEncryptionSupported = null;
+    private ReentrantLock mAllocationStateLock = new ReentrantLock();
+    @GuardedBy("mAllocationStateLock")
+    private DeviceAllocationState mAllocationState = DeviceAllocationState.Unknown;
+    private IDeviceMonitor mAllocationMonitor = null;
 
     private String mWifiSsid = null;
     private String mWifiPsk = null;
@@ -196,13 +201,16 @@ class TestDevice implements IManagedTestDevice {
      * Creates a {@link TestDevice}.
      *
      * @param device the associated {@link IDevice}
-     * @param monitor the {@link IDeviceStateMonitor} mechanism to use
+     * @param stateMonitor the {@link IDeviceStateMonitor} mechanism to use
+     * @param allocationMonitor the {@link IDeviceMonitor} to inform of allocation state changes.
+     *            Can be null
      */
-    TestDevice(IDevice device, IDeviceStateMonitor monitor) {
+    TestDevice(IDevice device, IDeviceStateMonitor stateMonitor, IDeviceMonitor allocationMonitor) {
         throwIfNull(device);
-        throwIfNull(monitor);
+        throwIfNull(stateMonitor);
         mIDevice = device;
-        mMonitor = monitor;
+        mStateMonitor = stateMonitor;
+        mAllocationMonitor = allocationMonitor;
     }
 
     /**
@@ -221,8 +229,8 @@ class TestDevice implements IManagedTestDevice {
     public void setOptions(TestDeviceOptions options) {
         throwIfNull(options);
         mOptions = options;
-        mMonitor.setDefaultOnlineTimeout(options.getOnlineTimeout());
-        mMonitor.setDefaultAvailableTimeout(options.getAvailableTimeout());
+        mStateMonitor.setDefaultOnlineTimeout(options.getOnlineTimeout());
+        mStateMonitor.setDefaultAvailableTimeout(options.getAvailableTimeout());
     }
 
     /**
@@ -264,7 +272,7 @@ class TestDevice implements IManagedTestDevice {
             synchronized (currentDevice) {
                 mIDevice = newDevice;
             }
-            mMonitor.setIDevice(mIDevice);
+            mStateMonitor.setIDevice(mIDevice);
         }
     }
 
@@ -358,11 +366,7 @@ class TestDevice implements IManagedTestDevice {
 
     @Override
     public String getBasebandVersion() throws DeviceNotAvailableException {
-        if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
-            return getFastbootVariable("version-baseband");
-        } else {
-            return getPropertySync("gsm.version.baseband");
-        }
+        return internalGetProperty("gsm.version.baseband", "version-baseband", "Baseband");
     }
 
     /**
@@ -564,7 +568,7 @@ class TestDevice implements IManagedTestDevice {
                 runner.getPackageName()), runTestsAction, 0);
         if (failureListener.isRunFailure()) {
             // run failed, might be system crash. Ensure device is up
-            if (mMonitor.waitForDeviceAvailable(5 * 1000) == null) {
+            if (mStateMonitor.waitForDeviceAvailable(5 * 1000) == null) {
                 // device isn't up, recover
                 recoverDevice();
             }
@@ -928,7 +932,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public String getMountPoint(String mountName) {
-        return mMonitor.getMountPoint(mountName);
+        return mStateMonitor.getMountPoint(mountName);
     }
 
     /**
@@ -1463,7 +1467,7 @@ class TestDevice implements IManagedTestDevice {
             return;
         }
         CLog.i("Attempting recovery on %s", getSerialNumber());
-        mRecovery.recoverDevice(mMonitor, mRecoveryMode.equals(RecoveryMode.ONLINE));
+        mRecovery.recoverDevice(mStateMonitor, mRecoveryMode.equals(RecoveryMode.ONLINE));
         if (mRecoveryMode.equals(RecoveryMode.AVAILABLE)) {
             // turn off recovery mode to prevent reentrant recovery
             // TODO: look for a better way to handle this, such as doing postBootUp steps in
@@ -1493,13 +1497,13 @@ class TestDevice implements IManagedTestDevice {
      */
     private void recoverDeviceFromBootloader() throws DeviceNotAvailableException {
         CLog.i("Attempting recovery on %s in bootloader", getSerialNumber());
-        mRecovery.recoverDeviceBootloader(mMonitor);
+        mRecovery.recoverDeviceBootloader(mStateMonitor);
         CLog.i("Bootloader recovery successful for %s", getSerialNumber());
     }
 
     private void recoverDeviceInRecovery() throws DeviceNotAvailableException {
         CLog.i("Attempting recovery on %s in recovery", getSerialNumber());
-        mRecovery.recoverDeviceRecovery(mMonitor);
+        mRecovery.recoverDeviceRecovery(mStateMonitor);
         CLog.i("Recovery mode recovery successful for %s", getSerialNumber());
     }
 
@@ -1948,7 +1952,7 @@ class TestDevice implements IManagedTestDevice {
     }
 
     IDeviceStateMonitor getDeviceStateMonitor() {
-        return mMonitor;
+        return mStateMonitor;
     }
 
     /**
@@ -2063,7 +2067,7 @@ class TestDevice implements IManagedTestDevice {
             CLog.i("Booting device %s into bootloader", getSerialNumber());
             doAdbRebootBootloader();
         }
-        if (!mMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
+        if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
             recoverDeviceFromBootloader();
         }
     }
@@ -2088,7 +2092,7 @@ class TestDevice implements IManagedTestDevice {
 
         setRecoveryMode(cachedRecoveryMode);
 
-        if (mMonitor.waitForDeviceAvailable(mOptions.getRebootTimeout()) != null) {
+        if (mStateMonitor.waitForDeviceAvailable(mOptions.getRebootTimeout()) != null) {
             postBootSetup();
             return;
         } else {
@@ -2104,7 +2108,7 @@ class TestDevice implements IManagedTestDevice {
         doReboot();
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
-        if (mMonitor.waitForDeviceOnline() != null) {
+        if (mStateMonitor.waitForDeviceOnline() != null) {
             if (isEnableAdbRoot()) {
                 enableAdbRoot();
             }
@@ -2227,7 +2231,7 @@ class TestDevice implements IManagedTestDevice {
     private void waitForDeviceNotAvailable(String operationDesc, long time) {
         // TODO: a bit of a race condition here. Would be better to start a
         // before the operation
-        if (!mMonitor.waitForDeviceNotAvailable(time)) {
+        if (!mStateMonitor.waitForDeviceNotAvailable(time)) {
             // above check is flaky, ignore till better solution is found
             CLog.w("Did not detect device %s becoming unavailable after %s", getSerialNumber(),
                     operationDesc);
@@ -2509,7 +2513,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public void waitForDeviceOnline(long waitTime) throws DeviceNotAvailableException {
-        if (mMonitor.waitForDeviceOnline(waitTime) == null) {
+        if (mStateMonitor.waitForDeviceOnline(waitTime) == null) {
             recoverDevice();
         }
     }
@@ -2519,7 +2523,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public void waitForDeviceOnline() throws DeviceNotAvailableException {
-        if (mMonitor.waitForDeviceOnline() == null) {
+        if (mStateMonitor.waitForDeviceOnline() == null) {
             recoverDevice();
         }
     }
@@ -2529,7 +2533,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public void waitForDeviceAvailable(long waitTime) throws DeviceNotAvailableException {
-        if (mMonitor.waitForDeviceAvailable(waitTime) == null) {
+        if (mStateMonitor.waitForDeviceAvailable(waitTime) == null) {
             recoverDevice();
         }
     }
@@ -2539,7 +2543,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public void waitForDeviceAvailable() throws DeviceNotAvailableException {
-        if (mMonitor.waitForDeviceAvailable() == null) {
+        if (mStateMonitor.waitForDeviceAvailable() == null) {
             recoverDevice();
         }
     }
@@ -2549,7 +2553,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public boolean waitForDeviceNotAvailable(long waitTime) {
-        return mMonitor.waitForDeviceNotAvailable(waitTime);
+        return mStateMonitor.waitForDeviceNotAvailable(waitTime);
     }
 
     /**
@@ -2557,7 +2561,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public boolean waitForDeviceInRecovery(long waitTime) {
-        return mMonitor.waitForDeviceInRecovery(waitTime);
+        return mStateMonitor.waitForDeviceInRecovery(waitTime);
     }
 
     /**
@@ -2627,7 +2631,7 @@ class TestDevice implements IManagedTestDevice {
             }
             mState = deviceState;
             CLog.d("Device %s state is now %s", getSerialNumber(), deviceState);
-            mMonitor.setState(deviceState);
+            mStateMonitor.setState(deviceState);
         }
     }
 
@@ -2641,7 +2645,7 @@ class TestDevice implements IManagedTestDevice {
 
     @Override
     public boolean isAdbTcp() {
-        return mMonitor.isAdbTcp();
+        return mStateMonitor.isAdbTcp();
     }
 
     /**
@@ -2807,11 +2811,52 @@ class TestDevice implements IManagedTestDevice {
         return apiLevel;
     }
 
+    @Override
+    public IDeviceStateMonitor getMonitor() {
+        return mStateMonitor;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public boolean waitForDeviceShell(long waitTime) {
-        return mMonitor.waitForDeviceShell(waitTime);
+        return mStateMonitor.waitForDeviceShell(waitTime);
+    }
+
+    @Override
+    public DeviceAllocationState getAllocationState() {
+        return mAllocationState;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p/>
+     * Process the DeviceEvent, which may or may not transition this device to a new allocation
+     * state.
+     */
+    @Override
+    public DeviceEventResponse handleAllocationEvent(DeviceEvent event) {
+
+        // keep track of whether state has actually changed or not
+        boolean stateChanged = false;
+        DeviceAllocationState newState;
+        mAllocationStateLock.lock();
+        try {
+            // fire the event into the allocation state machine
+            newState = mAllocationState.handleDeviceEvent(event);
+            if (mAllocationState != newState) {
+                // state has changed! record this fact, and store the new state
+                stateChanged = true;
+                mAllocationState = newState;
+            }
+        } finally {
+            mAllocationStateLock.unlock();
+        }
+        if (stateChanged && mAllocationMonitor != null) {
+            // state has changed! Lets inform the allocation monitor listener
+            mAllocationMonitor.notifyDeviceStateChange();
+        }
+        return new DeviceEventResponse(newState, stateChanged);
     }
 }

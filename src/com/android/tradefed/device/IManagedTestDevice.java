@@ -23,6 +23,22 @@ import com.android.ddmlib.IDevice;
 interface IManagedTestDevice extends ITestDevice {
 
     /**
+     * Container for a response to a {@link IManagedTestDevice#handleAllocationEvent(DeviceEvent)}
+     * call
+     */
+    static class DeviceEventResponse {
+        /** the new state of the device */
+        final DeviceAllocationState allocationState;
+        /** true if state changed as a result of device event */
+        final boolean stateChanged;
+
+        DeviceEventResponse(DeviceAllocationState s, boolean b) {
+            allocationState = s;
+            stateChanged = b;
+        }
+    }
+
+    /**
      * Update the IDevice associated with this ITestDevice.
      * <p/>
      * The new IDevice must refer the same physical device as the current reference. This method
@@ -66,4 +82,19 @@ interface IManagedTestDevice extends ITestDevice {
      */
     public Process getEmulatorProcess();
 
+    /**
+     * Return the current allocation state of device
+     */
+    public DeviceAllocationState getAllocationState();
+
+    /**
+     * Process the given {@link DeviceEvent}. May transition device to new state.
+     * Will inform the {@link IDeviceMonitor} of any state transitions.
+     */
+    public DeviceEventResponse handleAllocationEvent(DeviceEvent event);
+
+    /**
+     * Return the {@link IDeviceStateMonitor} associated with device.
+     */
+    public IDeviceStateMonitor getMonitor();
 }

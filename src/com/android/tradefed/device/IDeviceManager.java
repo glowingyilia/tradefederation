@@ -21,7 +21,6 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.util.IRunUtil;
 
 import java.io.PrintWriter;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -53,30 +52,20 @@ public interface IDeviceManager {
     public void init(IDeviceSelection globalDeviceFilter, IDeviceMonitor deviceMonitor);
 
     /**
-     * Request a physical device for testing, waiting indefinitely until one becomes available.
+     * Request a physical device for testing
      *
-     * @return a {@link ITestDevice} for testing, or <code>null</code> if interrupted
+     * @return a {@link ITestDevice} for testing, or <code>null</code> if one is not available
      */
     public ITestDevice allocateDevice();
 
     /**
-     * Request a physical device for testing, waiting for timeout ms until one becomes available.
-     *
-     * @param timeout max time in ms to wait for a device to become available.
-     * @return a {@link ITestDevice} for testing, or <code>null</code> if timeout expired before one
-     *         became available
-     */
-    public ITestDevice allocateDevice(long timeout);
-
-    /**
      * Request a device for testing that meets certain criteria.
      *
-     * @param timeout max time in ms to wait for a device to become available.
      * @param options the {@link IDeviceSelection} the device should meet.
-     * @return a {@link ITestDevice} for testing, or <code>null</code> if timeout expired before one
-     *         became available
+     * @return a {@link ITestDevice} for testing, or <code>null</code> if one
+     *         is not available
      */
-    public ITestDevice allocateDevice(long timeout, IDeviceSelection options);
+    public ITestDevice allocateDevice(IDeviceSelection options);
 
     /**
      * Rudely allocate a device, even if its not currently available.
@@ -179,34 +168,6 @@ public interface IDeviceManager {
     public void terminateHard();
 
     /**
-     * Diagnostic method that returns a list of the devices available for allocation.
-     *
-     * @return a {@link Collection} of device serials
-     * @deprecated use {@link #listAllDevices()}
-     */
-    @Deprecated
-    public Collection<String> getAvailableDevices();
-
-    /**
-     * Diagnostic method that returns a list of the devices currently allocated for testing.
-     *
-     * @return a {@link Collection} of device serials
-     * @deprecated use {@link #listAllDevices()}
-     */
-    @Deprecated
-    public Collection<String> getAllocatedDevices();
-
-    /**
-     * Diagnostic method that returns a list of the devices currently visible via adb, but not
-     * deemed available for allocation.
-     *
-     * @return a {@link Collection} of device serials
-     * @deprecated use {@link #listAllDevices()}
-     */
-    @Deprecated
-    public Collection<String> getUnavailableDevices();
-
-    /**
      * Returns a map of all known devices and their state
      * @return a list of device serials and their {@link DeviceAllocationState}
      */
@@ -237,11 +198,5 @@ public interface IDeviceManager {
      * @param listener
      */
     public void removeFastbootListener(IFastbootListener listener);
-
-    /**
-     * Write emulator allocation utilization stats
-     * @param printWriter
-     */
-    public void displayEmulatorStats(PrintWriter printWriter);
 
 }

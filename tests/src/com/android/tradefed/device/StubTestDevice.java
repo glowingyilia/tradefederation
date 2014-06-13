@@ -817,4 +817,19 @@ public class StubTestDevice implements IManagedTestDevice {
     public boolean waitForDeviceShell(long waitTime) {
         return false;
     }
+
+    @Override
+    public DeviceAllocationState getAllocationState() {
+        return null;
+    }
+
+    @Override
+    public IDeviceStateMonitor getMonitor() {
+        return null;
+    }
+
+    @Override
+    public DeviceEventResponse handleAllocationEvent(DeviceEvent event) {
+        return null;
+    }
 }
