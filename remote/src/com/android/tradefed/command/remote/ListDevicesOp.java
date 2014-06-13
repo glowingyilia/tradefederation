@@ -110,11 +110,13 @@ class ListDevicesOp extends RemoteOperation<List<DeviceDescriptor>> {
         for (DeviceDescriptor descriptor : devices) {
             JSONObject deviceStateJson = new JSONObject();
             deviceStateJson.put(SERIAL, descriptor.getSerial());
+            deviceStateJson.put(IS_STUB, descriptor.isStubDevice());
             deviceStateJson.put(STATE, descriptor.getState().toString());
             deviceStateJson.put(PRODUCT, descriptor.getProduct());
             deviceStateJson.put(PRODUCT_VARIANT, descriptor.getProductVariant());
             deviceStateJson.put(SDK_VERSION, descriptor.getSdkVersion());
             deviceStateJson.put(BUILD_ID, descriptor.getBuildId());
+            deviceStateJson.put(BATTERY_LEVEL, descriptor.getBatteryLevel());
             jsonDeviceStateArray.put(deviceStateJson);
         }
         result.put(SERIALS, jsonDeviceStateArray);
