@@ -146,9 +146,9 @@ public interface ITestDevice {
      * <p/>
      * This method will work if device is in either adb or fastboot mode.
      *
-     * @return the {@link String} product type name or <code>null</code> if it cannot be determined
+     * @return the {@link String} product type name. Will not be null
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *             recovered.
+     *             recovered, or if product type can not be determined
      */
     public String getProductType() throws DeviceNotAvailableException;
 
