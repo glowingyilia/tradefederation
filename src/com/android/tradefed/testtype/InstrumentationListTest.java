@@ -18,14 +18,11 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.config.Option;
-import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.util.AbiFormatter;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -52,9 +49,14 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
     /** Aborts the test run if any test takes longer than the specified number of milliseconds */
     private int mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
     private ITestDevice mDevice = null;
-    private String mRunName = null;
 
+    // TODO: figure out a better way to share option data with InstrumentationTest
+    private String mRunName = null;
     private String mForceAbi = null;
+    private boolean mScreenshotOnFailure = false;
+    private boolean mLogcatOnFailure = false;
+    private int mMaxLogcatBytes = 500 * 1024; // 500K
+
 
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
@@ -103,6 +105,18 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
         mForceAbi = abi;
     }
 
+    public void setScreenshotOnFailure(boolean screenshotOnFailure) {
+        mScreenshotOnFailure = screenshotOnFailure;
+    }
+
+    public void setLogcatOnFailure(boolean logcatOnFailure) {
+        mScreenshotOnFailure = logcatOnFailure;
+    }
+
+    public void setLogcatOnFailureSize(int maxLogcatBytes) {
+        mMaxLogcatBytes = maxLogcatBytes;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -144,6 +158,9 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
             for (Map.Entry<String, String> entry : mInstrArgMap.entrySet()) {
                 runner.addInstrumentationArg(entry.getKey(), entry.getValue());
             }
+            runner.setScreenshotOnFailure(mScreenshotOnFailure);
+            runner.setLogcatOnFailure(mLogcatOnFailure);
+            runner.setLogcatOnFailureSize(mMaxLogcatBytes);
             runTest(runner, listener, testToRun);
         }
     }

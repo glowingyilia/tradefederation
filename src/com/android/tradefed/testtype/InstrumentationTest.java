@@ -31,9 +31,12 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.AbiFormatter;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import junit.framework.Assert;
@@ -120,6 +123,18 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             "there is _no feedback mechanism_ between the test runner and the bugreport " +
             "collector, so use the EACH setting with due caution.")
     private BugreportCollector.Freq mBugreportFrequency = null;
+
+    @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
+    private boolean mScreenshotOnFailure = false;
+
+    @Option(name = "logcat-on-failure", description =
+            "take a logcat snapshot on every test failure.")
+    private boolean mLogcatOnFailure = false;
+
+    @Option(name = "logcat-on-failure-size", description =
+            "The max number of logcat data in bytes to capture when --logcat-on-failure is on. " +
+            "Should be an amount that can comfortably fit in memory.")
+    private int mMaxLogcatBytes = 500 * 1024; // 500K
 
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
@@ -386,6 +401,27 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         mInstrArgMap.put(key, value);
     }
 
+
+    /**
+     * Sets force-abi option.
+     * @param abi
+     */
+    public void setForceAbi(String abi) {
+        mForceAbi = abi;
+    }
+
+    public void setScreenshotOnFailure(boolean screenshotOnFailure) {
+        mScreenshotOnFailure = screenshotOnFailure;
+    }
+
+    public void setLogcatOnFailure(boolean logcatOnFailure) {
+        mLogcatOnFailure = logcatOnFailure;
+    }
+
+    public void setLogcatOnFailureSize(int logcatOnFailureSize) {
+        mMaxLogcatBytes = logcatOnFailureSize;
+    }
+
     /**
      * @return the {@link IRemoteAndroidTestRunner} to use.
      * @throws DeviceNotAvailableException
@@ -476,6 +512,16 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             collector.addPredicate(pred);
             listener = collector;
         }
+        if (mScreenshotOnFailure) {
+            FailedTestScreenshotGenerator screenListener = new FailedTestScreenshotGenerator(
+                    listener, getDevice());
+            listener = screenListener;
+        }
+        if (mLogcatOnFailure) {
+            FailedTestLogcatGenerator logcatListener = new FailedTestLogcatGenerator(
+                    listener, getDevice(), mMaxLogcatBytes);
+            listener = logcatListener;
+        }
 
         if (mRemainingTests == null) {
             // failed to collect the tests or collection is off. Just try to run them all
@@ -523,6 +569,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             testRerunner.setTestTimeout(getTestTimeout());
             testRerunner.setRunName(mRunName);
             testRerunner.addInstrumentationArgs(mInstrArgMap);
+            testRerunner.setForceAbi(mForceAbi);
+            testRerunner.setScreenshotOnFailure(mScreenshotOnFailure);
+            testRerunner.setLogcatOnFailure(mLogcatOnFailure);
+            testRerunner.setLogcatOnFailureSize(mMaxLogcatBytes);
             CollectingTestListener testTracker = new CollectingTestListener();
             try {
                 testRerunner.run(new ResultForwarder(listener, testTracker));
@@ -626,10 +676,58 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     }
 
     /**
-     * Sets force-abi option.
-     * @param abi
+     * A {@link ResultForwarder} that will forward a screenshot on test failures.
      */
-    public void setForceAbi(String abi) {
-        mForceAbi = abi;
+    private static class FailedTestScreenshotGenerator extends ResultForwarder {
+        private ITestDevice mDevice;
+
+        public FailedTestScreenshotGenerator(ITestInvocationListener listener,
+                ITestDevice device) {
+            super(listener);
+            mDevice = device;
+        }
+
+        @Override
+        public void testFailed(TestFailure status, TestIdentifier test, String trace) {
+            super.testFailed(status, test, trace);
+
+            try {
+                InputStreamSource screenSource = mDevice.getScreenshot();
+                super.testLog(String.format("screenshot-%s_%s", test.getClassName(),
+                        test.getTestName()), LogDataType.PNG, screenSource);
+                screenSource.cancel();
+            } catch (DeviceNotAvailableException e) {
+                // TODO: rethrow this somehow
+                CLog.e("Device %s became unavailable while capturing screenshot, %s",
+                        mDevice.getSerialNumber(), e.toString());
+            }
+        }
+    }
+
+    /**
+     * A {@link ResultForwarder} that will forward a logcat snapshot on each failed test.
+     */
+    private static class FailedTestLogcatGenerator extends ResultForwarder {
+        private ITestDevice mDevice;
+        private int mNumLogcatBytes;
+
+        public FailedTestLogcatGenerator(ITestInvocationListener listener, ITestDevice device,
+                int maxLogcatBytes) {
+            super(listener);
+            mDevice = device;
+            mNumLogcatBytes = maxLogcatBytes;
+        }
+
+        @Override
+        public void testFailed(TestFailure status, TestIdentifier test, String trace) {
+            super.testFailed(status, test, trace);
+            // sleep a small amount of time to ensure test failure stack trace makes it into logcat
+            // capture
+            RunUtil.getDefault().sleep(10);
+            InputStreamSource logSource = mDevice.getLogcat(mNumLogcatBytes);
+            super.testLog(String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
+                    LogDataType.TEXT, logSource);
+            logSource.cancel();
+        }
     }
 }

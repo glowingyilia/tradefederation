@@ -87,6 +87,18 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             "collector, so use the EACH setting with due caution.")
     private BugreportCollector.Freq mBugreportFrequency = null;
 
+    @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
+    private boolean mScreenshotOnFailure = false;
+
+    @Option(name = "logcat-on-failure", description =
+            "take a logcat snapshot on every test failure.")
+    private boolean mLogcatOnFailures = false;
+
+    @Option(name = "logcat-on-failure-size", description =
+            "The max number of logcat data in bytes to capture when --logcat-on-failure is on. " +
+            "Should be an amount that can comfortably fit in memory.")
+    private int mMaxLogcatBytes = 500 * 1024; // 500K
+
     @Option(name = "class",
             description = "Only run tests in specified class")
     private String mTestClass = null;
@@ -179,6 +191,12 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
 
             CLog.d("Running test %s on %s", test.getPackageName(), getDevice().getSerialNumber());
 
+            try {
+                OptionCopier.copyOptions(this, test);
+            } catch (ConfigurationException e) {
+                CLog.e("Failed to copy options", e);
+                throw new IllegalStateException(e);
+            }
             if (mSendCoverage && test.getCoverageTarget() != null) {
                 sendCoverage(test.getPackageName(), test.getCoverageTarget(), listener);
             }
