@@ -65,8 +65,8 @@ public class DeviceConcurrentUtil {
                 // passthru
                 throw (DeviceNotAvailableException)t;
             } else {
-                CLog.e("exception while executing " + taskDesc);
-                CLog.e(e);
+                CLog.e("%s while executing %s", t.getClass().getSimpleName(), taskDesc);
+                CLog.e(t);
             }
         }
         return null;
