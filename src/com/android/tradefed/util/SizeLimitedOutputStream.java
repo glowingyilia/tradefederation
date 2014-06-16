@@ -66,7 +66,7 @@ public class SizeLimitedOutputStream extends OutputStream {
      */
     public SizeLimitedOutputStream(long maxDataSize, int numFiles, String tempFilePrefix,
             String tempFileSuffix) {
-        mMaxFileSize = maxDataSize / (long)numFiles;
+        mMaxFileSize = maxDataSize / numFiles;
         mFiles = new File[numFiles];
         mCurrentFilePos = numFiles;
         mTempFilePrefix = tempFilePrefix;
@@ -146,7 +146,7 @@ public class SizeLimitedOutputStream extends OutputStream {
      * Closes the write stream
      */
     @Override
-    public void close() {
+    public synchronized void close() {
         try {
             if (mCurrentOutputStream != null) {
                 mCurrentOutputStream.flush();
