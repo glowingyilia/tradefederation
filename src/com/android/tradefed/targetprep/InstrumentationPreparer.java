@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestResult.TestStatus;
@@ -67,6 +68,12 @@ public class InstrumentationPreparer implements ITargetPreparer {
             description = "Instrumentation arguments to provide.")
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
+    @Option(name = "attempts",
+            description =
+            "The max number of attempts to make to run the instrumentation successfully.")
+    private int mAttempts = 1;
+
+
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
             DeviceNotAvailableException {
@@ -74,7 +81,17 @@ public class InstrumentationPreparer implements ITargetPreparer {
             return;
         }
 
-        runInstrumentation(device);
+        BuildError e = new BuildError("unknown error");
+        for (int i = 0; i < mAttempts; i++) {
+            try {
+                runInstrumentation(device);
+                return;
+            } catch (BuildError e1) {
+                e = e1;
+            }
+        }
+        // all attempts failed!
+        throw e;
     }
 
     private void runInstrumentation(ITestDevice device) throws DeviceNotAvailableException,
@@ -93,9 +110,10 @@ public class InstrumentationPreparer implements ITargetPreparer {
         final CollectingTestListener listener = new CollectingTestListener();
         test.run(listener);
         if (listener.hasFailedTests()) {
-            throw new BuildError(
-                    String.format("Failed to run instrumentation %s on %s. failed tests = %s",
-                            mPackageName, device.getSerialNumber(), getFailedTestNames(listener)));
+            String msg = String.format("Failed to run instrumentation %s on %s. failed tests = %s",
+                    mPackageName, device.getSerialNumber(), getFailedTestNames(listener));
+            CLog.w(msg);
+            throw new BuildError(msg);
         }
     }
 
