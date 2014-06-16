@@ -83,7 +83,7 @@ public class WifiHelper implements IWifiHelper {
             try {
                 apkTempFile = extractWifiUtilApk();
 
-                final String result = mDevice.installPackage(apkTempFile, false);
+                final String result = mDevice.installPackage(apkTempFile, true);
                 if (result == null) {
                     // Installed successfully; good to go.
                     return;
