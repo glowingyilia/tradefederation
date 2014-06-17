@@ -36,7 +36,8 @@ public class InstalledInstrumentationsTestTest extends TestCase {
 
     private static final String TEST_PKG = "com.example.tests";
     private static final String TEST_COVERAGE_TARGET = "com.example";
-    private static final String TEST_RUNNER = "android.test.InstrumentationTestRunner";
+    private static final String TEST_RUNNER = "android.support.runner.AndroidJUnitRunner";
+    private static final String ABI = "forceMyAbiSettingPlease";
     private ITestDevice mMockTestDevice;
     private ITestInvocationListener mMockListener;
     private MockInstrumentationTest mMockInstrumentationTest;
@@ -72,7 +73,7 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         Capture<Map<String, String>> captureMetrics = new Capture<Map<String, String>>();
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captureMetrics));
         ArgsOptionParser p = new ArgsOptionParser(mInstalledInstrTest);
-        p.parse("--size", "small");
+        p.parse("--size", "small", "--force-abi", ABI);
         mInstalledInstrTest.setSendCoverage(true);
         EasyMock.replay(mMockTestDevice, mMockListener);
         mInstalledInstrTest.run(mMockListener);
@@ -82,6 +83,7 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         assertEquals(TEST_COVERAGE_TARGET, captureMetrics.getValue().get(
                 InstalledInstrumentationsTest.COVERAGE_TARGET_KEY));
         assertEquals("small", mMockInstrumentationTest.getTestSize());
+        assertEquals(ABI, mMockInstrumentationTest.getForceAbi());
     }
 
     private void injectListInstrResponse() throws DeviceNotAvailableException {

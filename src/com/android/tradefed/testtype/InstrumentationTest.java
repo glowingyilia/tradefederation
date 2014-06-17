@@ -410,6 +410,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         mForceAbi = abi;
     }
 
+    public String getForceAbi() {
+        return mForceAbi;
+    }
+
     public void setScreenshotOnFailure(boolean screenshotOnFailure) {
         mScreenshotOnFailure = screenshotOnFailure;
     }

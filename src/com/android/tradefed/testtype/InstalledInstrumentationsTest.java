@@ -191,12 +191,6 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
 
             CLog.d("Running test %s on %s", test.getPackageName(), getDevice().getSerialNumber());
 
-            try {
-                OptionCopier.copyOptions(this, test);
-            } catch (ConfigurationException e) {
-                CLog.e("Failed to copy options", e);
-                throw new IllegalStateException(e);
-            }
             if (mSendCoverage && test.getCoverageTarget() != null) {
                 sendCoverage(test.getPackageName(), test.getCoverageTarget(), listener);
             }
@@ -294,9 +288,6 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                         t.setPackageName(m.group(1));
                         t.setRunnerName(runner);
                         t.setCoverageTarget(m.group(3));
-                        if (mForceAbi != null) {
-                            t.setForceAbi(mForceAbi);
-                        }
                         mTests.add(t);
                     }
                 }
