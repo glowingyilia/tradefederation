@@ -227,4 +227,14 @@ public class MockDeviceManager implements IDeviceManager {
     public List<DeviceDescriptor> listAllDevices() {
         return null;
     }
+
+    @Override
+    public boolean isNullDevice(String serial) {
+        return false;
+    }
+
+    @Override
+    public boolean isEmulator(String serial) {
+        return false;
+    }
 }

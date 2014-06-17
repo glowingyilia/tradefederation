@@ -199,4 +199,14 @@ public interface IDeviceManager {
      */
     public void removeFastbootListener(IFastbootListener listener);
 
+    /**
+     * Determine if given serial represents a null device
+     */
+    public boolean isNullDevice(String serial);
+
+    /**
+     * Determine if given serial represents a emulator
+     */
+    public boolean isEmulator(String serial);
+
 }

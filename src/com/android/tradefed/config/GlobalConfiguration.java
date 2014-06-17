@@ -281,7 +281,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /**
      * {@inheritDoc}
      */
-//    @Override
+    @Override
     public Object getConfigurationObject(String typeName) {
         List<?> configObjects = getConfigurationObjectList(typeName);
         if (configObjects == null) {
@@ -387,7 +387,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /**
      * {@inheritDoc}
      */
-//    @Override
+    @Override
     public void setConfigurationObject(String typeName, Object configObject)
             throws ConfigurationException {
         if (configObject == null) {
@@ -438,11 +438,6 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     typeName));
         }
         objList.add(configObject);
-        /* (not javadoc) FIXME: figure out what this does
-        if (configObject instanceof IConfigurationReceiver) {
-            ((IConfigurationReceiver)configObject).setConfiguration(this);
-        }
-        */
     }
 
     /**

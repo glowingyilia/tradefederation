@@ -166,4 +166,22 @@ public interface IGlobalConfiguration {
      * @param scheduler
      */
     public void setCommandScheduler(ICommandScheduler scheduler);
+
+    /**
+     * Generic method to set the config object with the given name, replacing any existing value.
+     *
+     * @param name the unique name of the config object type.
+     * @param configObject the config object
+     * @throws ConfigurationException if the configObject was not the correct type
+     */
+    public void setConfigurationObject(String name, Object configObject)
+            throws ConfigurationException;
+
+    /**
+     * Gets the custom configuration object with given name.
+     *
+     * @param typeName the unique type of the configuration object
+     * @return the object or null if object with that name is not found
+     */
+    public Object getConfigurationObject(String typeName);
 }

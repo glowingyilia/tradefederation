@@ -69,6 +69,8 @@ public class DeviceManager implements IDeviceManager {
 
     /** a {@link DeviceSelectionOptions} that matches any device.  Visible for testing. */
     static final IDeviceSelection ANY_DEVICE_OPTIONS = new DeviceSelectionOptions();
+    private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
+    private static final String EMULATOR_SERIAL_PREFIX = "emulator";
 
     private IDeviceMonitor mDvcMon;
 
@@ -309,7 +311,7 @@ public class DeviceManager implements IDeviceManager {
      */
     private void addNullDevices() {
         for (int i = 0; i < mNumNullDevicesSupported; i++) {
-            addAvailableDevice(new NullDevice(String.format("null-device-%d", i)));
+            addAvailableDevice(new NullDevice(String.format("%s-%d", NULL_DEVICE_SERIAL_PREFIX, i)));
         }
     }
 
@@ -320,7 +322,8 @@ public class DeviceManager implements IDeviceManager {
         // TODO currently this means 'additional emulators not already running'
         int port = 5554;
         for (int i = 0; i < mNumEmulatorSupported; i++) {
-            addAvailableDevice(new StubDevice(String.format("emulator-%d", port), true));
+            addAvailableDevice(new StubDevice(String.format("%s-%d", EMULATOR_SERIAL_PREFIX, port),
+                    true));
             port += 2;
         }
     }
@@ -977,5 +980,15 @@ public class DeviceManager implements IDeviceManager {
     @VisibleForTesting
     void setMaxNullDevices(int nullDevices) {
         mNumNullDevicesSupported = nullDevices;
+    }
+
+    @Override
+    public boolean isNullDevice(String serial) {
+        return serial.startsWith(NULL_DEVICE_SERIAL_PREFIX);
+    }
+
+    @Override
+    public boolean isEmulator(String serial) {
+        return serial.startsWith(EMULATOR_SERIAL_PREFIX);
     }
 }

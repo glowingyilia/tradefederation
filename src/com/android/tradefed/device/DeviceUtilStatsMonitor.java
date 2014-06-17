@@ -16,6 +16,8 @@
 
 package com.android.tradefed.device;
 
+import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.HashMap;
@@ -23,6 +25,7 @@ import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * A {@link IDeviceMonitor} that calculates device utilization stats.
@@ -30,11 +33,34 @@ import java.util.Map;
  * Currently measures allocation time % out of allocation + avail time, over a 24 hour window.
  * <p/>
  * If used, {@link #getUtilizationStats()} must be called periodically to clear accumulated memory.
- * <p/>
- * TODO: provide filtering mechanisms to ignore null and/or emulators.
  */
 public class DeviceUtilStatsMonitor implements IDeviceMonitor {
 
+    /**
+     * Enum for configuring treatment of stub devices when calculating average host utilization
+     */
+    public enum StubDeviceUtil {
+        /** never include stub device data */
+        IGNORE,
+        /**
+         * include stub device data only if any stub device of same type is allocated at least
+         * once
+         */
+        INCLUDE_IF_USED,
+        /** always include stub device data */
+        ALWAYS_INCLUDE
+    }
+
+    @Option(name = "collect-null-device", description =
+            "controls if null device data should be used when calculating avg host utilization")
+    private StubDeviceUtil mCollectNullDevice = StubDeviceUtil.INCLUDE_IF_USED;
+
+    @Option(name = "collect-emulator", description =
+            "controls if emulator data should be used when calculating avg host utilization")
+    private StubDeviceUtil mCollectEmulator = StubDeviceUtil.INCLUDE_IF_USED;
+
+    private boolean mNullDeviceAllocated = false;
+    private boolean mEmulatorAllocated = false;
     /**
      * A record of the start and end time a device spent in one of the measured states (either
      * available or allocated).
@@ -65,10 +91,10 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
      * Container for utilization stats.
      */
     public static class UtilizationDesc {
-        final long mTotalUtil;
-        final Map<String, Long> mDeviceUtil;
+        final int mTotalUtil;
+        final Map<String, Integer> mDeviceUtil;
 
-        public UtilizationDesc(long totalUtil, Map<String, Long> deviceUtil) {
+        public UtilizationDesc(int totalUtil, Map<String, Integer> deviceUtil) {
             mTotalUtil = totalUtil;
             mDeviceUtil = deviceUtil;
         }
@@ -79,7 +105,7 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
          *
          * @return percentage utilization
          */
-        public long getTotalUtil() {
+        public int getTotalUtil() {
             return mTotalUtil;
         }
 
@@ -87,10 +113,10 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
          * Helper method to return percent utilization for a device. Returns 0 if no utilization
          * data exists for device
          */
-        public Long getUtilForDevice(String serial) {
-            Long util = mDeviceUtil.get(serial);
+        public Integer getUtilForDevice(String serial) {
+            Integer util = mDeviceUtil.get(serial);
             if (util == null) {
-                return 0L;
+                return 0;
             }
             return util;
         }
@@ -145,16 +171,18 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
             // window
             windowStartTime = mStartTime;
         }
-        Map<String, Long> deviceUtilMap = new HashMap<>(mDeviceUtilMap.size());
+        Map<String, Integer> deviceUtilMap = new HashMap<>(mDeviceUtilMap.size());
         Map<String, DeviceStateRecords> mapCopy = new HashMap<>(mDeviceUtilMap);
         for (Map.Entry<String, DeviceStateRecords> deviceRecordEntry : mapCopy.entrySet()) {
-            long availTime = countTime(windowStartTime, currentTime,
-                    deviceRecordEntry.getValue().mAvailableRecords);
-            long allocTime = countTime(windowStartTime, currentTime,
-                    deviceRecordEntry.getValue().mAllocatedRecords);
-            totalAvailTime += availTime;
-            totalAllocTime += allocTime;
-            deviceUtilMap.put(deviceRecordEntry.getKey(), getUtil(availTime, allocTime));
+            if (shouldTrackDevice(deviceRecordEntry)) {
+                long availTime = countTime(windowStartTime, currentTime,
+                        deviceRecordEntry.getValue().mAvailableRecords);
+                long allocTime = countTime(windowStartTime, currentTime,
+                        deviceRecordEntry.getValue().mAllocatedRecords);
+                totalAvailTime += availTime;
+                totalAllocTime += allocTime;
+                deviceUtilMap.put(deviceRecordEntry.getKey(), getUtil(availTime, allocTime));
+            }
         }
         return new UtilizationDesc(getUtil(totalAvailTime, totalAllocTime), deviceUtilMap);
     }
@@ -187,12 +215,12 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
     /**
      * Get device utilization as a percent
      */
-    private long getUtil(long availTime, long allocTime) {
+    private int getUtil(long availTime, long allocTime) {
         long totalTime = availTime + allocTime;
         if (totalTime <= 0) {
             return 0;
         }
-        return (allocTime * 100) / totalTime;
+        return (int)((allocTime * 100) / totalTime);
     }
 
     /**
@@ -248,6 +276,12 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
         if (DeviceAllocationState.Available.equals(newState)) {
             recordStateStart(stateRecord.mAvailableRecords);
         } else if (DeviceAllocationState.Allocated.equals(newState)) {
+            IDeviceManager dvcMgr = getDeviceManager();
+            if (dvcMgr.isNullDevice(serial)) {
+                mNullDeviceAllocated = true;
+            } else if (dvcMgr.isEmulator(serial)) {
+                mEmulatorAllocated = true;
+            }
             recordStateStart(stateRecord.mAllocatedRecords);
         }
     }
@@ -281,5 +315,34 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
             mDeviceUtilMap.put(serial, r);
         }
         return r;
+    }
+
+    private boolean shouldTrackDevice(Entry<String, DeviceStateRecords> deviceRecordEntry) {
+        IDeviceManager dvcMgr = getDeviceManager();
+        String serial = deviceRecordEntry.getKey();
+        if (dvcMgr.isNullDevice(serial)) {
+            switch (mCollectNullDevice) {
+                case ALWAYS_INCLUDE:
+                    return true;
+                case IGNORE:
+                    return false;
+                case INCLUDE_IF_USED:
+                    return mNullDeviceAllocated;
+            }
+        } else if (dvcMgr.isEmulator(serial)) {
+            switch (mCollectEmulator) {
+                case ALWAYS_INCLUDE:
+                    return true;
+                case IGNORE:
+                    return false;
+                case INCLUDE_IF_USED:
+                    return mEmulatorAllocated;
+            }
+        }
+        return true;
+    }
+
+    IDeviceManager getDeviceManager() {
+        return GlobalConfiguration.getDeviceManagerInstance();
     }
 }
