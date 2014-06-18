@@ -34,8 +34,8 @@ public class WifiHelperTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_INSTRUMENTATION_CMD))
-                .andReturn(WifiHelper.FULL_INSTRUMENTATION_NAME);
+        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .andReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE));
     }
 
     // tests for reimplementation

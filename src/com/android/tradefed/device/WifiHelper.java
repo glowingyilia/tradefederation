@@ -48,8 +48,10 @@ public class WifiHelper implements IWifiHelper {
     static final String FULL_INSTRUMENTATION_NAME =
             String.format("%s/%s", INSTRUMENTATION_PKG, INSTRUMENTATION_CLASS);
 
-    static final String CHECK_INSTRUMENTATION_CMD =
-            String.format("pm list instrumentation %s", INSTRUMENTATION_PKG);
+    static final String CHECK_PACKAGE_CMD =
+            String.format("dumpsys package %s", INSTRUMENTATION_PKG);
+    static final Pattern PACKAGE_VERSION_PAT = Pattern.compile("versionCode=(.*)");
+    static final int PACKAGE_VERSION_CODE = 19;
 
     private static final String WIFIUTIL_APK_NAME = "WifiUtil.apk";
 
@@ -73,30 +75,38 @@ public class WifiHelper implements IWifiHelper {
     }
 
     void ensureDeviceSetup() throws TargetSetupError, DeviceNotAvailableException {
-        final String inst = mDevice.executeShellCommand(CHECK_INSTRUMENTATION_CMD);
-        if ((inst != null) && inst.contains(FULL_INSTRUMENTATION_NAME)) {
-            // Good to go
-            return;
-        } else {
-            // Attempt to install utility
-            File apkTempFile = null;
-            try {
-                apkTempFile = extractWifiUtilApk();
-
-                final String result = mDevice.installPackage(apkTempFile, true);
-                if (result == null) {
-                    // Installed successfully; good to go.
-                    return;
-                } else {
-                    throw new TargetSetupError(String.format(
-                            "Unable to install WifiUtil utility: %s", result));
+        final String inst = mDevice.executeShellCommand(CHECK_PACKAGE_CMD);
+        if (inst != null) {
+            Matcher matcher = PACKAGE_VERSION_PAT.matcher(inst);
+            if (matcher.find()) {
+                try {
+                    if (PACKAGE_VERSION_CODE <= Integer.parseInt(matcher.group(1))) {
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    CLog.w("failed to parse WifiUtil version code: %s", matcher.group(1));
                 }
-            } catch (IOException e) {
-                throw new TargetSetupError(String.format(
-                        "Failed to unpack WifiUtil utility: %s", e.getMessage()));
-            } finally {
-                FileUtil.deleteFile(apkTempFile);
             }
+        }
+
+        // Attempt to install utility
+        File apkTempFile = null;
+        try {
+            apkTempFile = extractWifiUtilApk();
+
+            final String error = mDevice.installPackage(apkTempFile, true);
+            if (error == null) {
+                // Installed successfully; good to go.
+                return;
+            } else {
+                throw new TargetSetupError(String.format(
+                        "Unable to install WifiUtil utility: %s", error));
+            }
+        } catch (IOException e) {
+            throw new TargetSetupError(String.format(
+                    "Failed to unpack WifiUtil utility: %s", e.getMessage()));
+        } finally {
+            FileUtil.deleteFile(apkTempFile);
         }
     }
 
