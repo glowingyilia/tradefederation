@@ -17,12 +17,14 @@
 package com.android.graphics.tests;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.RunUtil;
 
 import junit.framework.Assert;
@@ -65,7 +67,7 @@ import java.util.Map;
  * </ul>
  */
 public class FlatlandTest implements IDeviceTest, IRemoteTest {
-    private static final String COMMAND = "flatland";
+    private static final String COMMAND = "flatland|#ABI32#|";
     private static final String FIRST_LINE = "cmdline:";
     private static final String TITLE = "Scenario";
     private static final long START_TIMER = 2 * 60 * 1000; // 2 minutes
@@ -93,6 +95,11 @@ public class FlatlandTest implements IDeviceTest, IRemoteTest {
             description = "map a test case name to a schema key")
     private Map<String, String> mSchemaMap = new HashMap<String, String>();
 
+    @Option(name = AbiFormatter.FORCE_ABI_STRING,
+            description = AbiFormatter.FORCE_ABI_DESCRIPTION,
+            importance = Importance.IF_UNSET)
+    private String mForceAbi = null;
+
     @Override
     public void setDevice(ITestDevice testDevice) {
         mTestDevice = testDevice;
@@ -118,7 +125,8 @@ public class FlatlandTest implements IDeviceTest, IRemoteTest {
         }
         standardListener.testRunStarted(mRuKey, 1);
         long start = System.currentTimeMillis();
-        String result = mTestDevice.executeShellCommand(cmd.toString());
+        String result = mTestDevice.executeShellCommand(
+                AbiFormatter.formatCmdForAbi(cmd.toString(), mForceAbi));
         if (result == null) {
             CLog.v("no test results returned. Test failed?");
             return;
