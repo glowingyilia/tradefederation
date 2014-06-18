@@ -340,16 +340,17 @@ public class WifiHelper implements IWifiHelper {
         Map<String, String> info = new HashMap<>();
 
         final String result = runWifiUtil("getWifiInfo");
-        try {
-            final JSONObject json = new JSONObject(result);
-            final Iterator keys = json.keys();
-            while (keys.hasNext()) {
-                final String key = (String) keys.next();
-                info.put(key, json.getString(key));
+        if (result != null) {
+            try {
+                final JSONObject json = new JSONObject(result);
+                final Iterator keys = json.keys();
+                while (keys.hasNext()) {
+                    final String key = (String) keys.next();
+                    info.put(key, json.getString(key));
+                }
+            } catch(final JSONException e) {
+                CLog.e(e);
             }
-
-        } catch(final JSONException e) {
-            CLog.e(e);
         }
 
         return info;
