@@ -34,7 +34,6 @@ import com.android.tradefed.util.VersionParser;
 
 import jline.ConsoleReader;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -363,13 +362,7 @@ public class Console extends Thread {
      */
     void runCmdfile(String cmdfileName, List<String> extraArgs) {
         try {
-            if (extraArgs != null) {
-                createCommandFileParser().parseFile(new File(cmdfileName), mScheduler, extraArgs);
-            } else {
-                createCommandFileParser().parseFile(new File(cmdfileName), mScheduler);
-            }
-        } catch (IOException e) {
-            printLine(String.format("Failed to run %s: %s", cmdfileName, e));
+            mScheduler.addCommandFile(cmdfileName, extraArgs);
         } catch (ConfigurationException e) {
             printLine(String.format("Failed to run %s: %s", cmdfileName, e));
         }
@@ -619,7 +612,7 @@ public class Console extends Thread {
                     // Each group should have exactly one element, given how the null wildcard
                     // operates; so we flatten them.
                     for (String cmdfile : getFlatArgs(2 /* startIdx */, args)) {
-                        runCmdfile(cmdfile, null);
+                        runCmdfile(cmdfile, new ArrayList<String>(0));
                     }
                 }
                 mScheduler.shutdownOnEmpty();
@@ -849,15 +842,6 @@ public class Console extends Thread {
 
     void awaitScheduler() throws InterruptedException {
         mScheduler.await();
-    }
-
-    /**
-     * Factory method for creating a {@link CommandFileParser}.
-     * <p/>
-     * Exposed for unit testing.
-     */
-    CommandFileParser createCommandFileParser() {
-        return new CommandFileParser();
     }
 
     /**
