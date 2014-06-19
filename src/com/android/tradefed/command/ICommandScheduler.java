@@ -24,6 +24,7 @@ import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import java.io.PrintWriter;
+import java.util.List;
 
 /**
  * A scheduler for running TradeFederation commands.
@@ -61,6 +62,18 @@ public interface ICommandScheduler {
      * @see {@link IConfigurationFactory#createConfigurationFromArgs(String[])}
      */
     public boolean addCommand(String[] args) throws ConfigurationException;
+
+    /**
+     * Adds all commands from given file to the scheduler
+     *
+     * @param cmdFile the filesystem path of comand file
+     * @param extraArgs a {@link List} of {@link String} arguments to append to each command parsed
+     *            from file. Can be empty but should not be null.
+     * @throws ConfigurationException if command file could not be parsed
+     * @see {@link CommandFileParser}
+     */
+    public void addCommandFile(String cmdFile, List<String> extraArgs)
+            throws ConfigurationException;
 
     /**
      * An alternate {@link #addCommand(String[])} that accepts an initial total

@@ -47,6 +47,8 @@ import com.android.tradefed.util.ConditionPriorityBlockingQueue;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.TableFormatter;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -651,6 +653,28 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             return true;
         }
         return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addCommandFile(String cmdFile, List<String> extraArgs)
+            throws ConfigurationException {
+        try {
+            createCommandFileParser().parseFile(new File(cmdFile), this, extraArgs);
+        } catch (IOException e) {
+            throw new ConfigurationException("Failed to read file " + cmdFile, e);
+        }
+    }
+
+    /**
+     * Factory method for creating a {@link CommandFileParser}.
+     * <p/>
+     * Exposed for unit testing.
+     */
+    CommandFileParser createCommandFileParser() {
+        return new CommandFileParser();
     }
 
     /**
