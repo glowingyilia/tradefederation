@@ -29,6 +29,7 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestResult.TestStatus;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.InstrumentationTest;
+import com.android.tradefed.util.RunUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -73,6 +74,9 @@ public class InstrumentationPreparer implements ITargetPreparer {
             "The max number of attempts to make to run the instrumentation successfully.")
     private int mAttempts = 1;
 
+    @Option(name = "delay-before-retry",
+            description = "Time to delay before retrying another instrumentation attempt, in msecs")
+    private long mRetryDelayMs = 0;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
@@ -88,6 +92,9 @@ public class InstrumentationPreparer implements ITargetPreparer {
                 return;
             } catch (BuildError e1) {
                 e = e1;
+                CLog.d("sleeping %d msecs on device %s before retrying instrumentation test run",
+                        mRetryDelayMs, device.getSerialNumber());
+                RunUtil.getDefault().sleep(mRetryDelayMs);
             }
         }
         // all attempts failed!
@@ -161,4 +168,11 @@ public class InstrumentationPreparer implements ITargetPreparer {
         mTimeout = timeout;
     }
 
+    void setAttempts(int attempts) {
+        mAttempts = attempts;
+    }
+
+    void setRetryDelay(int delayMs) {
+        mRetryDelayMs = delayMs;
+    }
 }
