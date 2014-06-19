@@ -30,13 +30,17 @@ import com.android.tradefed.util.RunUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
-
 import java.util.concurrent.Semaphore;
 
 /**
  * A {@link ITargetPreparer} that flashes an image on physical Android hardware.
  */
-public abstract class DeviceFlashPreparer implements ITargetPreparer {
+public abstract class DeviceFlashPreparer implements ITargetCleaner {
+
+    /**
+     * Enum of options for handling the encryption of userdata image
+     */
+    public static enum EncryptionOptions {ENCRYPT, IGNORE};
 
     private static final int BOOT_POLL_TIME_MS = 5 * 1000;
 
@@ -47,9 +51,9 @@ public abstract class DeviceFlashPreparer implements ITargetPreparer {
         "specify handling of userdata partition.")
     private UserDataFlashOption mUserDataFlashOption = UserDataFlashOption.FLASH;
 
-    @Option(name = "encrypt-userdata", description =
-        "specify if userdata partition should be encrypted")
-    private boolean mEncryptUserData = false;
+    @Option(name = "encrypt-userdata", description = "specify if userdata partition should be "
+            + "encrypted; defaults to IGNORE, where no actions will be taken.")
+    private EncryptionOptions mEncryptUserData = EncryptionOptions.IGNORE;
 
     @Option(name = "force-system-flash", description =
         "specify if system should always be flashed even if already running desired build.")
@@ -227,59 +231,53 @@ public abstract class DeviceFlashPreparer implements ITargetPreparer {
             throws DeviceNotAvailableException;
 
     /**
-     * Handle encrypting or unencrypting of the device pre-flash.
+     * Handle encrypting of the device pre-flash.
      *
      * @see #postEncryptDevice(ITestDevice, IDeviceFlasher)
      * @param device
      * @throws DeviceNotAvailableException
-     * @throws TargetSetupError if the device should be unencrypted but the
-     *     {@link IDeviceFlasher.UserDataFlashOption#RETAIN} flash option is used, or if the device
-     *     could not be encrypted, unencrypted, or unlocked.
+     * @throws TargetSetupError if the device could not be encrypted or unlocked.
      */
     private void preEncryptDevice(ITestDevice device, IDeviceFlasher flasher)
             throws DeviceNotAvailableException, TargetSetupError {
-        if (!device.isEncryptionSupported()) {
-            if (mEncryptUserData) {
-                throw new TargetSetupError("Encryption is not supported");
-            }
-            return;
-        }
-
-        // Need to unencrypt device
-        if (!mEncryptUserData && device.isDeviceEncrypted()) {
-            if (flasher.getUserDataFlashOption() == UserDataFlashOption.RETAIN) {
-                throw new TargetSetupError(String.format("not possible to go from encrypted "
-                        + "userdata partition to unencrypted with %s",
-                        flasher.getUserDataFlashOption()));
-            }
-            if (!device.unencryptDevice()) {
-                throw new TargetSetupError("Failed to unencrypt device");
-            }
-        }
-
-        // Need to encrypt device
-        if (mEncryptUserData && !device.isDeviceEncrypted()) {
-            switch(flasher.getUserDataFlashOption()) {
-                case TESTS_ZIP: // Intentional fall through.
-                case WIPE_RM:
-                    if (!device.encryptDevice(false)) {
-                        throw new TargetSetupError("Failed to encrypt device");
+        switch (mEncryptUserData) {
+            case IGNORE:
+                return;
+            case ENCRYPT:
+                if (!device.isEncryptionSupported()) {
+                    throw new TargetSetupError("Encryption is not supported");
+                }
+                if (!device.isDeviceEncrypted()) {
+                    switch(flasher.getUserDataFlashOption()) {
+                        case TESTS_ZIP: // Intentional fall through.
+                        case WIPE_RM:
+                            // a new filesystem will not be created by the flasher, but the userdata
+                            // partition is expected to be cleared anyway, so we encrypt the device
+                            // with wipe
+                            if (!device.encryptDevice(false)) {
+                                throw new TargetSetupError("Failed to encrypt device");
+                            }
+                            if (!device.unlockDevice()) {
+                                throw new TargetSetupError("Failed to unlock device");
+                            }
+                            break;
+                        case RETAIN:
+                            // original filesystem must be retained, so we encrypt in place
+                            if (!device.encryptDevice(true)) {
+                                throw new TargetSetupError("Failed to encrypt device");
+                            }
+                            if (!device.unlockDevice()) {
+                                throw new TargetSetupError("Failed to unlock device");
+                            }
+                            break;
+                        default:
+                            // Do nothing, userdata will be encrypted post-flash.
                     }
-                    if (!device.unlockDevice()) {
-                        throw new TargetSetupError("Failed to unlock device");
-                    }
-                    break;
-                case RETAIN:
-                    if (!device.encryptDevice(true)) {
-                        throw new TargetSetupError("Failed to encrypt device");
-                    }
-                    if (!device.unlockDevice()) {
-                        throw new TargetSetupError("Failed to unlock device");
-                    }
-                    break;
-                default:
-                    // Do nothing, userdata will be encrypted post-flash.
-            }
+                }
+                break;
+            default:
+                // should not get here
+                return;
         }
     }
 
@@ -297,31 +295,50 @@ public abstract class DeviceFlashPreparer implements ITargetPreparer {
      */
     private void postEncryptDevice(ITestDevice device, IDeviceFlasher flasher)
             throws DeviceNotAvailableException, TargetSetupError {
-        if (!device.isEncryptionSupported()) {
-            if (mEncryptUserData) {
-                throw new TargetSetupError("Encryption is not supported");
-            }
-            return;
+        switch (mEncryptUserData) {
+            case IGNORE:
+                return;
+            case ENCRYPT:
+                if (!device.isEncryptionSupported()) {
+                    throw new TargetSetupError("Encryption is not supported");
+                }
+                switch(flasher.getUserDataFlashOption()) {
+                    case FLASH:
+                        if (!device.encryptDevice(true)) {
+                            throw new TargetSetupError("Failed to encrypt device");
+                        }
+                        break;
+                    case WIPE: // Intentional fall through.
+                    case FORCE_WIPE:
+                        // since the device was just wiped, encrypt with wipe
+                        if (!device.encryptDevice(false)) {
+                            throw new TargetSetupError("Failed to encrypt device");
+                        }
+                        break;
+                    default:
+                        // Do nothing, userdata was encrypted pre-flash.
+                }
+                if (!device.unlockDevice()) {
+                    throw new TargetSetupError("Failed to unlock device");
+                }
+                break;
+            default:
+                // should not get here
+                return;
         }
+    }
 
-        if (mEncryptUserData) {
-            switch(flasher.getUserDataFlashOption()) {
-                case FLASH:
-                    if (!device.encryptDevice(true)) {
-                        throw new TargetSetupError("Failed to encrypt device");
-                    }
-                    break;
-                case WIPE: // Intentional fall through.
-                case FORCE_WIPE:
-                    if (!device.encryptDevice(false)) {
-                        throw new TargetSetupError("Failed to encrypt device");
-                    }
-                    break;
-                default:
-                    // Do nothing, userdata was encrypted pre-flash.
-            }
-            if (!device.unlockDevice()) {
-                throw new TargetSetupError("Failed to unlock device");
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        if (mEncryptUserData == EncryptionOptions.ENCRYPT
+                && mUserDataFlashOption != UserDataFlashOption.RETAIN) {
+            if (e instanceof DeviceNotAvailableException) {
+                CLog.e("Device was encrypted but now unavailable. may need manual cleanup");
+            } else if (device.isDeviceEncrypted()) {
+                if (!device.unencryptDevice()) {
+                    throw new RuntimeException("Failed to unencrypt device");
+                }
             }
         }
     }
