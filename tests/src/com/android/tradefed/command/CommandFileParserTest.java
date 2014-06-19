@@ -16,17 +16,15 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.config.ConfigurationException;
 
 import junit.framework.TestCase;
-
-import org.easymock.EasyMock;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,12 +38,10 @@ public class CommandFileParserTest extends TestCase {
     private String mMockFileData = "";
     private static final File MOCK_FILE_PATH = new File("path/to/");
     private File mMockFile = new File(MOCK_FILE_PATH, "original.txt");
-    private ICommandScheduler mMockScheduler;
 
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        mMockScheduler = EasyMock.createMock(ICommandScheduler.class);
         mCommandFile = new CommandFileParser() {
             @Override
             BufferedReader createCommandFileReader(File file) {
@@ -60,16 +56,32 @@ public class CommandFileParserTest extends TestCase {
     public void testParse_singleConfig() throws Exception {
         // inject mock file data
         mMockFileData = "  #Comment followed by blank line\n \n--foo  config";
-        String[] expectedArgs = new String[] {
-                "--foo", "config"
-        };
+        List<String> expectedArgs = Arrays.asList("--foo", "config");
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
+        assertParsedData(expectedArgs);
+    }
 
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+    @SuppressWarnings("unchecked")
+    private void assertParsedData(List<String>... expectedCommands) throws IOException,
+            ConfigurationException {
+        assertParsedData(mCommandFile, mMockFile, expectedCommands);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assertParsedData(CommandFileParser parser, List<String>... expectedCommands)
+            throws IOException, ConfigurationException {
+        assertParsedData(parser, mMockFile, expectedCommands);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assertParsedData(CommandFileParser parser, File file,
+            List<String>... expectedCommands) throws IOException, ConfigurationException {
+        List<CommandLine> data = parser.parseFile(file);
+        assertEquals(expectedCommands.length, data.size());
+
+        for (int i = 0; i < expectedCommands.length; i++) {
+            assertEquals(data.get(i), expectedCommands[i]);
+        }
     }
 
     /**
@@ -81,16 +93,11 @@ public class CommandFileParserTest extends TestCase {
     public void testParseFile_quotedConfig() throws IOException, ConfigurationException  {
         // inject mock file data
         mMockFileData = "--foo \"this is a config\" --bar \"escap\\\\ed \\\" quotation\"";
-        String[] expectedArgs = new String[] {
+        List<String> expectedArgs = Arrays.asList(
                 "--foo", "this is a config", "--bar", "escap\\\\ed \\\" quotation"
-        };
+        );
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -100,32 +107,12 @@ public class CommandFileParserTest extends TestCase {
         // inject mock file data
         mMockFileData = "--foo \"this is truncated";
 
-        EasyMock.replay(mMockScheduler);
         try {
-            mCommandFile.parseFile(mMockFile, mMockScheduler);
+            mCommandFile.parseFile(mMockFile);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
         }
-        EasyMock.verify(mMockScheduler);
-    }
-
-    /**
-     * Test parsing a command file while passing in extra arguments.
-     */
-    public void testParseArgs() throws Exception {
-        // inject mock file data
-        mMockFileData = "--foo config\n--foo config2\n";
-        List<String> args = Arrays.asList("--arg", "cowabunga");
-        String[] exp1 = new String[] {"--foo", "config", "--arg", "cowabunga"};
-        String[] exp2 = new String[] {"--foo", "config2", "--arg", "cowabunga"};
-
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(exp1))).andReturn(Boolean.TRUE);
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(exp2))).andReturn(Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler, args);
-        EasyMock.verify(mMockScheduler);
     }
 
     /**
@@ -134,28 +121,20 @@ public class CommandFileParserTest extends TestCase {
     public void testRun_endWithEscape() throws IOException {
         // inject mock file data
         mMockFileData = "--foo escape\\";
-        // switch mock objects to verify mode
-        EasyMock.replay(mMockScheduler);
         try {
-            mCommandFile.parseFile(mMockFile, mMockScheduler);
+            mCommandFile.parseFile(mMockFile);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
         }
-        EasyMock.verify(mMockScheduler);
     }
 
     // Macro-related tests
     public void testSimpleMacro() throws IOException, ConfigurationException {
         mMockFileData = "MACRO TeSt = verify\nTeSt()";
-        String[] expectedArgs = new String[] {"verify"};
+        List<String> expectedArgs = Arrays.asList("verify");
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -165,14 +144,9 @@ public class CommandFileParserTest extends TestCase {
      */
     public void testOverwriteMacro() throws IOException, ConfigurationException {
         mMockFileData = "MACRO test = value 1\nMACRO test = value 2\ntest()";
-        String[] expectedArgs = new String[] {"value", "2"};
+        List<String> expectedArgs = Arrays.asList("value", "2");
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -180,14 +154,9 @@ public class CommandFileParserTest extends TestCase {
      */
     public void testSimpleMacro_quotedTokens() throws IOException, ConfigurationException {
         mMockFileData = "MACRO test = \"verify varify vorify\"\ntest()";
-        String[] expectedArgs = new String[] {"verify varify vorify"};
+        List<String> expectedArgs = Arrays.asList("verify varify vorify");
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -195,14 +164,9 @@ public class CommandFileParserTest extends TestCase {
      */
     public void testSimpleMacro_underscoreName() throws IOException, ConfigurationException {
         mMockFileData = "MACRO under_score = verify\nunder_score()";
-        String[] expectedArgs = new String[] {"verify"};
+        List<String> expectedArgs = Arrays.asList("verify");
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -210,14 +174,9 @@ public class CommandFileParserTest extends TestCase {
      */
     public void testSimpleMacro_hyphenName() throws IOException, ConfigurationException {
         mMockFileData = "MACRO hyphen-nated = verify\nhyphen-nated()";
-        String[] expectedArgs = new String[] {"verify"};
+        List<String> expectedArgs = Arrays.asList("verify");
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -225,14 +184,12 @@ public class CommandFileParserTest extends TestCase {
      */
     public void testUndefinedMacro() throws IOException {
         mMockFileData = "test()";
-        EasyMock.replay(mMockScheduler);
         try {
-            mCommandFile.parseFile(mMockFile, mMockScheduler);
+            mCommandFile.parseFile(mMockFile);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
         }
-        EasyMock.verify(mMockScheduler);
     }
 
     /**
@@ -241,14 +198,12 @@ public class CommandFileParserTest extends TestCase {
     public void testUndefinedMacro_defSyntaxError() throws IOException {
         mMockFileData = "MACRO test = \n" +
                 "test()";
-        EasyMock.replay(mMockScheduler);
         try {
-            mCommandFile.parseFile(mMockFile, mMockScheduler);
+            mCommandFile.parseFile(mMockFile);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
         }
-        EasyMock.verify(mMockScheduler);
     }
 
     /**
@@ -259,14 +214,9 @@ public class CommandFileParserTest extends TestCase {
                 "verify\n" +
                 "END MACRO\n" +
                 "test()";
-        String[] expectedArgs = new String[] {"verify"};
+        List<String> expectedArgs = Arrays.asList("verify");
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -286,20 +236,11 @@ public class CommandFileParserTest extends TestCase {
                 "do re mi\n" +
                 "END MACRO\n" +
                 "test()";
-        String[] expectedArgs1 = new String[] {"one", "two", "three"};
-        String[] expectedArgs2 = new String[] {"a", "b", "c"};
-        String[] expectedArgs3 = new String[] {"do", "re", "mi"};
+        List<String>  expectedArgs1 = Arrays.asList("one", "two", "three");
+        List<String>  expectedArgs2 = Arrays.asList("a", "b", "c");
+        List<String>  expectedArgs3 = Arrays.asList("do", "re", "mi");
+        assertParsedData(expectedArgs1, expectedArgs2, expectedArgs3);
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs1))).andReturn(
-                Boolean.TRUE);
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs2))).andReturn(
-                Boolean.TRUE);
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs3))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
     }
 
     /**
@@ -313,17 +254,9 @@ public class CommandFileParserTest extends TestCase {
                 "do re mi\n" +
                 "END MACRO\n" +
                 "test()";
-        String[] expectedArgs1 = new String[] {"one", "two", "three"};
-        String[] expectedArgs2 = new String[] {"do", "re", "mi"};
-
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs1))).andReturn(
-                Boolean.TRUE);
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs2))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        List<String>  expectedArgs1 = Arrays.asList("one", "two", "three");
+        List<String>  expectedArgs2 = Arrays.asList("do", "re", "mi");
+        assertParsedData(expectedArgs1, expectedArgs2);
     }
 
     /**
@@ -334,14 +267,13 @@ public class CommandFileParserTest extends TestCase {
                 "verify\n" +
                 // "END MACRO\n" (this is the syntax error)
                 "test()";
-        EasyMock.replay(mMockScheduler);
+
         try {
-            mCommandFile.parseFile(mMockFile, mMockScheduler);
+            mCommandFile.parseFile(mMockFile);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
         }
-        EasyMock.verify(mMockScheduler);
     }
 
     /**
@@ -350,13 +282,13 @@ public class CommandFileParserTest extends TestCase {
     public void testMacroParserInclude() throws Exception {
         final String mockFileData = "INCLUDE somefile.txt\n";
         final String mockIncludedFileData = "--foo bar\n";
-        String[] expectedArgs = new String[] {"--foo", "bar"};
+        List<String>  expectedArgs = Arrays.asList("--foo", "bar");
 
         CommandFileParser commandFile = new CommandFileParser() {
             private boolean showInclude = true;
             @Override
             BufferedReader createCommandFileReader(File file) {
-                if(showInclude) {
+                if (showInclude) {
                     showInclude = false;
                     return new BufferedReader(new StringReader(mockFileData));
                 } else {
@@ -365,13 +297,9 @@ public class CommandFileParserTest extends TestCase {
             }
         };
 
-
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        commandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(commandFile, expectedArgs);
+        assertEquals(1, commandFile.getIncludedFiles().size());
+        assertTrue(commandFile.getIncludedFiles().iterator().next().endsWith("somefile.txt"));
     }
 
     /**
@@ -382,8 +310,8 @@ public class CommandFileParserTest extends TestCase {
                 "INCLUDE otherfile.txt\n";
         final String mockIncludedFileData1 = "--foo bar\n";
         final String mockIncludedFileData2 = "--baz quux\n";
-        String[] expectedArgs1 = new String[] {"--foo", "bar"};
-        String[] expectedArgs2 = new String[] {"--baz", "quux"};
+        List<String>  expectedArgs1 = Arrays.asList("--foo", "bar");
+        List<String>  expectedArgs2 = Arrays.asList("--baz", "quux");
 
         CommandFileParser commandFile = new CommandFileParser() {
             private int phase = 0;
@@ -400,15 +328,7 @@ public class CommandFileParserTest extends TestCase {
                 }
             }
         };
-
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs1))).andReturn(
-                Boolean.TRUE);
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs2))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        commandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(commandFile, expectedArgs1, expectedArgs2);
     }
 
     /**
@@ -419,7 +339,7 @@ public class CommandFileParserTest extends TestCase {
         final String mockFileData = "INCLUDE somefile.txt\n" +
                 "INCLUDE somefile.txt\n";
         final String mockIncludedFileData1 = "--foo bar\n";
-        String[] expectedArgs1 = new String[] {"--foo", "bar"};
+        List<String>  expectedArgs1 = Arrays.asList("--foo", "bar");
 
         CommandFileParser commandFile = new CommandFileParser() {
             private int phase = 0;
@@ -433,13 +353,7 @@ public class CommandFileParserTest extends TestCase {
                 }
             }
         };
-
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs1))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        commandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(commandFile, expectedArgs1);
     }
 
     /**
@@ -454,7 +368,7 @@ public class CommandFileParserTest extends TestCase {
 
         final String mockFileData = String.format("INCLUDE %s\n", includeFileName);
         final String mockIncludedFileData = "--foo bar\n";
-        String[] expectedArgs = new String[] {"--foo", "bar"};
+        List<String>  expectedArgs = Arrays.asList("--foo", "bar");
 
         CommandFileParser commandFile = new CommandFileParser() {
             @Override
@@ -464,19 +378,14 @@ public class CommandFileParserTest extends TestCase {
                 } else if (expectedFile.equals(file)) {
                     return new BufferedReader(new StringReader(mockIncludedFileData));
                 } else {
-                    fail(String.format("Received unexpected request for contents of file %s", file));
+                    fail(String.format("Received unexpected request for contents of file %s",
+                            file));
                     // shouldn't actually reach here
                     throw new RuntimeException();
                 }
             }
         };
-
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        commandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(commandFile, expectedArgs);
     }
 
     /**
@@ -494,7 +403,7 @@ public class CommandFileParserTest extends TestCase {
 
         final String mockFileData = String.format("INCLUDE %s\n", includeFileName);
         final String mockIncludedFileData = "--foo bar\n";
-        String[] expectedArgs = new String[] {"--foo", "bar"};
+        List<String>  expectedArgs = Arrays.asList("--foo", "bar");
 
         CommandFileParser commandFile = new CommandFileParser() {
             @Override
@@ -504,19 +413,14 @@ public class CommandFileParserTest extends TestCase {
                 } else if (expectedFile.equals(file)) {
                     return new BufferedReader(new StringReader(mockIncludedFileData));
                 } else {
-                    fail(String.format("Received unexpected request for contents of file %s", file));
+                    fail(String.format("Received unexpected request for contents of file %s",
+                            file));
                     // shouldn't actually reach here
                     throw new RuntimeException();
                 }
             }
         };
-
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        commandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(commandFile, expectedArgs);
     }
 
     /**
@@ -530,7 +434,7 @@ public class CommandFileParserTest extends TestCase {
 
         final String mockFileData = String.format("INCLUDE %s\n", includeFileName);
         final String mockIncludedFileData = "--foo bar\n";
-        String[] expectedArgs = new String[] {"--foo", "bar"};
+        List<String>  expectedArgs = Arrays.asList("--foo", "bar");
 
         CommandFileParser commandFile = new CommandFileParser() {
             @Override
@@ -540,19 +444,16 @@ public class CommandFileParserTest extends TestCase {
                 } else if (expectedFile.equals(file)) {
                     return new BufferedReader(new StringReader(mockIncludedFileData));
                 } else {
-                    fail(String.format("Received unexpected request for contents of file %s", file));
+                    fail(String.format("Received unexpected request for contents of file %s",
+                            file));
                     // shouldn't actually reach here
                     throw new RuntimeException();
                 }
             }
         };
-
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        commandFile.parseFile(mockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(commandFile, mockFile, expectedArgs);
+        assertEquals(1, commandFile.getIncludedFiles().size());
+        assertTrue(commandFile.getIncludedFiles().iterator().next().endsWith(includeFileName));
     }
 
     /**
@@ -568,15 +469,10 @@ public class CommandFileParserTest extends TestCase {
         mMockFileData = "MACRO alpha = one beta()\n" +
                 "MACRO beta = two\n" +
                 "alpha()\n";
-        String[] expectedArgs = new String[] {"one", "two"};
+        List<String>  expectedArgs = Arrays.asList("one", "two");
         // When the bug manifests, the result is {"one", "alpha()"}
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -588,14 +484,9 @@ public class CommandFileParserTest extends TestCase {
         mMockFileData = "MACRO alpha = beta() two\n" +
                 "MACRO beta = one\n" +
                 "alpha()\n";
-        String[] expectedArgs = new String[] {"one", "two"};
+        List<String>  expectedArgs = Arrays.asList("one", "two");
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expectedArgs))).andReturn(
-                Boolean.TRUE);
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs);
     }
 
     /**
@@ -624,18 +515,9 @@ public class CommandFileParserTest extends TestCase {
                 "test()\n" +
                 "hbar()\n";
 
-        List<String[]> expectedArgs = new ArrayList<String[]>(5);
-        expectedArgs.add(new String[] {"one", "quux", "z", "x"});
-        expectedArgs.add(new String[] {"quux"});
+        List<String> expectedArgs1 = Arrays.asList("one", "quux", "z", "x");
+        List<String> expectedArgs2 = Arrays.asList("quux");
 
-        for (String[] ary : expectedArgs) {
-            EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(ary))).andReturn(Boolean.TRUE);
-        }
-
-        EasyMock.replay(mMockScheduler);
-        mCommandFile.parseFile(mMockFile, mMockScheduler);
-        EasyMock.verify(mMockScheduler);
+        assertParsedData(expectedArgs1, expectedArgs2);
     }
-
 }
-

@@ -62,6 +62,16 @@ public interface IRemoteClient {
     public void sendAddCommand(long elapsedTimeMs, String... commandArgs) throws RemoteException;
 
     /**
+     * Send an 'add command file' request to remote TF.
+     *
+     * @see {@link ICommandScheduler#addCommandFile()}
+     * @param commandFile the file system path to the command file
+     * @param extraArgs the list of extra arguments to add to every command parsed from file
+     * @throws RemoteException
+     */
+    void sendAddCommandFile(String commandFile, List<String> extraArgs) throws RemoteException;
+
+    /**
      * Send a 'execute this command on given device' request to remote TF.
      * <p/>
      * Unlike {@link #sendAddCommand(long, String...)}, this is used in cases where the remote
@@ -104,10 +114,18 @@ public interface IRemoteClient {
     /**
      * Request to start a handover sequence to another TF.
      *
-     * @param port the port of the remote TF to hand over too
+     * @param port the port of the remote TF to hand over to
      * @throws RemoteException
      */
     public void sendStartHandover(int port) throws RemoteException;
+
+    /**
+     * Inform remote TF that handover initiation is complete. Old TF has send all info about devices
+     * and commands in use.
+     *
+     * @throws RemoteException
+     */
+    public void sendHandoverInitComplete() throws RemoteException;
 
     /**
      * Inform remote TF that handover sequence is now complete. Old TF has freed all devices and is
@@ -121,4 +139,5 @@ public interface IRemoteClient {
      * Close the connection to the {@link RemoteManager}.
      */
     public void close();
+
 }

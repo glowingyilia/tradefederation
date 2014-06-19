@@ -136,8 +136,14 @@ public interface ICommandScheduler {
     public boolean handoverShutdown(int handoverPort);
 
     /**
-     * Informs the command scheduler that a initiated handover sequence is complete, and it should
-     * re-initialize its remote manager on the default port.
+     * Informs the command scheduler that initial handover exchange of devices and commands in use
+     * is complete, and it can begin scheduling operation.
+     */
+    public void handoverInitiationComplete();
+
+    /**
+     * Informs the command scheduler that a initiated handover sequence is fully complete, and it
+     * should re-initialize its remote manager on the default port.
      */
     public void completeHandover();
 
@@ -168,7 +174,8 @@ public interface ICommandScheduler {
     public void join() throws InterruptedException;
 
     /**
-     * Waits for scheduler to start running.
+     * Waits for scheduler to start running, including waiting for handover from old TF to
+     * complete if applicable.
      */
     public void await() throws InterruptedException;
 

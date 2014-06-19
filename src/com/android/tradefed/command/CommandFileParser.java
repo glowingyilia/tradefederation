@@ -16,7 +16,6 @@
 package com.android.tradefed.command;
 
 import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
@@ -26,7 +25,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -46,7 +44,7 @@ import java.util.regex.Pattern;
  *   ...
  * </pre>
  */
-public class CommandFileParser {
+class CommandFileParser {
 
     /**
      * A pattern that matches valid macro usages and captures the name of the macro.
@@ -56,12 +54,6 @@ public class CommandFileParser {
     private static final Pattern MACRO_PATTERN = Pattern.compile("([a-z][a-z0-9_-]*)\\(\\)",
             Pattern.CASE_INSENSITIVE);
 
-    @Option(name = "reload-cmdfiles", description =
-            "Whether to enable the command file autoreload mechanism")
-    // Note: this is static so that the setting is global.
-    // FIXME: enable this to be enabled or disabled on a per-cmdfile basis
-    private static boolean mReloadCmdfiles = false;
-
     private Map<String, CommandLine> mMacros = new HashMap<String, CommandLine>();
     private Map<String, List<CommandLine>> mLongMacros = new HashMap<String, List<CommandLine>>();
     private List<CommandLine> mLines = new LinkedList<CommandLine>();
@@ -69,13 +61,23 @@ public class CommandFileParser {
     private Collection<String> mIncludedFiles = new HashSet<String>();
 
     @SuppressWarnings("serial")
-    private class CommandLine extends LinkedList<String> {
+    static class CommandLine extends LinkedList<String> {
         CommandLine() {
             super();
         }
 
         CommandLine(Collection<? extends String> c) {
             super(c);
+        }
+
+        public String[] asArray() {
+            String[] arrayContents = new String[size()];
+            int i = 0;
+            for (String a : this) {
+                arrayContents[i] = a;
+                i++;
+            }
+            return arrayContents;
         }
     }
 
@@ -203,6 +205,13 @@ public class CommandFileParser {
     }
 
     /**
+     * Return the command files included by the last parsed command file.
+     */
+    public Collection<String> getIncludedFiles() {
+        return mIncludedFiles;
+    }
+
+    /**
      * Does a single pass of the input CommandFile, storing input lines as macros, long macros, or
      * commands.
      *
@@ -294,46 +303,27 @@ public class CommandFileParser {
     }
 
     /**
-     * Parses the commands contained in {@code file}, doing macro expansions as necessary, and adds
-     * them to {@code scheduler}.
+     * Parses the commands contained in {@code file}, doing macro expansions as necessary
      *
      * @param file the {@link File} to parse
-     * @param scheduler the {@link ICommandScheduler} to add commands to
+     * @returns the list of parsed commands
      * @throws IOException if failed to read file
      * @throws ConfigurationException if content of file could not be parsed
      */
-    public void parseFile(File file, ICommandScheduler scheduler) throws IOException,
+    public List<CommandLine> parseFile(File file) throws IOException,
             ConfigurationException {
-        List<String> empty = Collections.emptyList();
-        parseFile(file, scheduler, empty);
-    }
+        // clear state from last call
+        mIncludedFiles.clear();
+        mMacros.clear();
+        mLongMacros.clear();
+        mLines.clear();
 
-    /**
-     * Parses the commands contained in {@code file}, doing macro expansions as necessary, and adds
-     * them to {@code scheduler}.
-     *
-     * @param file the {@link File} to parse
-     * @param scheduler the {@link ICommandScheduler} to add commands to
-     * @param args A {@link List} of {@link String} arguments to append to each command
-     * @throws IOException if failed to read file
-     * @throws ConfigurationException if content of file could not be parsed
-     */
-    public void parseFile(File file, ICommandScheduler scheduler, List<String> args)
-            throws IOException, ConfigurationException {
-        // Parse this cmdfile and all of its dependencies
+        // Parse this cmdfile and all of its dependencies.
         scanFile(file);
 
-        // Notify the CommandFileWatcher, if necessary
-        if (mReloadCmdfiles) {
-            final CommandFileWatcher watcher = scheduler.getCommandFileWatcher();
-            final File[] depFiles = new File[mIncludedFiles.size()];
-            int i = 0;
-            for (String dep : mIncludedFiles) {
-                depFiles[i++] = new File(dep);
-            }
-
-            watcher.addCmdFile(file, args, depFiles);
-        }
+        // remove original file from list of includes, as call above has side effect of adding it to
+        // mIncludedFiles
+        mIncludedFiles.remove(file.getAbsolutePath());
 
         // Now perform macro expansion
         /**
@@ -395,26 +385,7 @@ public class CommandFileParser {
                 }
             }
         }
-
-        for (CommandLine commandLine : mLines) {
-            CLog.v("Adding line with parts: %s + %s", commandLine.toString(), args.toString());
-            String[] aryCmdLine = new String[commandLine.size() + args.size()];
-            int outIdx = 0;
-            for (;outIdx < commandLine.size(); ++outIdx) {
-                aryCmdLine[outIdx] = commandLine.get(outIdx);
-            }
-            for (int i = 0; i < args.size(); ++outIdx, ++i) {
-                aryCmdLine[outIdx] = args.get(i);
-            }
-            final String prettyCmdLine = QuotationAwareTokenizer.combineTokens(aryCmdLine);
-            CLog.d("Adding line: %s", prettyCmdLine);
-            try {
-                scheduler.addCommand(aryCmdLine);
-            } catch (ConfigurationException e) {
-                CLog.e("Failed to add command: '%s'. Reason: %s", prettyCmdLine, e.getMessage());
-                throw e;
-            }
-        }
+        return mLines;
     }
 
     /**

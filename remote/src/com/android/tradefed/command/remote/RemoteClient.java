@@ -78,6 +78,7 @@ public class RemoteClient implements IRemoteClient {
      */
     private synchronized <T> T sendOperation(RemoteOperation<T> op) throws RemoteException {
        try {
+           Log.d(TAG, String.format("Sending remote op %s", op.getType()));
            mWriter.println(op.pack());
            String response = mReader.readLine();
            if (response == null) {
@@ -160,6 +161,15 @@ public class RemoteClient implements IRemoteClient {
      * {@inheritDoc}
      */
     @Override
+    public void sendAddCommandFile(String commandFile, List<String> extraArgs)
+            throws RemoteException {
+        sendOperation(new AddCommandFileOp(commandFile, extraArgs));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void sendClose() throws RemoteException {
         sendOperation(new CloseOp());
     }
@@ -170,6 +180,14 @@ public class RemoteClient implements IRemoteClient {
     @Override
     public void sendStartHandover(int port) throws RemoteException {
         sendOperation(new StartHandoverOp(port));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendHandoverInitComplete() throws RemoteException {
+        sendOperation(new HandoverInitCompleteOp());
     }
 
     /**
