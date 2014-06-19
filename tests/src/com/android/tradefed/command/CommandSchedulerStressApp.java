@@ -22,6 +22,8 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.MockDeviceManager;
 
+import junit.framework.TestCase;
+
 import org.easymock.EasyMock;
 
 /**
@@ -29,7 +31,7 @@ import org.easymock.EasyMock;
  * <p/>
  * Intended to be executed under a profiler.
  */
-public class CommandSchedulerStressApp  {
+public class CommandSchedulerStressApp extends TestCase {
 
     /** the {@link CommandScheduler} under test, with all dependencies mocked out */
     private CommandScheduler mCommandScheduler;
@@ -38,9 +40,9 @@ public class CommandSchedulerStressApp  {
     private IConfigurationFactory mMockConfigFactory;
     private CommandOptions mCommandOptions;
 
-    CommandSchedulerStressApp() throws Exception {
+    public CommandSchedulerStressApp() throws Exception {
         mMockConfig = EasyMock.createNiceMock(IConfiguration.class);
-        mMockDeviceManager = new MockDeviceManager(0);
+        mMockDeviceManager = new MockDeviceManager(100);
         mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
         mCommandOptions = new CommandOptions();
         mCommandOptions.setLoopMode(false);
@@ -63,7 +65,7 @@ public class CommandSchedulerStressApp  {
     }
 
     /**
-     * Test config priority scheduling under load with a large number of commmands, when device
+     * Test config priority scheduling under load with a large number of commands, when device
      * resources are scarce.
      * <p/>
      * Intended to verify that the device polling scheme used by the scheduler is not overly
@@ -71,7 +73,7 @@ public class CommandSchedulerStressApp  {
      * <p/>
      * Lacks automated verification - intended to be executed under a profiler.
      */
-    public void run_load() throws Exception {
+    public void testRunLoad() throws Exception {
         String[] configArgs = new String[] {"arrgs"};
 
         EasyMock.expect(
@@ -95,7 +97,7 @@ public class CommandSchedulerStressApp  {
         try {
             long startTime = System.currentTimeMillis();
             CommandSchedulerStressApp stressApp = new CommandSchedulerStressApp();
-            stressApp.run_load();
+            stressApp.testRunLoad();
             System.out.printf("Stress app ran for %s ms", System.currentTimeMillis() - startTime);
         } catch (Exception e) {
             e.printStackTrace();

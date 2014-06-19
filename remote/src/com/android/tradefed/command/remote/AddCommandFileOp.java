@@ -62,10 +62,7 @@ class AddCommandFileOp extends RemoteOperation<Void> {
     @Override
     protected void packIntoJson(JSONObject j) throws JSONException {
         j.put(COMMAND_FILE, mCommandFile);
-        JSONArray argArray = new JSONArray();
-        for (String arg : mExtraArgs) {
-            argArray.put(arg);
-        }
+        JSONArray argArray = new JSONArray(mExtraArgs);
         j.put(EXTRA_ARGS, argArray);
     }
 

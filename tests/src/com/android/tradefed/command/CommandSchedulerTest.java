@@ -47,6 +47,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+
 /**
  * Unit tests for {@link CommandScheduler}.
  */
@@ -93,11 +94,6 @@ public class CommandSchedulerTest extends TestCase {
             }
 
             @Override
-            long getCommandPollTimeMs() {
-                return 20;
-            }
-
-            @Override
             void initLogging() {
                 // ignore
             }
@@ -112,6 +108,7 @@ public class CommandSchedulerTest extends TestCase {
                 return mMockCmdFileParser;
             }
         };
+        mScheduler.setProcessLoopSleepTime(20);
         mScheduler.start();
     }
 
