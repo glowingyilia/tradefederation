@@ -23,6 +23,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.android.tradefed.utils.wifi.WifiConnector.WifiException;
+
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -40,16 +42,28 @@ import java.io.PrintWriter;
  * A class to monitor wifi connectivity for a period of time.
  * <p/>
  * Once it is started, this will send a HTTP request to the specified URL every interval and record
- * latencies. The latency history can be retrieved by {@link WifiMonitorService#getData(Context)}. This
- * class is used to support "startMonitor" and "stopMonitor" commands.
+ * latencies. The latency history can be retrieved by {@link WifiMonitorService#getData(Context)}.
+ * This class is used to support "startMonitor" and "stopMonitor" commands.
+ * <p/>
+ * Additionally, tests can reconnect wifi during test runs to ensure connectivity by sending
+ * <code>com.android.tradefed.utils.wifi.RECONNECT</code> action. Once the reconnection is done,
+ * it will send <code>com.android.tradefed.utils.wifi.RECONNECT_COMPLETE</code> broadcast with
+ * result.
  */
 public class WifiMonitorService extends IntentService {
 
     private static final String TAG = "WifiUtil." + WifiMonitorService.class.getSimpleName();
 
+    public static final String PACKAGE_NAME = "com.android.tradefed.utils.wifi";
+    public static final String ACTION_RECONNECT = PACKAGE_NAME + ".RECONNECT";
+    public static final String ACTION_RECONNECT_COMPLETE = PACKAGE_NAME
+            + ".RECONNECT_COMPLETE";
+    public static final String EXTRA_URL_TO_CHECK = "urlToCheck";
+
+    private static final String DEFAULT_URL_TO_CHECK = "http://www.google.com";
     private static final String DATA_FILE = "monitor.dat";
     private static final long MAX_DATA_FILE_SIZE = 1024 * 1024;
-    private static final String URL_TO_CHECK = "urlTocheck";
+
 
     /**
      * Constructor.
@@ -60,27 +74,68 @@ public class WifiMonitorService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
+        final String action = intent.getAction();
+        if (action == null) {
+            monitor(intent);
+        } else if (action.equals(ACTION_RECONNECT)) {
+            reconnect(intent);
+        }
+    }
+
+    private static String getStringExtra(Intent intent, String name, String defValue) {
+        if (intent.hasExtra(name)) {
+            return intent.getStringExtra(name);
+        }
+        return defValue;
+    }
+
+    private void monitor(Intent intent) {
         FileOutputStream out = null;
         try {
             final File file = getFileStreamPath(DATA_FILE);
             if (MAX_DATA_FILE_SIZE < file.length()) {
-                Log.i(TAG, "data file is too big. clearing...");
+                Log.d(TAG, "data file is too big. clearing...");
                 clearData(this);
             }
 
-            final String urlToCheck = intent.getStringExtra(URL_TO_CHECK);
-            Log.i(TAG, "urlTocheck = " + urlToCheck);
-            out = openFileOutput(DATA_FILE,
-                    Context.MODE_APPEND);
+            final String urlToCheck = getStringExtra(intent, EXTRA_URL_TO_CHECK,
+                    DEFAULT_URL_TO_CHECK);
+            out = openFileOutput(DATA_FILE, Context.MODE_APPEND);
             final PrintWriter writer = new PrintWriter(out);
             writer.write(String.format("%d,", checkLatency(urlToCheck)));
             writer.flush();
         } catch (final Exception e) {
-            // swallow
-            Log.e(TAG, e.toString());
+            // Catching exceptions to prevent crash and minimize impacts on running tests.
+            Log.e(TAG, "failed to monitor network latency", e);
         } finally {
             closeSilently(out);
         }
+    }
+
+    private void reconnect(Intent intent) {
+
+        boolean result = false;
+        try {
+            final String urlToCheck = getStringExtra(intent, EXTRA_URL_TO_CHECK,
+                    DEFAULT_URL_TO_CHECK);
+            Log.d(TAG, "checking network connection with " + urlToCheck);
+            long latency = checkLatency(urlToCheck);
+            if (latency < 0) {
+                Log.d(TAG, "network connection is bad. reconnecting wifi...");
+                WifiConnector connector = new WifiConnector(this);
+                connector.reconnectToLastNetwork(urlToCheck);
+            }
+            result = true;
+            Log.d(TAG, "network connection is good.");
+        } catch (final WifiException e) {
+            Log.e(TAG, "failed to reconnect", e);
+        } catch (final Exception e) {
+            Log.e(TAG, "failed to check network connection", e);
+        }
+
+        Intent broadcastIntent = new Intent(ACTION_RECONNECT_COMPLETE);
+        broadcastIntent.putExtra("result", result);
+        sendBroadcast(broadcastIntent);
     }
 
     /**
@@ -136,7 +191,7 @@ public class WifiMonitorService extends IntentService {
         clearData(context);
 
         final Intent intent = new Intent(context, WifiMonitorService.class);
-        intent.putExtra(URL_TO_CHECK, urlToCheck);
+        intent.putExtra(EXTRA_URL_TO_CHECK, urlToCheck);
         final PendingIntent operation = PendingIntent.getService(context, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
         final AlarmManager alarm = (AlarmManager) context.getSystemService(

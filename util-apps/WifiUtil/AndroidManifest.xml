@@ -25,7 +25,11 @@
 
     <application>
         <uses-library android:name="android.test.runner" />
-        <service android:name=".WifiMonitorService" />
+        <service android:name=".WifiMonitorService">
+            <intent-filter>
+                <action android:name="com.android.tradefed.utils.wifi.RECONNECT" />
+            </intent-filter>
+        </service>
     </application>
 
     <instrumentation android:name="WifiUtil"
