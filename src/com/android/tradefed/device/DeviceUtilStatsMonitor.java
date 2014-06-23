@@ -158,7 +158,7 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
     /**
      * Get the device utilization up to the last 24 hours
      */
-    public UtilizationDesc getUtilizationStats() {
+    public synchronized UtilizationDesc getUtilizationStats() {
         CLog.d("Calculating device util");
         long currentTime = mTimeProvider.getCurrentTimeMillis();
         cleanAllRecords(currentTime);
@@ -262,7 +262,7 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
      * available or allocated state.
      */
     @Override
-    public void notifyDeviceStateChange(String serial, DeviceAllocationState oldState,
+    public synchronized void notifyDeviceStateChange(String serial, DeviceAllocationState oldState,
             DeviceAllocationState newState) {
         // record the 'state ended' time
         DeviceStateRecords stateRecord = getDeviceRecords(serial);
