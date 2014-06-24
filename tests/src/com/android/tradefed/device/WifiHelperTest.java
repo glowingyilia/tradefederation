@@ -21,6 +21,7 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.io.File;
 import java.util.List;
 
 /**
@@ -130,6 +131,27 @@ public class WifiHelperTest extends TestCase {
         List<Long> result = wifiHelper.stopMonitor();
         assertEquals(0, result.size());
         // verify that executeCommand attempt were made
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testEnsureDeviceSetup_alternateVersionPattern() throws Exception {
+        EasyMock.reset(mMockDevice);
+        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .andReturn(String.format("versionCode=%d targetSdk=7",
+                        WifiHelper.PACKAGE_VERSION_CODE));
+        EasyMock.replay(mMockDevice);
+        new WifiHelper(mMockDevice);
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testEnsureDeviceSetup_lowerVersion() throws Exception {
+        EasyMock.reset(mMockDevice);
+        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .andReturn(String.format("versionCode=%d", 10));
+        EasyMock.expect(mMockDevice.installPackage(EasyMock.<File>anyObject(), EasyMock.eq(true)))
+                .andReturn(null);
+        EasyMock.replay(mMockDevice);
+        new WifiHelper(mMockDevice);
         EasyMock.verify(mMockDevice);
     }
 }
