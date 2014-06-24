@@ -21,7 +21,11 @@ import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.IWifiHelper;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 
 import java.io.File;
@@ -444,6 +448,13 @@ public class StubTestDevice implements IManagedTestDevice {
     @Override
     public boolean disableNetworkMonitor() throws DeviceNotAvailableException {
         // ignore
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean checkConnectivity() throws DeviceNotAvailableException {
         return false;
     }
 

@@ -790,6 +790,16 @@ public interface ITestDevice {
     public boolean disableNetworkMonitor() throws DeviceNotAvailableException;
 
     /**
+     * Check that device has network connectivity.
+     *
+     * @return <code>true</code> if device has a working network connection,
+     *          <code>false</code> overwise.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *          recovered.
+     */
+    public boolean checkConnectivity() throws DeviceNotAvailableException;
+
+    /**
      * Attempt to dismiss any error dialogs currently displayed on device UI.
      *
      * @return <code>true</code> if no dialogs were present or dialogs were successfully cleared.
