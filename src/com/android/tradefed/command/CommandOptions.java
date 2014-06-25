@@ -51,6 +51,12 @@ public class CommandOptions implements ICommandOptions {
             "the minimum invocation time in ms when in loop mode.")
     private long mMinLoopTime = 10 * 60 * 1000;
 
+    @Option(name = "max-random-loop-time", description =
+            "the maximum time to wait between invocation attempts when in loop mode. " +
+            "when set, the actual value will be a random number between min-loop-time and this " +
+            "number.")
+    private Long mMaxRandomLoopTime = null;
+
     @Option(name = "loop", description = "keep running continuously.",
             importance = Importance.ALWAYS)
     private boolean mLoopMode = false;
@@ -145,6 +151,24 @@ public class CommandOptions implements ICommandOptions {
     public long getMinLoopTime() {
         return mMinLoopTime;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getLoopTime() {
+        if (mMaxRandomLoopTime != null) {
+            long randomizedValue = mMaxRandomLoopTime - mMinLoopTime;
+            if (randomizedValue > 0) {
+                return mMinLoopTime + Math.round(randomizedValue * Math.random());
+            } else {
+                CLog.e("max loop time %d is less than min loop time %d", mMaxRandomLoopTime,
+                        mMinLoopTime);
+            }
+        }
+        return mMinLoopTime;
+    }
+
 
     @Override
     public ICommandOptions clone() {

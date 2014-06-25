@@ -280,7 +280,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
                 IConfiguration config = getConfigFactory().createConfigurationFromArgs(
                         mCmdTracker.getArgs());
                 ExecutableCommand execCmd = createExecutableCommand(mCmdTracker, config, true);
-                return addExecCommandToQueue(execCmd, config.getCommandOptions().getMinLoopTime());
+                return addExecCommandToQueue(execCmd, config.getCommandOptions().getLoopTime());
             } catch (ConfigurationException e) {
                 // FIXME: do this with jline somehow for ANSI support
                 // note: make sure not to log (aka record) this line, as (args) may contain
@@ -759,7 +759,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler {
             IConfiguration config = getConfigFactory().createConfigurationFromArgs(
                     commandTracker.getArgs());
             ExecutableCommand execCmd = createExecutableCommand(commandTracker, config, false);
-            addExecCommandToQueue(execCmd, config.getCommandOptions().getMinLoopTime());
+            addExecCommandToQueue(execCmd, config.getCommandOptions().getLoopTime());
         } catch (ConfigurationException e) {
             CLog.e(e);
         }
