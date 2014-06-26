@@ -19,6 +19,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
+import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.log.LogUtil.CLog;
 
 /**
@@ -48,13 +49,15 @@ public class CommandOptions implements ICommandOptions {
     private boolean mNoisyDryRunMode = false;
 
     @Option(name = "min-loop-time", description =
-            "the minimum invocation time in ms when in loop mode.")
-    private long mMinLoopTime = 10 * 60 * 1000;
+            "the minimum invocation time in ms when in loop mode.",
+            updateRule = OptionUpdateRule.LEAST)
+    private Long mMinLoopTime = 10L * 60L * 1000L;
 
     @Option(name = "max-random-loop-time", description =
             "the maximum time to wait between invocation attempts when in loop mode. " +
             "when set, the actual value will be a random number between min-loop-time and this " +
-            "number.")
+            "number.",
+            updateRule = OptionUpdateRule.LEAST)
     private Long mMaxRandomLoopTime = null;
 
     @Option(name = "loop", description = "keep running continuously.",

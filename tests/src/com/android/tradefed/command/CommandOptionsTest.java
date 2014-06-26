@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.command;
 
 import com.android.tradefed.config.ArgsOptionParser;
@@ -27,8 +28,7 @@ public class CommandOptionsTest extends TestCase {
 
     /**
      * Test that {@link CommandOptions#getLoopTime()} returns min-loop-time when
-     * max-random-loop-time is not set
-     * @throws ConfigurationException
+     * max-random-loop-time is not set.
      */
     public void testGetLoopTime_minset() throws ConfigurationException {
         CommandOptions co = new CommandOptions();
@@ -39,8 +39,7 @@ public class CommandOptionsTest extends TestCase {
 
     /**
      * Test that {@link CommandOptions#getLoopTime()} returns a random time between min loop time
-     * and max-random-loop-time
-     * @throws ConfigurationException
+     * and max-random-loop-time.
      */
     public void testGetLoopTime_maxrandomset() throws ConfigurationException {
         CommandOptions co = new CommandOptions();
@@ -48,7 +47,17 @@ public class CommandOptionsTest extends TestCase {
         p.parse("--max-random-loop-time", "10", "--min-loop-time", "5");
 
         long loop = co.getLoopTime();
-        assertTrue("Loop time less than min loop time " + loop, loop >= 5 );
+        assertTrue("Loop time less than min loop time " + loop, loop >= 5);
         assertTrue("Loop time too high: " + loop, loop <= 10);
+    }
+
+    /**
+     * Test that setting multiple --min-loop-time values results in the lowest value provided.
+     */
+    public void testGetLoopTime_least() throws ConfigurationException {
+        CommandOptions co = new CommandOptions();
+        ArgsOptionParser p = new ArgsOptionParser(co);
+        p.parse("--min-loop-time", "0", "--min-loop-time", "5");
+        assertEquals(0, co.getLoopTime());
     }
 }
