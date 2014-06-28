@@ -23,11 +23,14 @@ import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+
 import junit.framework.Assert;
 
 import java.io.File;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Set of tests that verify host side install cases
@@ -659,5 +662,31 @@ public class PackageManagerHostTestUtils extends Assert {
         //IFileEntry file = mDevice.getFileEntry(remoteFilePath);
         // return file.getGroup().equals(expectedOwner)
         return true;
+    }
+
+    /**
+     * Returns the uid of the installed package.
+     * @param pkgName package name of the test apk.
+     * @return uid of the installed package
+     * @throws DeviceNotAvailableException
+     */
+    public Integer getUid(String pkgName) throws DeviceNotAvailableException {
+        String out = mDevice.executeShellCommand(String.format("dumpsys package %s", pkgName));
+        Matcher m = Pattern.compile("userId=(\\d+)").matcher(out);
+        assertTrue(m.find());
+
+        Integer uid = Integer.parseInt(m.group(1));
+        CLog.v("package %s has uid %d", pkgName, uid);
+        return uid;
+    }
+
+    public String getAbi(String pkgName) throws DeviceNotAvailableException {
+        String out = mDevice.executeShellCommand(String.format("dumpsys package %s", pkgName));
+        Matcher m = Pattern.compile("requiredCpuAbi=(.+)").matcher(out);
+        assertTrue(m.find());
+
+        String abi = m.group(1);
+        CLog.i("package %s has abi %s", pkgName, abi);
+        return abi;
     }
 }
