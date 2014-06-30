@@ -31,12 +31,12 @@ import java.util.List;
  */
 public interface IGlobalConfiguration {
     /**
-     * Gets the {@link IDeviceMonitor} from the global config.
+     * Gets the list of {@link IDeviceMonitor} from the global config.
      *
-     * @return the {@link IDeviceMonitor} from the global config, or <code>null</code> if none was
-     *         specified.
+     * @return the list of {@link IDeviceMonitor} from the global config, or <code>null</code> if none
+     *         was specified.
      */
-    public IDeviceMonitor getDeviceMonitor();
+    public List<IDeviceMonitor> getDeviceMonitors();
 
     /**
      * Set the {@link IDeviceMonitor}.

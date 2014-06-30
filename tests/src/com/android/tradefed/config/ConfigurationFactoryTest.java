@@ -141,7 +141,7 @@ public class ConfigurationFactoryTest extends TestCase {
         IGlobalConfiguration config =
                 mFactory.createGlobalConfigurationFromArgs(new String[] {name}, unprocessed);
         assertNotNull(config);
-        assertNotNull(config.getDeviceMonitor());
+        assertNotNull(config.getDeviceMonitors());
         assertNotNull(config.getWtfHandler());
         assertTrue(unprocessed.isEmpty());
     }

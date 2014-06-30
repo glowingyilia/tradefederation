@@ -157,7 +157,8 @@ public class MockDeviceManager implements IDeviceManager {
      * {@inheritDoc}
      */
     @Override
-    public void init(IDeviceSelection globalDeviceFilter, IDeviceMonitor globalDeviceMonitor) {
+    public void init(IDeviceSelection globalDeviceFilter,
+            List<IDeviceMonitor> globalDeviceMonitors) {
         // ignore
     }
 

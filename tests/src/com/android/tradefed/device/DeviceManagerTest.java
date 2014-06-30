@@ -191,9 +191,10 @@ public class DeviceManagerTest extends TestCase {
                 DeviceManager.ANY_DEVICE_OPTIONS);
     }
 
-    private DeviceManager createDeviceManager(IDeviceMonitor deviceMonitor, IDevice... devices) {
+    private DeviceManager createDeviceManager(List<IDeviceMonitor> deviceMonitors,
+            IDevice... devices) {
         DeviceManager mgr = createDeviceManagerNoInit();
-        mgr.init(null, deviceMonitor, mMockDeviceFactory);
+        mgr.init(null, deviceMonitors, mMockDeviceFactory);
         for (IDevice device : devices) {
             mDeviceListener.deviceConnected(device);
         }
