@@ -255,6 +255,35 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         }
     }
 
+    protected void onScreenshotAndBugreport(ITestDevice device, ITestInvocationListener listener,
+            String prefix) {
+        // get screen shot
+        if (mFailureAction == TestFailureAction.SCREENSHOT ||
+                mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
+            InputStreamSource screenshot = null;
+            try {
+                screenshot = getDevice().getScreenshot();
+                listener.testLog(prefix + "_screenshot", LogDataType.PNG, screenshot);
+            } catch (DeviceNotAvailableException e) {
+                CLog.e(e);
+            } finally {
+                if (screenshot != null) {
+                    screenshot.cancel();
+                }
+            }
+        }
+        // get bugreport
+        if (mFailureAction == TestFailureAction.BUGREPORT ||
+                mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
+            InputStreamSource data = null;
+            data = getDevice().getBugreport();
+            listener.testLog(prefix + "_bugreport", LogDataType.BUGREPORT, data);
+            if (data != null) {
+                data.cancel();
+            }
+        }
+    }
+
     /**
      * Wraps an existing listener, capture some data in case of test failure
      */
@@ -273,7 +302,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         @Override
         public void testFailed(TestFailure status, TestIdentifier test, String trace) {
             if (mLoggingOption == LoggingOption.AFTER_FAILURE) {
-                doScreenshotAndBugreport(String.format("%s_%s_failure",
+                onScreenshotAndBugreport(getDevice(), mListener, String.format("%s_%s_failure",
                         test.getClassName(), test.getTestName()));
                 // set the flag so that we don't log again when test finishes
                 mLoggedTestFailure = true;
@@ -283,7 +312,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         @Override
         public void testRunFailed(String errorMessage) {
             if (mLoggingOption == LoggingOption.AFTER_FAILURE) {
-                doScreenshotAndBugreport("test_run_failure");
+                onScreenshotAndBugreport(getDevice(), mListener, "test_run_failure");
                 // set the flag so that we don't log again when test run finishes
                 mLoggedTestRunFailure = true;
             }
@@ -292,7 +321,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         @Override
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
             if (!mLoggedTestFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
-                doScreenshotAndBugreport(String.format("%s_%s_final",
+                onScreenshotAndBugreport(getDevice(), mListener, String.format("%s_%s_final",
                         test.getClassName(), test.getTestName()));
             }
         }
@@ -300,41 +329,12 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         @Override
         public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
             if (!mLoggedTestRunFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
-                doScreenshotAndBugreport("test_run_final");
-            }
-        }
-
-        private void doScreenshotAndBugreport(String prefix) {
-            InputStreamSource data = null;
-            // get screen shot
-            if (mFailureAction == TestFailureAction.SCREENSHOT ||
-                    mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
-                saveScreenshot(mListener, prefix + "_screenshot");
-            }
-            // get bugreport
-            if (mFailureAction == TestFailureAction.BUGREPORT ||
-                    mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
-                data = getDevice().getBugreport();
-                mListener.testLog(prefix + "_bugreport", LogDataType.BUGREPORT, data);
-                if (data != null) {
-                    data.cancel();
-                }
+                onScreenshotAndBugreport(getDevice(), mListener, "test_run_final");
             }
         }
     }
 
     private void saveScreenshot(ITestInvocationListener listener, String name) {
-        InputStreamSource screenshot = null;
-        try {
-            screenshot = getDevice().getScreenshot();
-            listener.testLog(name, LogDataType.PNG, screenshot);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e(e);
-        } finally {
-            if (screenshot != null) {
-                screenshot.cancel();
-            }
-        }
     }
 
     protected IRunUtil getRunUtil() {

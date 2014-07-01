@@ -40,8 +40,8 @@ public class BluetoothUtils {
             + "com.android.bluetooth.tests/android.bluetooth.BluetoothInstrumentation";
     private static final String SUCCESS_INSTR_OUTPUT = "INSTRUMENTATION_RESULT: result=SUCCESS";
     private static final String BT_GETADDR_HEADER = "INSTRUMENTATION_RESULT: address=";
-    private static final long BASE_UNPAIR_RETRY_DELAY_MS = 60 * 1000;
-    private static final int MAX_UNPAIR_RETRIES = 3;
+    private static final long BASE_RETRY_DELAY_MS = 60 * 1000;
+    private static final int MAX_RETRIES = 3;
     private static final Pattern BONDED_MAC_HEADER =
             Pattern.compile("INSTRUMENTATION_RESULT: device-\\d{2}=(.*)$");
 
@@ -64,6 +64,18 @@ public class BluetoothUtils {
         return output;
     }
 
+    public static boolean runBluetoothInstrumentationWithRetry(ITestDevice device, String command)
+        throws DeviceNotAvailableException {
+        for (int retry = 0; retry < MAX_RETRIES; retry++) {
+            String output = runBluetoothInstrumentation(device, command);
+            if (output.contains(SUCCESS_INSTR_OUTPUT)) {
+                return true;
+            }
+            RunUtil.getDefault().sleep(retry * BASE_RETRY_DELAY_MS);
+        }
+        return false;
+    }
+
     /**
      * Retries clearing of BT pairing with linear backoff
      * @param device
@@ -71,14 +83,7 @@ public class BluetoothUtils {
      */
     public static boolean unpairWithRetry(ITestDevice device)
             throws DeviceNotAvailableException {
-        for (int retry = 0; retry < MAX_UNPAIR_RETRIES; retry++) {
-            String output = runBluetoothInstrumentation(device, "unpairAll");
-            if (output.contains(SUCCESS_INSTR_OUTPUT)) {
-                return true;
-            }
-            RunUtil.getDefault().sleep(retry * BASE_UNPAIR_RETRY_DELAY_MS);
-        }
-        return false;
+        return runBluetoothInstrumentationWithRetry(device, "unpairAll");
     }
 
     /**
@@ -106,7 +111,7 @@ public class BluetoothUtils {
      */
     public static boolean enable(ITestDevice device)
             throws DeviceNotAvailableException {
-        return runBluetoothInstrumentation(device, "enable").contains(SUCCESS_INSTR_OUTPUT);
+        return runBluetoothInstrumentationWithRetry(device, "enable");
     }
 
     /**
@@ -117,7 +122,7 @@ public class BluetoothUtils {
      */
     public static boolean disable(ITestDevice device)
             throws DeviceNotAvailableException {
-        return runBluetoothInstrumentation(device, "disable").contains(SUCCESS_INSTR_OUTPUT);
+        return runBluetoothInstrumentationWithRetry(device, "disable");
     }
 
     /**
