@@ -1725,7 +1725,7 @@ class TestDevice implements IManagedTestDevice {
     /**
      * Check that device has network connectivity.
      */
-    boolean checkConnectivity() throws DeviceNotAvailableException {
+    public boolean checkConnectivity() throws DeviceNotAvailableException {
         try {
             final IWifiHelper wifi = createWifiHelper();
             return wifi.checkConnectivity(mOptions.getConnCheckUrl());
