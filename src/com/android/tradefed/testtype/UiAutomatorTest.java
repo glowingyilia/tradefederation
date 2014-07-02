@@ -262,7 +262,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
                 mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
             InputStreamSource screenshot = null;
             try {
-                screenshot = getDevice().getScreenshot();
+                screenshot = device.getScreenshot();
                 listener.testLog(prefix + "_screenshot", LogDataType.PNG, screenshot);
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
@@ -276,7 +276,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         if (mFailureAction == TestFailureAction.BUGREPORT ||
                 mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
             InputStreamSource data = null;
-            data = getDevice().getBugreport();
+            data = device.getBugreport();
             listener.testLog(prefix + "_bugreport", LogDataType.BUGREPORT, data);
             if (data != null) {
                 data.cancel();
