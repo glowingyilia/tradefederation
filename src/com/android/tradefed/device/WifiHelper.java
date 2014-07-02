@@ -51,7 +51,7 @@ public class WifiHelper implements IWifiHelper {
     static final String CHECK_PACKAGE_CMD =
             String.format("dumpsys package %s", INSTRUMENTATION_PKG);
     static final Pattern PACKAGE_VERSION_PAT = Pattern.compile("versionCode=(\\d*)");
-    static final int PACKAGE_VERSION_CODE = 19;
+    static final int PACKAGE_VERSION_CODE = 20;
 
     private static final String WIFIUTIL_APK_NAME = "WifiUtil.apk";
 
