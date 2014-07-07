@@ -46,10 +46,11 @@ $(LOCAL_INSTALLED_MODULE) : $(DEST_JAR)
 # intentionally skipping CLEAR_VARS
 
 # Enable the build process to generate javadoc
+# We need to reference symbols in the jar built above.
+LOCAL_JAVA_LIBRARIES += tradefed
 LOCAL_IS_HOST_MODULE:=true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
 LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
-LOCAL_CLASSPATH := $(HOST_OUT)/framework/\*
 LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sac
 LOCAL_DROIDDOC_OPTIONS:= \
         -package \
