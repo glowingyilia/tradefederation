@@ -257,9 +257,17 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
 
     protected void onScreenshotAndBugreport(ITestDevice device, ITestInvocationListener listener,
             String prefix) {
+        onScreenshotAndBugreport(device, listener, prefix, null);
+    }
+
+    protected void onScreenshotAndBugreport(ITestDevice device, ITestInvocationListener listener,
+            String prefix, TestFailureAction overrideAction) {
+        if (overrideAction == null) {
+            overrideAction = mFailureAction;
+        }
         // get screen shot
-        if (mFailureAction == TestFailureAction.SCREENSHOT ||
-                mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
+        if (overrideAction == TestFailureAction.SCREENSHOT ||
+                overrideAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
             InputStreamSource screenshot = null;
             try {
                 screenshot = device.getScreenshot();
@@ -273,8 +281,8 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
             }
         }
         // get bugreport
-        if (mFailureAction == TestFailureAction.BUGREPORT ||
-                mFailureAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
+        if (overrideAction == TestFailureAction.BUGREPORT ||
+                overrideAction == TestFailureAction.BUGREPORT_AND_SCREENSHOT) {
             InputStreamSource data = null;
             data = device.getBugreport();
             listener.testLog(prefix + "_bugreport", LogDataType.BUGREPORT, data);
