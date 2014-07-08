@@ -40,6 +40,10 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
             "disconnect from wifi network after test completes.")
     private boolean mDisconnectWifiAfterTest = true;
 
+    @Option(name = "monitor-network", description =
+            "monitor network connectivity during test.")
+    private boolean mMonitorNetwork = true;
+
     @Option(name = "skip", description = "skip the connectivity check and wifi setup")
     private boolean mSkip = false;
 
@@ -61,7 +65,9 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
                     mWifiNetwork, device.getSerialNumber()));
         }
 
-        device.enableNetworkMonitor();
+        if (mMonitorNetwork) {
+            device.enableNetworkMonitor();
+        }
     }
 
     /**
@@ -74,7 +80,9 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
             return;
         }
 
-        device.disableNetworkMonitor();
+        if (mMonitorNetwork) {
+            device.disableNetworkMonitor();
+        }
 
         if (mWifiNetwork != null && mDisconnectWifiAfterTest && device.isWifiEnabled()) {
             if (!device.disconnectFromWifi()) {
