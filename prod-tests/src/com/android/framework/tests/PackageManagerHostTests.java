@@ -38,6 +38,9 @@ import java.io.IOException;
  */
 public class PackageManagerHostTests extends DeviceTestCase {
 
+    private static final String ABI_PROPERTY = "ro.product.cpu.abi";
+    private static final String ARM64_V8A = "arm64-v8a";
+    private static final String ARMEABI_V7A = "armeabi-v7a";
     private static final String LOG_TAG = "PackageManagerHostTests";
     private PackageManagerHostTestUtils mPMHostUtils = null;
 
@@ -130,6 +133,16 @@ public class PackageManagerHostTests extends DeviceTestCase {
     private static final String SHARED_PERMS_DIFF_KEY_APK = "ExternalSharedPermsDiffKeyTestApp.apk";
     @SuppressWarnings("unused")
     private static final String SHARED_PERMS_DIFF_KEY_PKG = "com.android.framework.externalsharedpermsdiffkeytestapp";
+
+    // Shared uid apks
+    private static final String SHARED_UID_APK = "PMTest_Java.apk";
+    private static final String SHARED_UID_PKG = "com.framework.shareduid.java";
+    private static final String SHARED_UID_APK_32 = "PMTest_Java32.apk";
+    private static final String SHARED_UID_PKG_32 = "com.framework.shareduid.bit32";
+    private static final String SHARED_UID_APK_64 = "PMTest_Java64.apk";
+    private static final String SHARED_UID_PKG_64 = "com.framework.shareduid.bit64";
+    private static final String SHARED_UID_APK_DUAL = "PMTest_Java_dual.apk";
+    private static final String SHARED_UID_PKG_DUAL = "com.framework.shareduid.dual";
 
     // TODO: consider fetching these files from build server instead.
     @Option(name = "app-repository-path", description =
@@ -1030,6 +1043,111 @@ public class PackageManagerHostTests extends DeviceTestCase {
         // cleanup test app
         finally {
             mPMHostUtils.uninstallApp(SIMPLE_PKG);
+        }
+    }
+
+    public void testInstallApk32bit() throws DeviceNotAvailableException {
+        try {
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_32), true);
+            assertEquals(ARMEABI_V7A, mPMHostUtils.getAbi(SHARED_UID_PKG_32));
+        } finally {
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_32);
+        }
+
+    }
+
+    public void testInstallApk64bit() throws DeviceNotAvailableException {
+        try {
+            if (!ARM64_V8A.equals(getDevice().getProperty(ABI_PROPERTY))) {
+                return;
+            }
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_64), true);
+            assertEquals(ARMEABI_V7A, mPMHostUtils.getAbi(SHARED_UID_PKG_64));
+        } finally {
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_64);
+        }
+
+    }
+
+    public void testInstallApkDualAbi() throws DeviceNotAvailableException {
+        try {
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_DUAL), true);
+            assertEquals(getDevice().getProperty(ABI_PROPERTY),
+                    mPMHostUtils.getAbi(SHARED_UID_PKG_DUAL));
+        } finally {
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_DUAL);
+        }
+    }
+
+    public void testInstallSharedUid32() throws DeviceNotAvailableException {
+        try{
+            if (!ARMEABI_V7A.equals(getDevice().getProperty(ABI_PROPERTY))) {
+                return;
+            }
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK), true);
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_32), true);
+            assertEquals(mPMHostUtils.getUid(SHARED_UID_PKG),
+                    mPMHostUtils.getUid(SHARED_UID_PKG_32));
+        } finally {
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG);
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_32);
+        }
+    }
+
+    public void testInstallSharedUid64() throws DeviceNotAvailableException {
+        try{
+            if (!ARM64_V8A.equals(getDevice().getProperty(ABI_PROPERTY))) {
+                return;
+            }
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK), true);
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_64), true);
+            assertEquals(mPMHostUtils.getUid(SHARED_UID_PKG),
+                    mPMHostUtils.getUid(SHARED_UID_PKG_64));
+        } finally {
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG);
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_64);
+        }
+    }
+
+    public void testInstallSharedUidDual64() throws DeviceNotAvailableException {
+        try{
+            if (!ARM64_V8A.equals(getDevice().getProperty(ABI_PROPERTY))) {
+                return;
+            }
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_DUAL), true);
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_64), true);
+            assertEquals(mPMHostUtils.getUid(SHARED_UID_PKG_DUAL),
+                    mPMHostUtils.getUid(SHARED_UID_PKG_64));
+        } finally {
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_DUAL);
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_64);
+        }
+    }
+
+    public void testInstallSharedUidDual32() throws DeviceNotAvailableException {
+        try{
+            if (!ARMEABI_V7A.equals(getDevice().getProperty(ABI_PROPERTY))) {
+                return;
+            }
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_DUAL), true);
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_32), true);
+            assertEquals(mPMHostUtils.getUid(SHARED_UID_PKG_DUAL),
+                    mPMHostUtils.getUid(SHARED_UID_PKG_32));
+        } finally {
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_DUAL);
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_32);
+        }
+    }
+
+    public void testInstallSharedUidJavaDual() throws DeviceNotAvailableException {
+        try{
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_DUAL), true);
+            mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK), true);
+            assertEquals(mPMHostUtils.getUid(SHARED_UID_PKG_DUAL),
+                    mPMHostUtils.getUid(SHARED_UID_PKG));
+        } finally {
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG_DUAL);
+            mPMHostUtils.uninstallApp(SHARED_UID_PKG);
         }
     }
 }
