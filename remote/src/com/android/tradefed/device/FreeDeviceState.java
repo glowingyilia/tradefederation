@@ -21,8 +21,8 @@ public enum FreeDeviceState {
         AVAILABLE,
 
         /**
-         * Device is not visible via adb, and should not be returned to the available device
-         * queue
+         * Device is not available for testing, and should not be returned to the available device
+         * queue. Typically this means device is not visible via adb, but not necessarily.
          */
         UNAVAILABLE,
 

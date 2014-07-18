@@ -32,21 +32,4 @@ enum DeviceEvent {
         FREE_UNRESPONSIVE,
         FREE_UNAVAILABLE,
         FREE_UNKNOWN;
-
-        /**
-         * Helper method to convert from a {@link FreeDeviceState} to a {@link DeviceEvent}
-         */
-        static DeviceEvent convertFromFree(FreeDeviceState deviceState) {
-            switch (deviceState) {
-                case UNRESPONSIVE:
-                    return DeviceEvent.FREE_UNRESPONSIVE;
-                case AVAILABLE:
-                    return DeviceEvent.FREE_AVAILABLE;
-                case UNAVAILABLE:
-                    return DeviceEvent.FREE_UNAVAILABLE;
-                case IGNORE:
-                    return DeviceEvent.FREE_UNKNOWN;
-            }
-            throw new IllegalStateException("unknown FreeDeviceState");
-        }
 }

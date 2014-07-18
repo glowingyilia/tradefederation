@@ -433,11 +433,32 @@ public class DeviceManager implements IDeviceManager {
         }
 
         DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(managedDevice,
-                DeviceEvent.convertFromFree(deviceState));
+                getEventFromFree(managedDevice, deviceState));
         if (r != null && !r.stateChanged) {
             CLog.e("Device %s was in unexpected state %s when freeing", device.getSerialNumber(),
                     r.allocationState.toString());
         }
+    }
+
+    /**
+     * Helper method to convert from a {@link FreeDeviceState} to a {@link DeviceEvent}
+     * @param managedDevice
+     */
+    static DeviceEvent getEventFromFree(IManagedTestDevice managedDevice, FreeDeviceState deviceState) {
+        switch (deviceState) {
+            case UNRESPONSIVE:
+                return DeviceEvent.FREE_UNRESPONSIVE;
+            case AVAILABLE:
+                return DeviceEvent.FREE_AVAILABLE;
+            case UNAVAILABLE:
+                if (managedDevice.getDeviceState() == TestDeviceState.NOT_AVAILABLE) {
+                    return DeviceEvent.FREE_UNKNOWN;
+                }
+                return DeviceEvent.FREE_UNAVAILABLE;
+            case IGNORE:
+                return DeviceEvent.FREE_UNKNOWN;
+        }
+        throw new IllegalStateException("unknown FreeDeviceState");
     }
 
     /**
