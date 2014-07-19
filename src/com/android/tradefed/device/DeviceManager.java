@@ -117,8 +117,9 @@ public class DeviceManager implements IDeviceManager {
      * methods are called.
      */
     @Override
-    public void init(IDeviceSelection globalDeviceFilter, IDeviceMonitor globalDeviceMonitor) {
-        init(globalDeviceFilter, globalDeviceMonitor, new IManagedTestDeviceFactory() {
+    public void init(IDeviceSelection globalDeviceFilter,
+            List<IDeviceMonitor> globalDeviceMonitors) {
+        init(globalDeviceFilter, globalDeviceMonitors, new IManagedTestDeviceFactory() {
             @Override
             public IManagedTestDevice createDevice(IDevice idevice) {
                 TestDevice testDevice = new TestDevice(idevice, new DeviceStateMonitor(
@@ -138,8 +139,8 @@ public class DeviceManager implements IDeviceManager {
      * Initialize the device manager. This must be called once and only once before any other
      * methods are called.
      */
-    synchronized void init(IDeviceSelection globalDeviceFilter, IDeviceMonitor globalDeviceMonitor,
-            IManagedTestDeviceFactory deviceFactory) {
+    synchronized void init(IDeviceSelection globalDeviceFilter,
+            List<IDeviceMonitor> globalDeviceMonitors, IManagedTestDeviceFactory deviceFactory) {
         if (mIsInitialized) {
             throw new IllegalStateException("already initialized");
         }
@@ -148,13 +149,15 @@ public class DeviceManager implements IDeviceManager {
             globalDeviceFilter = getGlobalConfig().getDeviceRequirements();
         }
 
-        if (globalDeviceMonitor == null) {
-            globalDeviceMonitor = getGlobalConfig().getDeviceMonitor();
+        if (globalDeviceMonitors == null) {
+            globalDeviceMonitors = getGlobalConfig().getDeviceMonitors();
         }
 
         mIsInitialized = true;
         mGlobalDeviceFilter = globalDeviceFilter;
-        mDvcMon = globalDeviceMonitor;
+        if (globalDeviceMonitors != null) {
+            mDvcMon = new DeviceMonitorMultiplexer(globalDeviceMonitors);
+        }
         mManagedDeviceList = new ManagedDeviceList(deviceFactory);
 
         if (isFastbootAvailable()) {

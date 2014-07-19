@@ -183,7 +183,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     private static synchronized Map<String, ObjTypeInfo> getObjTypeMap() {
         if (sObjTypeMap == null) {
             sObjTypeMap = new HashMap<String, ObjTypeInfo>();
-            sObjTypeMap.put(DEVICE_MONITOR_TYPE_NAME, new ObjTypeInfo(IDeviceMonitor.class, false));
+            sObjTypeMap.put(DEVICE_MONITOR_TYPE_NAME, new ObjTypeInfo(IDeviceMonitor.class, true));
             sObjTypeMap.put(DEVICE_MANAGER_TYPE_NAME, new ObjTypeInfo(IDeviceManager.class, false));
             sObjTypeMap.put(DEVICE_REQUIREMENTS_TYPE_NAME, new ObjTypeInfo(IDeviceSelection.class,
                     false));
@@ -234,8 +234,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public IDeviceMonitor getDeviceMonitor() {
-        return (IDeviceMonitor)getConfigurationObject(DEVICE_MONITOR_TYPE_NAME);
+    public List<IDeviceMonitor> getDeviceMonitors() {
+        return (List<IDeviceMonitor>) getConfigurationObjectList(DEVICE_MONITOR_TYPE_NAME);
     }
 
     /**

@@ -49,7 +49,7 @@ public interface IDeviceManager {
      *
      * @param globalDeviceFilter the device filter
      */
-    public void init(IDeviceSelection globalDeviceFilter, IDeviceMonitor deviceMonitor);
+    public void init(IDeviceSelection globalDeviceFilter, List<IDeviceMonitor> deviceMonitors);
 
     /**
      * Request a physical device for testing
