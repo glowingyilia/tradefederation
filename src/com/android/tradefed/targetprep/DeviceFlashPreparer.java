@@ -194,33 +194,34 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         }
         IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo)buildInfo;
         device.setRecoveryMode(RecoveryMode.ONLINE);
+        IDeviceFlasher flasher = createFlasher(device);
+        // only surround fastboot related operations with flashing permit restriction
         try {
             takeFlashingPermit();
 
-            IDeviceFlasher flasher = createFlasher(device);
             flasher.overrideDeviceOptions(device);
             flasher.setUserDataFlashOption(mUserDataFlashOption);
             flasher.setForceSystemFlash(mForceSystemFlash);
             flasher.setDataWipeSkipList(mDataWipeSkipList);
             preEncryptDevice(device, flasher);
             flasher.flash(device, deviceBuild);
-            device.waitForDeviceOnline();
-            postEncryptDevice(device, flasher);
-            // only want logcat captured for current build, delete any accumulated log data
-            device.clearLogcat();
-            try {
-                device.setRecoveryMode(RecoveryMode.AVAILABLE);
-                device.waitForDeviceAvailable(mDeviceBootTime);
-            } catch (DeviceUnresponsiveException e) {
-                // assume this is a build problem
-                throw new DeviceFailedToBootError(String.format(
-                        "Device %s did not become available after flashing %s",
-                        device.getSerialNumber(), deviceBuild.getDeviceBuildId()));
-            }
-            device.postBootSetup();
         } finally {
             returnFlashingPermit();
         }
+        device.waitForDeviceOnline();
+        postEncryptDevice(device, flasher);
+        // only want logcat captured for current build, delete any accumulated log data
+        device.clearLogcat();
+        try {
+            device.setRecoveryMode(RecoveryMode.AVAILABLE);
+            device.waitForDeviceAvailable(mDeviceBootTime);
+        } catch (DeviceUnresponsiveException e) {
+            // assume this is a build problem
+            throw new DeviceFailedToBootError(String.format(
+                    "Device %s did not become available after flashing %s",
+                    device.getSerialNumber(), deviceBuild.getDeviceBuildId()));
+        }
+        device.postBootSetup();
     }
 
     /**
