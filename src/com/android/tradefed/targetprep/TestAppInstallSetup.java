@@ -75,6 +75,13 @@ public class TestAppInstallSetup implements ITargetPreparer {
         for (String testAppName : mTestFileNames) {
             File testAppFile = FileUtil.getFileForPath(testsDir, "DATA", "app", testAppName);
             if (!testAppFile.exists()) {
+                // in addition to /data/app/TestApp.apk
+                // also check path like /data/app/TestApp/TestApp.apk
+                String[] fields = testAppName.split("\\.");
+                testAppFile = FileUtil.getFileForPath(
+                        testsDir, "DATA", "app", fields[0], testAppName);
+            }
+            if (!testAppFile.exists()) {
                 throw new TargetSetupError(
                     String.format("Could not find test app %s directory in extracted tests.zip",
                             testAppFile));
