@@ -669,6 +669,7 @@ class TestDevice implements IManagedTestDevice {
         DeviceAction uninstallAction = new DeviceAction() {
             @Override
             public boolean run() throws InstallException {
+                CLog.d("Uninstalling %s", packageName);
                 String result = getIDevice().uninstallPackage(packageName);
                 response[0] = result;
                 return result == null;
@@ -1725,6 +1726,7 @@ class TestDevice implements IManagedTestDevice {
     /**
      * Check that device has network connectivity.
      */
+    @Override
     public boolean checkConnectivity() throws DeviceNotAvailableException {
         try {
             final IWifiHelper wifi = createWifiHelper();
