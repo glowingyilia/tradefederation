@@ -26,6 +26,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.AaptParser;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -55,6 +56,10 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             "force retention of this package when --uninstall-all is set.")
     private Set<String> mSkipUninstallPkgs = new HashSet<String>();
 
+    @Option(name = "install-flag", description =
+            "optional flag(s) to provide when installing apks.")
+    private ArrayList<String> mInstallFlags = new ArrayList<>();
+
     /** contains package names of installed apps. Used for uninstall */
     private Set<String> mInstalledPkgs = new HashSet<String>();
 
@@ -81,7 +86,8 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
 
         if (mInstall) {
             for (VersionedFile apkFile : appBuild.getAppPackageFiles()) {
-                String result = device.installPackage(apkFile.getFile(), true);
+                String result = device.installPackage(apkFile.getFile(), true,
+                        mInstallFlags.toArray(new String[mInstallFlags.size()]));
                 if (result != null) {
                     // typically install failures means something is wrong with apk.
                     // TODO: in future add more logic to throw targetsetup vs build vs
