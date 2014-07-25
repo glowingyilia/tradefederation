@@ -30,6 +30,7 @@ import com.android.tradefed.util.CommandResult;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -842,5 +843,12 @@ public class StubTestDevice implements IManagedTestDevice {
     @Override
     public DeviceEventResponse handleAllocationEvent(DeviceEvent event) {
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setDate(Date date) throws DeviceNotAvailableException {
     }
 }

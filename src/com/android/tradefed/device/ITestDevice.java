@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -1092,4 +1093,13 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public int getApiLevel() throws DeviceNotAvailableException;
+
+    /**
+     * Sets the date on device
+     * <p>
+     * Note: setting date on device requires root
+     * @param date specify a particular date; will use host date if <code>null</code>
+     * @throws DeviceNotAvailableException
+     */
+    public void setDate(Date date) throws DeviceNotAvailableException;
 }

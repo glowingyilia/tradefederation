@@ -2864,4 +2864,16 @@ class TestDevice implements IManagedTestDevice {
         }
         return new DeviceEventResponse(newState, stateChanged);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setDate(Date date) throws DeviceNotAvailableException {
+        if (date == null) {
+            date = new Date();
+        }
+        long epochInSeconds = date.getTime() / 1000; //ms to s
+        executeShellCommand("date " + epochInSeconds);
+    }
 }
