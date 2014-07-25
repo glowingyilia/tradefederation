@@ -103,6 +103,7 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
         mMockFlasher.flash(mMockDevice, mMockBuildInfo);
         mMockDevice.waitForDeviceOnline();
+        mMockDevice.setDate(null);
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         mMockDevice.clearLogcat();
@@ -134,6 +135,7 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
         mMockFlasher.flash(mMockDevice, mMockBuildInfo);
         mMockDevice.waitForDeviceOnline();
+        mMockDevice.setDate(null);
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         mMockDevice.clearLogcat();
