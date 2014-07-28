@@ -22,9 +22,11 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -57,6 +59,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
 
     /** max number of attempts to collect list of tests in package */
     private static final int COLLECT_TESTS_ATTEMPTS = 3;
+    /** instrumentation test runner argument key used for test execution using a file */
+    private static final String TEST_FILE_INST_ARGS_KEY = "testFile";
 
     static final String DELAY_MSEC_ARG = "delay_msec";
 
@@ -136,6 +140,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             "Should be an amount that can comfortably fit in memory.")
     private int mMaxLogcatBytes = 500 * 1024; // 500K
 
+    @Option(name = "rerun-from-file", description =
+            "Re-run failed tests using test file instead of executing separate adb commands for " +
+            "each remaining test")
+    private boolean mReRunUsingTestFile = false;
+
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
             importance = Importance.IF_UNSET)
@@ -148,6 +157,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private Collection<TestIdentifier> mRemainingTests = null;
 
     private String mCoverageTarget = null;
+
+    private String mTestFilePathOnDevice = null;
 
     /**
      * Max time in ms to allow for the 'max time to shell output response' when collecting tests.
@@ -199,6 +210,17 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
      */
     public void setMethodName(String testMethodName) {
         mTestMethodName = StringEscapeUtils.escapeShell(testMethodName);
+    }
+
+    /**
+     * Optionally, set the path to a file located on the device that should contain a list of line
+     * separated test classes and methods (format: com.foo.Class#method) to be run.
+     * If set, will automatically attempt to re-run tests using this test file
+     * via {@link InstrumentationFileTest} instead of executing separate adb commands for each
+     * remaining test via {@link InstrumentationSerialTest}"
+     */
+    public void setTestFilePathOnDevice(String testFilePathOnDevice) {
+        mTestFilePathOnDevice = testFilePathOnDevice;
     }
 
     /**
@@ -254,6 +276,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
      */
     String getMethodName() {
         return mTestMethodName;
+    }
+
+    /**
+     * Get the path to a file that contains class#method combinations to be run
+     */
+    String getTestFilePathOnDevice() {
+        return mTestFilePathOnDevice;
     }
 
     /**
@@ -426,6 +455,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         mMaxLogcatBytes = logcatOnFailureSize;
     }
 
+    public void setReRunUsingTestFile(boolean reRunUsingTestFile) {
+        mReRunUsingTestFile = reRunUsingTestFile;
+    }
+
     /**
      * @return the {@link IRemoteAndroidTestRunner} to use.
      * @throws DeviceNotAvailableException
@@ -468,6 +501,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             }
         } else if (mTestPackageName != null) {
             mRunner.setTestPackageName(mTestPackageName);
+        }
+        if (mTestFilePathOnDevice != null) {
+            addInstrumentationArg(TEST_FILE_INST_ARGS_KEY, mTestFilePathOnDevice);
         }
         if (mTestSize != null) {
             mRunner.setTestSize(TestSize.getTestSize(mTestSize));
@@ -532,6 +568,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             mDevice.runInstrumentationTests(mRunner, listener);
         } else if (mRemainingTests.size() != 0) {
             runWithRerun(listener, mRemainingTests);
+
         } else {
             Log.i(LOG_TAG, String.format("No tests expected for %s, skipping", mPackageName));
         }
@@ -556,7 +593,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     }
 
     /**
-     * Rerun any <var>mRemainingTests</var> one by one
+     * Rerun any <var>mRemainingTests</var>
      *
      * @param listener the {@link ITestInvocationListener}
      * @throws DeviceNotAvailableException
@@ -564,25 +601,55 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private void rerunTests(final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (mRemainingTests.size() > 0) {
-            InstrumentationListTest testRerunner = new InstrumentationListTest(mPackageName,
-                    mRunnerName, mRemainingTests);
-            if (mForceAbi != null) {
-                testRerunner.setForceAbi(mForceAbi);
+            if (mReRunUsingTestFile) {
+                reRunTestsFromFile(listener);
+            } else {
+                reRunTestsSerially(listener);
             }
-            testRerunner.setDevice(getDevice());
-            testRerunner.setTestTimeout(getTestTimeout());
-            testRerunner.setRunName(mRunName);
-            testRerunner.addInstrumentationArgs(mInstrArgMap);
-            testRerunner.setForceAbi(mForceAbi);
-            testRerunner.setScreenshotOnFailure(mScreenshotOnFailure);
-            testRerunner.setLogcatOnFailure(mLogcatOnFailure);
-            testRerunner.setLogcatOnFailureSize(mMaxLogcatBytes);
+        }
+    }
+
+    /**
+     * re-runs tests from test file via {@link InstrumentationFileTest}
+     */
+    private void reRunTestsFromFile(final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        CLog.i("Running individual tests using a test file");
+        try {
+            InstrumentationFileTest testReRunner = new InstrumentationFileTest(this,
+                    mRemainingTests);
             CollectingTestListener testTracker = new CollectingTestListener();
             try {
-                testRerunner.run(new ResultForwarder(listener, testTracker));
+                testReRunner.run(new ResultForwarder(listener, testTracker));
             } finally {
                 calculateRemainingTests(mRemainingTests, testTracker);
             }
+        } catch (ConfigurationException e) {
+            CLog.e("Failed to create InstrumentationFileTest", e);
+        }
+    }
+
+    /**
+     * re-runs tests one by one via {@link InstrumentationSerialTest}
+     */
+    private void reRunTestsSerially(final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        CLog.i("Running individual tests serially");
+        // Since the same runner is reused we must ensure TEST_FILE_INST_ARGS_KEY is not set.
+        // Otherwise, the runner will attempt to execute tests from file.
+        if (mInstrArgMap != null && mInstrArgMap.containsKey(TEST_FILE_INST_ARGS_KEY)) {
+            mInstrArgMap.remove(TEST_FILE_INST_ARGS_KEY);
+        }
+        try {
+            InstrumentationSerialTest testReRunner = new InstrumentationSerialTest(this, mRemainingTests);
+            CollectingTestListener testTracker = new CollectingTestListener();
+            try {
+                testReRunner.run(new ResultForwarder(listener, testTracker));
+            } finally {
+                calculateRemainingTests(mRemainingTests, testTracker);
+            }
+        } catch (ConfigurationException e) {
+            CLog.e("Failed to create InstrumentationSerialTest", e);
         }
     }
 
