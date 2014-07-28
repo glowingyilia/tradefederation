@@ -180,7 +180,7 @@ class InstrumentationFileTest implements IRemoteTest {
     /**
      * Delete file from the device if it exists
      */
-    private void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
+    void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
         if (mInstrumentationTest.getDevice().doesFileExist(pathToFile)) {
             mInstrumentationTest.getDevice()
                     .executeShellCommand(String.format("rm %s", pathToFile));

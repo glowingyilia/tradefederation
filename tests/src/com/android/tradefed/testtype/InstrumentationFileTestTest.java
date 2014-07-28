@@ -110,6 +110,10 @@ public class InstrumentationFileTestTest extends TestCase {
                 verifyTestFile(testsList);
                 return true;
             }
+            @Override
+            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
+                //ignore
+            }
         };
 
         // mock successful test run lifecycle
@@ -189,6 +193,10 @@ public class InstrumentationFileTestTest extends TestCase {
                 // verify that the content of the testFile contains all expected tests
                 verifyTestFile(testsList);
                 return true;
+            }
+            @Override
+            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
+                //ignore
             }
         };
 
@@ -287,6 +295,10 @@ public class InstrumentationFileTestTest extends TestCase {
                 // simulate successful push and store created file
                 mTestFile = file;
                 return true;
+            }
+            @Override
+            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
+                //ignore
             }
         };
 
