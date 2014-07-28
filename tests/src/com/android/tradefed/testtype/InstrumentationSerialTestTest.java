@@ -17,26 +17,34 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Unit tests for {@link InstrumentationListTest}.
+ * Unit tests for {@link InstrumentationSerialTest}.
  */
-public class InstrumentationListTestTest extends TestCase {
+public class InstrumentationSerialTestTest extends TestCase {
 
-    /** The {@link InstrumentationListTest} under test, with all dependencies mocked out */
-    private InstrumentationListTest mInstrumentationListTest;
+    /** The {@link InstrumentationSerialTest} under test, with all dependencies mocked out */
+    private InstrumentationSerialTest mInstrumentationSerialTest;
 
     // The mock objects.
     private ITestDevice mMockTestDevice;
@@ -56,7 +64,7 @@ public class InstrumentationListTestTest extends TestCase {
      * Test normal run scenario with a single test.
      */
     @SuppressWarnings("unchecked")
-    public void testRun() throws DeviceNotAvailableException {
+    public void testRun() throws DeviceNotAvailableException, ConfigurationException {
         final String packageName = "com.foo";
         final TestIdentifier test = new TestIdentifier("FooTest", "testFoo");
         final Collection<TestIdentifier> testList = new ArrayList<TestIdentifier>(1);
@@ -70,9 +78,15 @@ public class InstrumentationListTestTest extends TestCase {
                 listener.testRunEnded(0, Collections.EMPTY_MAP);
             }
         };
-        mInstrumentationListTest = new InstrumentationListTest(packageName, "foo", testList) {
+
+        // mock out InstrumentationTest that will be used to create InstrumentationSerialTest
+        mockITest.setDevice(mMockTestDevice);
+        mockITest.setPackageName(packageName);
+
+        mInstrumentationSerialTest = new InstrumentationSerialTest(mockITest, testList) {
             @Override
-            InstrumentationTest createInstrumentationTest() {
+            InstrumentationTest createInstrumentationTest(InstrumentationTest instrumentationTest) throws
+                    ConfigurationException {
                 return mockITest;
             }
         };
@@ -82,8 +96,7 @@ public class InstrumentationListTestTest extends TestCase {
         mMockListener.testRunEnded(0, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
-        mInstrumentationListTest.setDevice(mMockTestDevice);
-        mInstrumentationListTest.run(mMockListener);
+        mInstrumentationSerialTest.run(mMockListener);
         assertEquals(mMockTestDevice, mockITest.getDevice());
         assertEquals(test.getClassName(), mockITest.getClassName());
         assertEquals(test.getTestName(), mockITest.getMethodName());
@@ -91,11 +104,11 @@ public class InstrumentationListTestTest extends TestCase {
     }
 
     /**
-     * Test {@link InstrumentationListTest#run(List)} when the test run fails without executing the
+     * Test {@link InstrumentationSerialTest#run} when the test run fails without executing the
      * test.
      */
     @SuppressWarnings("unchecked")
-    public void testRun_runFailure() throws DeviceNotAvailableException {
+    public void testRun_runFailure() throws DeviceNotAvailableException, ConfigurationException {
         final String packageName = "com.foo";
         final TestIdentifier test = new TestIdentifier("FooTest", "testFoo");
         final String runFailureMsg = "run failed";
@@ -109,14 +122,18 @@ public class InstrumentationListTestTest extends TestCase {
                 listener.testRunEnded(0, Collections.EMPTY_MAP);
             }
         };
-        mInstrumentationListTest = new InstrumentationListTest(packageName, "foo", testList) {
+        // mock out InstrumentationTest that will be used to create InstrumentationSerialTest
+        mockITest.setDevice(mMockTestDevice);
+        mockITest.setPackageName(packageName);
+        mInstrumentationSerialTest = new InstrumentationSerialTest(mockITest, testList) {
             @Override
-            InstrumentationTest createInstrumentationTest() {
+            InstrumentationTest createInstrumentationTest(InstrumentationTest instrumentationTest)
+                    throws ConfigurationException {
                 return mockITest;
             }
         };
         // expect two attempts, plus 1 additional run to mark the test as failed
-        int expectedAttempts = InstrumentationListTest.FAILED_RUN_TEST_ATTEMPTS+1;
+        int expectedAttempts = InstrumentationSerialTest.FAILED_RUN_TEST_ATTEMPTS+1;
         mMockListener.testRunStarted(packageName, 1);
         EasyMock.expectLastCall().times(expectedAttempts);
         mMockListener.testRunFailed(runFailureMsg);
@@ -131,8 +148,7 @@ public class InstrumentationListTestTest extends TestCase {
         mMockListener.testEnded(test, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
-        mInstrumentationListTest.setDevice(mMockTestDevice);
-        mInstrumentationListTest.run(mMockListener);
+        mInstrumentationSerialTest.run(mMockListener);
         assertEquals(mMockTestDevice, mockITest.getDevice());
         assertEquals(test.getClassName(), mockITest.getClassName());
         assertEquals(test.getTestName(), mockITest.getMethodName());
@@ -142,13 +158,12 @@ public class InstrumentationListTestTest extends TestCase {
     /**
      * Test that IllegalArgumentException is thrown when attempting run without setting device.
      */
-    public void testRun_noDevice() throws DeviceNotAvailableException {
-        mInstrumentationListTest = new InstrumentationListTest("foo", "foo",
+    public void testRun_noDevice() throws DeviceNotAvailableException, ConfigurationException {
+        mInstrumentationSerialTest = new InstrumentationSerialTest(new InstrumentationTest(),
                 new ArrayList<TestIdentifier>());
-        mInstrumentationListTest.setDevice(null);
         EasyMock.replay(mMockListener);
         try {
-            mInstrumentationListTest.run(mMockListener);
+            mInstrumentationSerialTest.run(mMockListener);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected

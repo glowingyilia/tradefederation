@@ -16,8 +16,9 @@
 
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -30,106 +31,50 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A Test that runs a set of individual instrumentation tests.
+ * A Test that runs a set of instrumentation tests by running one adb command for per test.
  */
-class InstrumentationListTest implements IDeviceTest, IRemoteTest {
-
-    private static final String LOG_TAG = "InstrumentationListTest";
+class InstrumentationSerialTest implements IRemoteTest {
 
     /** number of attempts to make if test fails to run */
     static final int FAILED_RUN_TEST_ATTEMPTS = 2;
 
-    /** the Android package name of test application */
-    private final String mPackageName;
-    /** the Android InstrumentationTestRunner class name to use */
-    private final String mRunnerName;
-
     /** the set of tests to run */
     private final Collection<TestIdentifier> mTests;
-    /** Aborts the test run if any test takes longer than the specified number of milliseconds */
-    private int mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
-    private ITestDevice mDevice = null;
 
-    // TODO: figure out a better way to share option data with InstrumentationTest
-    private String mRunName = null;
-    private String mForceAbi = null;
-    private boolean mScreenshotOnFailure = false;
-    private boolean mLogcatOnFailure = false;
-    private int mMaxLogcatBytes = 500 * 1024; // 500K
-
-
-    private Map<String, String> mInstrArgMap = new HashMap<String, String>();
+    private InstrumentationTest mInstrumentationTest = null;
 
     /**
-     * Creates a {@link InstrumentationListTest}.
+     * Creates a {@link InstrumentationSerialTest}.
      *
-     * @param packageName the Android manifest package of test application
-     * @param runnerName the Instrumentation runner to use
+     * @param instrumentationTest  {@link InstrumentationTest} used to configure this class
      * @param testsToRun a {@link Collection} of tests to run. Note this {@link Collection} will be
      * used as is (ie a reference to the testsToRun object will be kept).
      */
-    InstrumentationListTest(String packageName, String runnerName,
-            Collection<TestIdentifier> testsToRun) {
-        mPackageName = packageName;
-        mRunnerName = runnerName;
+    InstrumentationSerialTest(InstrumentationTest instrumentationTest,
+            Collection<TestIdentifier> testsToRun) throws ConfigurationException {
+        // reuse the InstrumentationTest class to perform actual test run
+        mInstrumentationTest = createInstrumentationTest(instrumentationTest);
+        // keep local copy of tests to be run
         mTests = testsToRun;
     }
 
     /**
-     * {@inheritDoc}
+     * Create and initialize new instance of {@link InstrumentationTest}. Exposed for unit testing.
+     *
+     * @param instrumentationTest  {@link InstrumentationTest} used to configure this class
+     * @return  the newly created {@link InstrumentationTest}
      */
-    @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    /**
-     * Optionally, set the maximum time for each test.
-     */
-    void setTestTimeout(int timeout) {
-        mTestTimeout = timeout;
-    }
-
-    /**
-     * Optionally, set a custom run name.
-     */
-    public void setRunName(String runName) {
-        mRunName  = runName;
-    }
-
-    /**
-     * Sets the force-abi option.
-     * @param abi
-     */
-    public void setForceAbi(String abi) {
-        mForceAbi = abi;
-    }
-
-    public void setScreenshotOnFailure(boolean screenshotOnFailure) {
-        mScreenshotOnFailure = screenshotOnFailure;
-    }
-
-    public void setLogcatOnFailure(boolean logcatOnFailure) {
-        mScreenshotOnFailure = logcatOnFailure;
-    }
-
-    public void setLogcatOnFailureSize(int maxLogcatBytes) {
-        mMaxLogcatBytes = maxLogcatBytes;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ITestDevice getDevice() {
-        return mDevice;
-    }
-
-    /**
-     * @return the {@link InstrumentationTest} to use. Exposed for unit testing.
-     */
-    InstrumentationTest createInstrumentationTest() {
-        return new InstrumentationTest();
+    InstrumentationTest createInstrumentationTest(InstrumentationTest instrumentationTest)
+            throws ConfigurationException {
+        InstrumentationTest runner = new InstrumentationTest();
+        OptionCopier.copyOptions(instrumentationTest, runner);
+        runner.setDevice(instrumentationTest.getDevice());
+        runner.setForceAbi(instrumentationTest.getForceAbi());
+        // ensure testFile is not used.
+        runner.setReRunUsingTestFile(false);
+        // no need to rerun when executing tests one by one
+        runner.setRerunMode(false);
+        return runner;
     }
 
     /**
@@ -137,31 +82,24 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
      */
     @Override
     public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
-        if (mDevice == null) {
+        if (mInstrumentationTest.getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
         // reuse the InstrumentationTest class to perform actual test run
-        for (TestIdentifier testToRun : mTests) {
-            InstrumentationTest runner = createInstrumentationTest();
-            runner.setDevice(mDevice);
-            runner.setPackageName(mPackageName);
-            runner.setRunnerName(mRunnerName);
-            runner.setClassName(testToRun.getClassName());
-            runner.setMethodName(testToRun.getTestName());
-            runner.setTestTimeout(mTestTimeout);
-            if (mForceAbi != null) {
-                runner.setForceAbi(mForceAbi);
+        runTestsIndividually(listener);
+    }
+
+    private void runTestsIndividually(final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        try {
+            for (TestIdentifier testToRun : mTests) {
+                InstrumentationTest runner = createInstrumentationTest(mInstrumentationTest);
+                runner.setClassName(testToRun.getClassName());
+                runner.setMethodName(testToRun.getTestName());
+                runTest(runner, listener, testToRun);
             }
-            // no need to rerun when executing tests one by one
-            runner.setRerunMode(false);
-            runner.setRunName(mRunName);
-            for (Map.Entry<String, String> entry : mInstrArgMap.entrySet()) {
-                runner.addInstrumentationArg(entry.getKey(), entry.getValue());
-            }
-            runner.setScreenshotOnFailure(mScreenshotOnFailure);
-            runner.setLogcatOnFailure(mLogcatOnFailure);
-            runner.setLogcatOnFailureSize(mMaxLogcatBytes);
-            runTest(runner, listener, testToRun);
+        } catch (ConfigurationException e) {
+            CLog.e("Failed to create new InstrumentationTest", e);
         }
     }
 
@@ -214,8 +152,7 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
                 mDidTestRun  = true;
             } else {
                 // weird, should never happen
-                Log.w(LOG_TAG, String.format("Expected test %s, but got test %s", mExpectedTest,
-                        test));
+                CLog.w(String.format("Expected test %s, but got test %s", mExpectedTest, test));
             }
         }
 
@@ -235,9 +172,5 @@ class InstrumentationListTest implements IDeviceTest, IRemoteTest {
             super.testEnded(mExpectedTest, Collections.EMPTY_MAP);
             super.testRunEnded(0, Collections.EMPTY_MAP);
         }
-    }
-
-    void addInstrumentationArgs(Map<String, String> instrArgMap) {
-        mInstrArgMap.putAll(instrArgMap);
     }
 }
