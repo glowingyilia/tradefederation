@@ -20,7 +20,6 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.MultiLineReceiver;
 import com.android.ddmlib.NullOutputReceiver;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -57,7 +56,8 @@ import java.util.concurrent.TimeUnit;
  * </p>
  */
 public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
-    private static final String[] FIO_RESULT_FIELDS = {
+    // TODO: Refactor this to only pick out fields we care about.
+    private static final String[] FIO_V0_RESULT_FIELDS = {
         "jobname", "groupid", "error",
         // Read stats
         "read-kb-io", "read-bandwidth", "read-runtime",
@@ -78,8 +78,42 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         "io-depth-1", "io-depth-2", "io-depth-4", "io-depth-8", "io-depth-16", "io-depth-32",
         "io-depth-64",
         // IO lat stats
-        "io-lat-2", "io-lat-4", "io-lat-10", "io-lat-20", "io-lat-50", "io-lat-100", "io-lat-250",
-        "io-lat-500", "io-lat-750", "io-lat-1000", "io-lat-2000"
+        "io-lat-2-ms", "io-lat-4-ms", "io-lat-10-ms", "io-lat-20-ms", "io-lat-50-ms",
+        "io-lat-100-ms", "io-lat-250-ms", "io-lat-500-ms", "io-lat-750-ms", "io-lat-1000-ms",
+        "io-lat-2000-ms"
+    };
+    private static final String[] FIO_V3_RESULT_FIELDS = {
+        "terse-version", "fio-version", "jobname", "groupid", "error",
+        // Read stats
+        "read-kb-io", "read-bandwidth", "read-iops", "read-runtime",
+        "read-slat-min", "read-slat-max", "read-slat-mean", "read-slat-stddev",
+        "read-clat-min", "read-clat-max", "read-clat-mean", "read-clat-stddev",
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+        null, null, null, null, null,
+        "read-lat-min", "read-lat-max", "read-lat-mean", "read-lat-stddev",
+        "read-bandwidth-min", "read-bandwidth-max", "read-bandwidth-percent", "read-bandwidth-mean",
+        "read-bandwidth-stddev",
+        // Write stats
+        "write-kb-io", "write-bandwidth", "write-iops", "write-runtime",
+        "write-slat-min", "write-slat-max", "write-slat-mean", "write-slat-stddev",
+        "write-clat-min", "write-clat-max", "write-clat-mean", "write-clat-stddev",
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+        null, null, null, null, null,
+        "write-lat-min", "write-lat-max", "write-lat-mean", "write-lat-stddev",
+        "write-bandwidth-min", "write-bandwidth-max", "write-bandwidth-percent",
+        "write-bandwidth-mean", "write-bandwidth-stddev",
+        // CPU stats
+        "cpu-user", "cpu-system", "cpu-context-switches", "cpu-major-page-faults",
+        "cpu-minor-page-faults",
+        // IO depth stats
+        "io-depth-1", "io-depth-2", "io-depth-4", "io-depth-8", "io-depth-16", "io-depth-32",
+        "io-depth-64",
+        // IO lat stats
+        "io-lat-2-us", "io-lat-4-us", "io-lat-10-us", "io-lat-20-us", "io-lat-50-us",
+        "io-lat-100-us", "io-lat-250-us", "io-lat-500-us", "io-lat-750-us", "io-lat-1000-us",
+        "io-lat-2-ms", "io-lat-4-ms", "io-lat-10-ms", "io-lat-20-ms", "io-lat-50-ms",
+        "io-lat-100-ms", "io-lat-250-ms", "io-lat-500-ms", "io-lat-750-ms", "io-lat-1000-ms",
+        "io-lat-2000-ms", "io-lat-greater"
     };
 
     private List<TestInfo> mTestCases = null;
@@ -214,14 +248,24 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
             for (String line : lines) {
                 CLog.d(line);
                 String[] fields = line.split(";");
-                if (fields.length < FIO_RESULT_FIELDS.length) {
+                if (fields.length < FIO_V0_RESULT_FIELDS.length) {
                     continue;
                 }
-                Map<String, String> r = new HashMap<String, String>();
-                for (int i = 0; i < FIO_RESULT_FIELDS.length; i++) {
-                    r.put(FIO_RESULT_FIELDS[i], fields[i]);
+                if (fields.length < FIO_V3_RESULT_FIELDS.length) {
+                    Map<String, String> r = new HashMap<String, String>();
+                    for (int i = 0; i < FIO_V0_RESULT_FIELDS.length; i++) {
+                        r.put(FIO_V0_RESULT_FIELDS[i], fields[i]);
+                    }
+                    mResults.put(fields[0], r); // Job name is index 0
+                } else if ("3".equals(fields[0])) {
+                    Map<String, String> r = new HashMap<String, String>();
+                    for (int i = 0; i < FIO_V3_RESULT_FIELDS.length; i++) {
+                        r.put(FIO_V3_RESULT_FIELDS[i], fields[i]);
+                    }
+                    mResults.put(fields[2], r); // Job name is index 2
+                } else {
+                    Assert.fail("Unknown fio terse output version");
                 }
-                mResults.put(fields[0], r);
             }
         }
 
@@ -240,8 +284,8 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
     private String mFioBin = null;
     private String mFioConfig = null;
 
-    @Option(name="fio-location", description="The path to the precompiled FIO executable.",
-            importance=Importance.ALWAYS)
+    @Option(name="fio-location", description="The path to the precompiled FIO executable. If "
+            + "unset, try to use fio from the system image.")
     private String mFioLocation = null;
 
     @Option(name="tmp-dir", description="The directory used for interal benchmarks.")
@@ -747,8 +791,10 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         if (mExternalTestDir != null) {
             mTestDevice.executeShellCommand(String.format("mkdir -p %s", mExternalTestDir));
         }
-        mTestDevice.pushFile(new File(mFioLocation), mFioBin);
-        mTestDevice.executeShellCommand(String.format("chmod 755 %s", mFioBin));
+        if (mFioLocation != null) {
+            mTestDevice.pushFile(new File(mFioLocation), mFioBin);
+            mTestDevice.executeShellCommand(String.format("chmod 755 %s", mFioBin));
+        }
     }
 
     /**
@@ -870,7 +916,11 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         Assert.assertNotNull(mTestDevice);
 
         mFioDir = new File(mTestDevice.getMountPoint(IDevice.MNT_DATA), "fio").getAbsolutePath();
-        mFioBin = new File(mFioDir, "fio").getAbsolutePath();
+        if (mFioLocation != null) {
+            mFioBin = new File(mFioDir, "fio").getAbsolutePath();
+        } else {
+            mFioBin = "fio";
+        }
         mFioConfig = new File(mFioDir, "config.fio").getAbsolutePath();
 
         setupTests();
@@ -963,7 +1013,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
             for (int i = 0; i < 3; i++) {
                 StringBuilder sb = new StringBuilder();
                 sb.append(i);
-                for (int j = 1; j < FIO_RESULT_FIELDS.length; j++) {
+                for (int j = 1; j < FIO_V0_RESULT_FIELDS.length; j++) {
                     sb.append(";");
                     sb.append(j * 3 + i);
                 }
@@ -980,10 +1030,10 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
 
 
             for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < FIO_RESULT_FIELDS.length; j++) {
-                    assertEquals(String.format("job=%d, field=%s", i, FIO_RESULT_FIELDS[j]),
+                for (int j = 0; j < FIO_V0_RESULT_FIELDS.length; j++) {
+                    assertEquals(String.format("job=%d, field=%s", i, FIO_V0_RESULT_FIELDS[j]),
                             String.format("%d", j * 3 + i),
-                            p.getResult(String.format("%d", i), FIO_RESULT_FIELDS[j]));
+                            p.getResult(String.format("%d", i), FIO_V0_RESULT_FIELDS[j]));
                 }
             }
             assertNull(p.getResult("missing", "jobname"));
