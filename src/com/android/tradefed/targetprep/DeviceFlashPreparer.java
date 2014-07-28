@@ -211,7 +211,9 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         device.waitForDeviceOnline();
         // device may lose date setting if wiped, update with host side date in case anything on
         // device side malfunction with an invalid date
-        device.setDate(null);
+        if (device.enableAdbRoot()) {
+            device.setDate(null);
+        }
         postEncryptDevice(device, flasher);
         // only want logcat captured for current build, delete any accumulated log data
         device.clearLogcat();
