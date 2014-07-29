@@ -103,6 +103,11 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             description = "Only run tests in specified class")
     private String mTestClass = null;
 
+    @Option(name = "package",
+            description =
+            "Only run tests within this specific java package. Will be ignored if --class is set.")
+    private String mTestPackageName = null;
+
     @Option(name = "instrumentation-arg",
             description = "Additional instrumentation arguments to provide.")
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
@@ -196,6 +201,7 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             }
             test.setDevice(getDevice());
             test.setClassName(mTestClass);
+            test.setTestPackageName(mTestPackageName);
             test.run(listener);
             // test completed, remove from list
             mTests.remove(0);
