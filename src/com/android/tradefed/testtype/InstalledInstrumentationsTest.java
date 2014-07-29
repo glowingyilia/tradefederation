@@ -112,6 +112,11 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             description = "Additional instrumentation arguments to provide.")
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
+    @Option(name = "rerun-from-file", description =
+            "Re-run failed tests using test file instead of executing separate adb commands for " +
+            "each remaining test")
+    private boolean mReRunUsingTestFile = false;
+
     private List<InstrumentationTest> mTests = null;
 
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
