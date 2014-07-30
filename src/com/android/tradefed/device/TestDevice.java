@@ -1718,7 +1718,7 @@ class TestDevice implements IManagedTestDevice {
                 }
             }
         } catch (TargetSetupError e) {
-            CLog.e(e);
+            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
         }
         return false;
     }
@@ -1732,7 +1732,7 @@ class TestDevice implements IManagedTestDevice {
             final IWifiHelper wifi = createWifiHelper();
             return wifi.checkConnectivity(mOptions.getConnCheckUrl());
         } catch (TargetSetupError e) {
-            CLog.e(e);
+            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
         }
         return false;
     }
@@ -1758,7 +1758,7 @@ class TestDevice implements IManagedTestDevice {
             final IWifiHelper wifi = createWifiHelper();
             return wifi.isWifiEnabled();
         } catch (TargetSetupError e) {
-            CLog.e(e);
+            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
             return false;
         }
     }
@@ -1813,7 +1813,7 @@ class TestDevice implements IManagedTestDevice {
             IWifiHelper wifi = createWifiHelper();
             return wifi.disconnectFromNetwork();
         } catch (TargetSetupError e) {
-            CLog.e(e);
+            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
             return false;
         }
     }
@@ -1827,7 +1827,7 @@ class TestDevice implements IManagedTestDevice {
             IWifiHelper wifi = createWifiHelper();
             return wifi.getIpAddress();
         } catch (TargetSetupError e) {
-            CLog.e(e);
+            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
             return null;
         }
     }
@@ -1847,7 +1847,7 @@ class TestDevice implements IManagedTestDevice {
                 return true;
             }
         } catch (TargetSetupError e) {
-            CLog.e(e);
+            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
         }
         return false;
     }
@@ -1883,7 +1883,7 @@ class TestDevice implements IManagedTestDevice {
             }
             return true;
         } catch (TargetSetupError e) {
-            CLog.e(e);
+            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
         }
         return false;
     }

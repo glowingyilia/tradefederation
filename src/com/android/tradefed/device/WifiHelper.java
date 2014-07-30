@@ -359,7 +359,7 @@ public class WifiHelper implements IWifiHelper {
                     info.put(key, json.getString(key));
                 }
             } catch(final JSONException e) {
-                CLog.e(e);
+                CLog.w("Failed to parse wifi info: %s", e.getMessage());
             }
         }
 
