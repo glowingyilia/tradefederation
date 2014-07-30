@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
@@ -42,6 +43,11 @@ public class TestAppInstallSetup implements ITargetPreparer {
         "the name of a test zip file to install on device. Can be repeated.",
         importance = Importance.IF_UNSET)
     private Collection<String> mTestFileNames = new ArrayList<String>();
+
+    @Option(name = AbiFormatter.FORCE_ABI_STRING,
+            description = AbiFormatter.FORCE_ABI_DESCRIPTION,
+            importance = Importance.IF_UNSET)
+    private String mForceAbi = null;
 
     /**
      * Adds a file to the list of apks to install
@@ -86,7 +92,14 @@ public class TestAppInstallSetup implements ITargetPreparer {
                     String.format("Could not find test app %s directory in extracted tests.zip",
                             testAppFile));
             }
-            String result = device.installPackage(testAppFile, true);
+            String[] options = {};
+            if (mForceAbi != null) {
+                String abi = AbiFormatter.getDefaultAbi(device, mForceAbi);
+                if (abi != null) {
+                    options = new String[]{String.format("--abi %s ", abi)};
+                }
+            }
+            String result = device.installPackage(testAppFile, true, options);
             if (result != null) {
                 throw new TargetSetupError(
                         String.format("Failed to install %s on %s. Reason: '%s'", testAppName,

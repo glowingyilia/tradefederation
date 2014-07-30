@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.AbiFormatter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -41,6 +42,11 @@ public class InstallApkSetup implements ITargetPreparer {
         importance = Importance.IF_UNSET)
     private Collection<File> mApkPaths = new ArrayList<File>();
 
+
+    @Option(name = AbiFormatter.FORCE_ABI_STRING,
+            description = AbiFormatter.FORCE_ABI_DESCRIPTION,
+            importance = Importance.IF_UNSET)
+    private String mForceAbi = null;
     /**
      * {@inheritDoc}
      */
@@ -54,7 +60,14 @@ public class InstallApkSetup implements ITargetPreparer {
             }
             Log.i(LOG_TAG, String.format("Installing %s on %s", apk.getName(),
                     device.getSerialNumber()));
-            String result = device.installPackage(apk, true);
+            String[] options = {};
+            if (mForceAbi != null) {
+                String abi = AbiFormatter.getDefaultAbi(device, mForceAbi);
+                if (abi != null) {
+                    options = new String[]{String.format("--abi %s ", abi)};
+                }
+            }
+            String result = device.installPackage(apk, true, options);
             if (result != null) {
                 Log.e(LOG_TAG, String.format("Failed to install %s on device %s. Reason: %s",
                         apk.getAbsolutePath(), device.getSerialNumber(), result));
