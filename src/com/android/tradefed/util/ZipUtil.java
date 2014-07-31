@@ -263,4 +263,18 @@ public class ZipUtil {
         }
         return pathBuilder.toString();
     }
+
+    /**
+     * Extract a zip file to a temp directory prepended with a string
+     *
+     * @param zipFile the zip file to extract
+     * @param nameHint a prefix for the temp directory
+     * @return a {@link File} pointing to the temp directory
+     */
+    public static File extractZipToTemp(File zipFile, String nameHint)
+            throws IOException, ZipException {
+        File localRootDir = FileUtil.createTempDir(nameHint);
+        extractZip(new ZipFile(zipFile), localRootDir);
+        return localRootDir;
+    }
 }
