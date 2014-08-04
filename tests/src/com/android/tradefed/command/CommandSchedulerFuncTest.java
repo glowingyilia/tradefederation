@@ -54,7 +54,7 @@ public class CommandSchedulerFuncTest extends TestCase {
 
         mSlowConfig = EasyMock.createNiceMock(IConfiguration.class);
         mFastConfig = EasyMock.createNiceMock(IConfiguration.class);
-        mMockDeviceManager = new MockDeviceManager(3);
+        mMockDeviceManager = new MockDeviceManager(1);
         mMockTestInvoker = new MeasuredInvocation();
         mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
         mCommandOptions = new CommandOptions();
@@ -117,10 +117,10 @@ public class CommandSchedulerFuncTest extends TestCase {
                 .andReturn(mSlowConfig).anyTimes();
 
         EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
-
+        mCommandScheduler.setProcessLoopSleepTime(20);
+        mCommandScheduler.start();
         mCommandScheduler.addCommand(fastConfigArgs);
         mCommandScheduler.addCommand(slowConfigArgs);
-        mCommandScheduler.start();
 
         synchronized (mMockTestInvoker) {
             mMockTestInvoker.wait();
@@ -133,13 +133,13 @@ public class CommandSchedulerFuncTest extends TestCase {
         // assert that fast config has executed roughly twice as much as slow config. Allow for
         // some variance since the execution time of each config (governed via Thread.sleep) will
         // not be 100% accurate
-        assertEquals(mMockTestInvoker.mFastCount, mMockTestInvoker.mSlowCount * 2, 5);
+        assertEquals(mMockTestInvoker.mSlowCount * 2, mMockTestInvoker.mFastCount, 5);
     }
 
     private class MeasuredInvocation implements ITestInvocation {
         Integer mSlowCount = 0;
         Integer mFastCount = 0;
-        Integer mSlowCountLimit = 20;
+        Integer mSlowCountLimit = 40;
 
         @Override
         public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
