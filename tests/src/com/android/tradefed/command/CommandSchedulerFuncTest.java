@@ -117,7 +117,6 @@ public class CommandSchedulerFuncTest extends TestCase {
                 .andReturn(mSlowConfig).anyTimes();
 
         EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
-        mCommandScheduler.setProcessLoopSleepTime(20);
         mCommandScheduler.start();
         mCommandScheduler.addCommand(fastConfigArgs);
         mCommandScheduler.addCommand(slowConfigArgs);

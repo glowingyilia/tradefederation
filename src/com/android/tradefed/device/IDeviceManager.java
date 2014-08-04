@@ -209,4 +209,14 @@ public interface IDeviceManager {
      */
     public boolean isEmulator(String serial);
 
+    /**
+     * Adds a {@link IDeviceMonitor}
+     */
+    public void addDeviceMonitor(IDeviceMonitor mon);
+
+    /**
+     * Removes a previously added {@link IDeviceMonitor}. Has no effect if mon has not been added.
+     */
+    public void removeDeviceMonitor(IDeviceMonitor mon);
+
 }

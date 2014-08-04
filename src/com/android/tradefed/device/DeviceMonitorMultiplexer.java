@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device;
 
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -22,25 +23,17 @@ import java.util.List;
  */
 public class DeviceMonitorMultiplexer implements IDeviceMonitor {
 
-    private List<IDeviceMonitor> mDeviceMonitors;
+    private final List<IDeviceMonitor> mDeviceMonitors;
 
-    /**
-     * Creates a proxy instance for given {@link IDeviceMonitor}s.
-     *
-     * @param deviceMonitors a list of {@link IDeviceMonitor}s
-     */
-    public DeviceMonitorMultiplexer(List<IDeviceMonitor> deviceMonitors) {
-        if (deviceMonitors == null) {
-            throw new IllegalArgumentException("deviceMonitors cannot be null");
-        }
-        mDeviceMonitors = deviceMonitors;
+    public DeviceMonitorMultiplexer() {
+        mDeviceMonitors = new LinkedList<>();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void run() {
+    public synchronized void run() {
         for (IDeviceMonitor monitor : mDeviceMonitors) {
             monitor.run();
         }
@@ -50,7 +43,7 @@ public class DeviceMonitorMultiplexer implements IDeviceMonitor {
      * {@inheritDoc}
      */
     @Override
-    public void setDeviceLister(DeviceLister lister) {
+    public synchronized void setDeviceLister(DeviceLister lister) {
         for (IDeviceMonitor monitor : mDeviceMonitors) {
             monitor.setDeviceLister(lister);
         }
@@ -60,11 +53,22 @@ public class DeviceMonitorMultiplexer implements IDeviceMonitor {
      * {@inheritDoc}
      */
     @Override
-    public void notifyDeviceStateChange(String serial, DeviceAllocationState oldState,
+    public synchronized void notifyDeviceStateChange(String serial, DeviceAllocationState oldState,
             DeviceAllocationState newState) {
         for (IDeviceMonitor monitor : mDeviceMonitors) {
             monitor.notifyDeviceStateChange(serial, oldState, newState);
         }
     }
 
+    public synchronized void addMonitors(List<IDeviceMonitor> globalDeviceMonitors) {
+        mDeviceMonitors.addAll(globalDeviceMonitors);
+    }
+
+    public synchronized void addMonitor(IDeviceMonitor globalDeviceMonitor) {
+        mDeviceMonitors.add(globalDeviceMonitor);
+    }
+
+    public synchronized void removeMonitor(IDeviceMonitor mon) {
+        mDeviceMonitors.remove(mon);
+    }
 }

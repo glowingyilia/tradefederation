@@ -108,7 +108,6 @@ public class CommandSchedulerTest extends TestCase {
                 return mMockCmdFileParser;
             }
         };
-        mScheduler.setProcessLoopSleepTime(20);
         mScheduler.start();
     }
 

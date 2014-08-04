@@ -38,6 +38,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
+import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
@@ -47,7 +48,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.StubTestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
-import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TableFormatter;
 
 import java.io.File;
@@ -118,13 +118,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     private WaitObj mHandoverHandshake = new WaitObj();
 
+    private WaitObj mCommandProcessWait = new WaitObj();
+
     @Option(name = "reload-cmdfiles", description =
             "Whether to enable the command file autoreload mechanism")
     // FIXME: enable this to be enabled or disabled on a per-cmdfile basis
     private boolean mReloadCmdfiles = false;
-
-    /** amount of time to sleep between processing of ready commands */
-    private long mProcessLoopSleepTimeMs = 200;
 
     private enum CommandState {
         WAITING_FOR_DEVICE("Wait_for_device"),
@@ -235,6 +234,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             CLog.d("removing exec command for id %d", getCommandTracker().getId());
             synchronized (CommandScheduler.this) {
                 mExecutingCommands.remove(this);
+            }
+            if (isShuttingDown()) {
+                mCommandProcessWait.signalEventReceived();
             }
         }
 
@@ -462,6 +464,32 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     /**
+     * A {@link IDeviceMonitor} that signals scheduler to process commands when an available device
+     * is added.
+     */
+    private class AvailDeviceMonitor implements IDeviceMonitor {
+
+        @Override
+        public void run() {
+           // ignore
+        }
+
+        @Override
+        public void setDeviceLister(DeviceLister lister) {
+            // ignore
+        }
+
+        @Override
+        public void notifyDeviceStateChange(String serial, DeviceAllocationState oldState,
+                DeviceAllocationState newState) {
+            if (newState.equals(DeviceAllocationState.Available)) {
+                // new avail device was added, wake up scheduler
+                mCommandProcessWait.signalEventReceived();
+            }
+        }
+    }
+
+    /**
      * Creates a {@link CommandScheduler}.
      * <p />
      * Note: start must be called before use.
@@ -557,12 +585,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // Notify other threads that we're running.
             mRunLatch.countDown();
 
+            // add a listener that will wake up scheduler when a new avail device is added
+            manager.addDeviceMonitor(new AvailDeviceMonitor());
+
             while (!isShutdown()) {
+                // wait until processing is required again
+                mCommandProcessWait.waitAndReset();
                 processReadyCommands(manager);
-                // sleep for a small amount so this thread doesn't hog all the CPU
-                // TODO: change this algorithm so processReadyCommands only runs when needed -
-                // such as a new command added or device made available
-                RunUtil.getDefault().sleep(mProcessLoopSleepTimeMs);
             }
             mCommandTimer.shutdown();
             CLog.i("Waiting for invocation threads to complete");
@@ -847,6 +876,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     synchronized (CommandScheduler.this) {
                         if (mSleepingCommands.remove(cmd)) {
                             mReadyCommands.add(cmd);
+                            mCommandProcessWait.signalEventReceived();
                         }
                     }
                 }
@@ -854,6 +884,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mCommandTimer.schedule(delayCommand, delayTime, TimeUnit.MILLISECONDS);
         } else {
             mReadyCommands.add(cmd);
+            mCommandProcessWait.signalEventReceived();
         }
         return true;
     }
@@ -948,6 +979,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             if (mCommandTimer != null) {
                 mCommandTimer.shutdownNow();
             }
+            mCommandProcessWait.signalEventReceived();
         }
     }
 
@@ -960,6 +992,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         if (!isShuttingDown()) {
             CLog.d("initiating shutdown on empty");
             mShutdownOnEmpty = true;
+            mCommandProcessWait.signalEventReceived();
         }
     }
 
@@ -980,6 +1013,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
         mReadyCommands.clear();
         mSleepingCommands.clear();
+        if (isShuttingDown()) {
+            mCommandProcessWait.signalEventReceived();
+        }
     }
 
     /**
@@ -1004,6 +1040,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     path.equals(cmdFile.getAbsolutePath())) {
                 cmdIter.remove();
             }
+        }
+        if (isShuttingDown()) {
+            mCommandProcessWait.signalEventReceived();
         }
     }
 
@@ -1302,17 +1341,27 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     private void waitForHandoverHandshake() {
         // block and wait to receive all the commands and 'device still in use' messages from remote
-        mHandoverHandshake.waitForNotification(MAX_HANDOVER_INIT_TIME);
+        mHandoverHandshake.waitForEvent(MAX_HANDOVER_INIT_TIME);
         // TODO: throw exception if not received
     }
 
+    /**
+     * Helper object for allowing multiple threads to synchronize on an event.
+     * <p/>
+     * Basically a modest wrapper around Object's wait and notify methods, that supports
+     * remembering if a notify call was made.
+     */
     private static class WaitObj {
-        boolean mNotificationReceived = false;
+        boolean mEventReceived = false;
 
-        public synchronized boolean waitForNotification(long maxWaitTime) {
+        /**
+         * Wait for signal for a max of given ms.
+         * @return true if event received before time elapsed, false otherwise
+         */
+        public synchronized boolean waitForEvent(long maxWaitTime) {
             long startTime = System.currentTimeMillis();
             long remainingTime = maxWaitTime;
-            while (!mNotificationReceived && remainingTime > 0) {
+            while (!mEventReceived && remainingTime > 0) {
                 try {
                     wait(remainingTime);
                 } catch (InterruptedException e) {
@@ -1320,22 +1369,52 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
                 remainingTime = maxWaitTime - (System.currentTimeMillis() - startTime);
             }
-            return mNotificationReceived;
+            return mEventReceived;
         }
 
+        /**
+         * Wait for signal indefinitely or until interrupted.
+         * @return true if event received, false otherwise
+         */
+        public synchronized boolean waitForEvent() {
+            if (!mEventReceived) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    CLog.w("interrupted");
+                }
+            }
+            return mEventReceived;
+        }
+
+        /**
+         * Reset the event received flag.
+         */
         public synchronized void reset() {
-            mNotificationReceived = false;
+            mEventReceived = false;
         }
 
-        public synchronized void notificationReceived() {
-            mNotificationReceived = true;
+        /**
+         * Wait indefinitely for event to be received, and reset state back to 'no event received'
+         * upon completion.
+         */
+        public synchronized void waitAndReset() {
+            waitForEvent();
+            reset();
+        }
+
+        /**
+         * Notify listeners that event was received.
+         */
+        public synchronized void signalEventReceived() {
+            mEventReceived = true;
             notifyAll();
         }
     }
 
     @Override
     public void handoverInitiationComplete() {
-        mHandoverHandshake.notificationReceived();
+        mHandoverHandshake.signalEventReceived();
     }
 
     @Override
@@ -1437,9 +1516,5 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             cmds.add(new ExecutableCommandState(cmd, CommandState.SLEEPING));
         }
         return cmds;
-    }
-
-    void setProcessLoopSleepTime(long ms) {
-        mProcessLoopSleepTimeMs = ms;
     }
 }

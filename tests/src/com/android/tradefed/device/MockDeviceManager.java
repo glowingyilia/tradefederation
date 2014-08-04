@@ -38,6 +38,7 @@ public class MockDeviceManager implements IDeviceManager {
         new ConditionPriorityBlockingQueue<ITestDevice>();
 
     private int mTotalDevices;
+    private DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
 
     public MockDeviceManager(int numDevices) {
         setNumDevices(numDevices);
@@ -104,6 +105,8 @@ public class MockDeviceManager implements IDeviceManager {
     public void freeDevice(ITestDevice device, FreeDeviceState state) {
         if (!state.equals(FreeDeviceState.UNAVAILABLE)) {
             mAvailableDeviceQueue.add(device);
+            mDvcMon.notifyDeviceStateChange(device.getSerialNumber(), DeviceAllocationState.Allocated,
+                    DeviceAllocationState.Available);
         }
     }
 
@@ -137,7 +140,12 @@ public class MockDeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice allocateDevice(IDeviceSelection options) {
-        return mAvailableDeviceQueue.poll(new TestDeviceMatcher(options));
+        ITestDevice d = mAvailableDeviceQueue.poll(new TestDeviceMatcher(options));
+        if (d!= null) {
+            mDvcMon.notifyDeviceStateChange(d.getSerialNumber(), DeviceAllocationState.Available,
+                    DeviceAllocationState.Allocated);
+        }
+        return d;
     }
 
     /**
@@ -237,5 +245,15 @@ public class MockDeviceManager implements IDeviceManager {
     @Override
     public boolean isEmulator(String serial) {
         return false;
+    }
+
+    @Override
+    public void addDeviceMonitor(IDeviceMonitor mon) {
+        mDvcMon.addMonitor(mon);
+    }
+
+    @Override
+    public void removeDeviceMonitor(IDeviceMonitor mon) {
+        mDvcMon.removeMonitor(mon);
     }
 }

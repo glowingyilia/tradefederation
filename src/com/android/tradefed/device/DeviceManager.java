@@ -72,7 +72,7 @@ public class DeviceManager implements IDeviceManager {
     private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
 
-    private IDeviceMonitor mDvcMon;
+    private DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
 
     private boolean mIsInitialized = false;
 
@@ -156,7 +156,7 @@ public class DeviceManager implements IDeviceManager {
         mIsInitialized = true;
         mGlobalDeviceFilter = globalDeviceFilter;
         if (globalDeviceMonitors != null) {
-            mDvcMon = new DeviceMonitorMultiplexer(globalDeviceMonitors);
+            mDvcMon.addMonitors(globalDeviceMonitors);
         }
         mManagedDeviceList = new ManagedDeviceList(deviceFactory);
 
@@ -1014,5 +1014,15 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public boolean isEmulator(String serial) {
         return serial.startsWith(EMULATOR_SERIAL_PREFIX);
+    }
+
+    @Override
+    public void addDeviceMonitor(IDeviceMonitor mon) {
+        mDvcMon.addMonitor(mon);
+    }
+
+    @Override
+    public void removeDeviceMonitor(IDeviceMonitor mon) {
+        mDvcMon.removeMonitor(mon);
     }
 }
