@@ -15,19 +15,18 @@
  */
 package com.android.tradefed.command;
 
-import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -36,14 +35,20 @@ import java.util.Set;
  */
 class CommandFileWatcher extends Thread {
     private static final long POLL_TIME_MS = 20 * 1000;  // 20 seconds
-    private List<CommandFile> mCmdFiles = new LinkedList<CommandFile>();
-    private ICommandScheduler mScheduler = null;
+    // thread-safe (for read-writes, not write during iteration) structure holding all commands
+    // being watched. map of absolute file system path to command file
+    private Map<String, CommandFile> mCmdFileMap = new Hashtable<>();
     boolean mCancelled = false;
+    private final ICommandFileListener mListener;
+
+    static interface ICommandFileListener {
+        public void notifyFileChanged(File cmdFile, List<String> extraArgs);
+    }
 
     /**
      * A simple struct to store a command file as well as its extra args
      */
-    private static class CommandFile {
+    static class CommandFile {
         public final File file;
         public final long modTime;
         public final List<String> extraArgs;
@@ -76,7 +81,7 @@ class CommandFileWatcher extends Thread {
          *        dependencies themselves will be reloaded directly, only the
          *        main command file, {@code cmdFile}.
          */
-        public CommandFile(File cmdFile, List<String> extraArgs, File[] dependencies) {
+        public CommandFile(File cmdFile, List<String> extraArgs, List<File> dependencies) {
             if (cmdFile == null) throw new NullPointerException();
 
             this.file = cmdFile;
@@ -89,19 +94,19 @@ class CommandFileWatcher extends Thread {
             }
             if (dependencies == null) {
                 this.dependencies = Collections.emptyList();
-            } else {
-                this.dependencies = new ArrayList<CommandFile>(dependencies.length);
 
-                for (File dep : dependencies) {
-                    this.dependencies.add(new CommandFile(dep));
+            } else {
+                this.dependencies = new ArrayList<CommandFile>(dependencies.size());
+                for (File f: dependencies) {
+                    this.dependencies.add(new CommandFile(f));
                 }
             }
         }
     }
 
-    public CommandFileWatcher(ICommandScheduler cmdScheduler) {
+    public CommandFileWatcher(ICommandFileListener listener) {
         super("CommandFileWatcher");  // set the thread name
-        mScheduler = cmdScheduler;
+        mListener = listener;
         setDaemon(true);  // Don't keep the JVM alive for this thread
     }
 
@@ -111,24 +116,27 @@ class CommandFileWatcher extends Thread {
     @Override
     public void run() {
         while (!isCancelled()) {
-            if (checkForUpdates()) {
-                reloadCmdFiles();
-            }
+            checkForUpdates();
             getRunUtil().sleep(POLL_TIME_MS);
         }
     }
 
     /**
-     * Add a command file to watch, as well as its dependencies.  When either
-     * the command file itself or any of its dependencies changes, that triggers
-     * us to forget everthing and reload the command file, which will
-     * automatically cause us to repopulate.
+     * Same as {@link #addCmdFile(File, List, Collection)} but accepts a list of {@link File}s
+     * as dependencies
+     *
+     * @VisibleForTesting
      */
-    public void addCmdFile(File cmdFile, List<String> extraArgs, File... dependencies) {
+    void addCmdFile(File cmdFile, List<String> extraArgs, List<File> dependencies) {
+        CommandFile f = new CommandFile(cmdFile, extraArgs, dependencies);
+        mCmdFileMap.put(cmdFile.getAbsolutePath(), f);
+    }
 
-        final CommandFile cmd = new CommandFile(cmdFile, extraArgs, dependencies);
-
-        mCmdFiles.add(cmd);
+    /**
+     * Returns true if given command gile path is currently being watched
+     */
+    public boolean isFileWatched(File cmdFile) {
+        return mCmdFileMap.containsKey(cmdFile.getAbsolutePath());
     }
 
     /**
@@ -146,57 +154,24 @@ class CommandFileWatcher extends Thread {
     }
 
     /**
-     * Actually do the work of reloading the command files.  This includes
-     * telling the {@link ICommandScheduler} to remove all commands, forgetting
-     * about them ourselves, and then finally reloading everything.
-     */
-    private void reloadCmdFiles() {
-        CLog.logAndDisplay(LogLevel.INFO, "Removing all commands");
-        mScheduler.removeAllCommands();
-
-        final List<CommandFile> cmdFilesCopy = new ArrayList<CommandFile>(mCmdFiles);
-        mCmdFiles.clear();
-
-        for (CommandFile cmd : cmdFilesCopy) {
-            final File file = cmd.file;
-            final List<String> extraArgs = cmd.extraArgs;
-            try {
-                CLog.logAndDisplay(LogLevel.INFO, "running cmdfile %s", file.getAbsolutePath());
-                if (extraArgs.isEmpty()) {
-                    createCommandFileParser().parseFile(file, mScheduler);
-                } else {
-                    createCommandFileParser().parseFile(file, mScheduler, extraArgs);
-                }
-            } catch (IOException e) {
-                CLog.wtf(String.format("Failed to automatically reload cmdfile %s",
-                        file.getAbsolutePath()), e);
-            } catch (ConfigurationException e) {
-                CLog.wtf(String.format("Failed to automatically reload cmdfile %s",
-                        file.getAbsolutePath()), e);
-            }
-        }
-    }
-
-    /**
      * Poll the filesystem to see if any of the files of interest have
      * changed
      * <p />
      * Exposed for unit testing
      */
-    boolean checkForUpdates() {
+    void checkForUpdates() {
         final Set<File> checkedFiles = new HashSet<File>();
 
-        for (CommandFile cmd : mCmdFiles) {
+        // iterate through a copy of the command list to limit time lock needs to be held
+        List<CommandFile> cmdCopy;
+        synchronized (mCmdFileMap) {
+            cmdCopy = new ArrayList<CommandFile>(mCmdFileMap.values());
+        }
+        for (CommandFile cmd : cmdCopy) {
             if (checkCommandFileForUpdate(cmd, checkedFiles)) {
-                CLog.logAndDisplay(LogLevel.INFO, "Detected update for cmdfile '%s'",
-                        cmd.file.getAbsolutePath());
-                // The command file or one of its dependencies has been updated
-                return true;
+                mListener.notifyFileChanged(cmd.file, cmd.extraArgs);
             }
         }
-
-        // Nothing changed.
-        return false;
     }
 
     boolean checkCommandFileForUpdate(CommandFile cmd, Set<File> checkedFiles) {
@@ -249,5 +224,46 @@ class CommandFileWatcher extends Thread {
      */
     IRunUtil getRunUtil() {
         return RunUtil.getDefault();
+    }
+
+    /**
+     * <p>
+     * Add a command file to watch, as well as its dependencies.  When either
+     * the command file itself or any of its dependencies changes, notify the registered
+     * {@link ICommandFileListener}
+     * </p>
+     * if the cmdFile is already being watching, this call will replace the current entry
+     */
+    public void addCmdFile(File cmdFile, List<String> extraArgs, Collection<String> includedFiles) {
+        List<File> includesAsFiles = new ArrayList<File>(includedFiles.size());
+        for (String p : includedFiles) {
+            includesAsFiles.add(new File(p));
+        }
+        addCmdFile(cmdFile, extraArgs, includesAsFiles);
+    }
+
+    /**
+     * Remove all files from the watched list
+     */
+    public void removeAllFiles() {
+        mCmdFileMap.clear();
+    }
+
+    /**
+     * Retrieves the extra arguments associated with given file being watched.
+     * <p>
+     * TODO: extra args list should likely be stored elsewhere, and have this class just operate
+     * as a generic file watcher with dependencies
+     * </p>
+     * @return the list of extra arguments associated with command file. Returns empty list if
+     *         command path is not recognized
+     */
+    public List<String> getExtraArgsForFile(String cmdPath) {
+        CommandFile cmdFile = mCmdFileMap.get(cmdPath);
+        if (cmdFile != null) {
+            return cmdFile.extraArgs;
+        }
+        CLog.w("Could not find cmdfile %s", cmdPath);
+        return Collections.<String>emptyList();
     }
 }

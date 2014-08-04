@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.command;
 
+import com.android.tradefed.command.CommandFileParser.CommandLine;
+import com.android.tradefed.command.CommandScheduler.CommandTracker;
+import com.android.tradefed.command.CommandScheduler.CommandTrackerIdComparator;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -36,8 +39,13 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+import org.junit.Assert;
 
+import java.io.File;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Unit tests for {@link CommandScheduler}.
@@ -51,6 +59,7 @@ public class CommandSchedulerTest extends TestCase {
     private IConfiguration mMockConfiguration;
     private CommandOptions mCommandOptions;
     private DeviceSelectionOptions mDeviceOptions;
+    private CommandFileParser mMockCmdFileParser;
 
     /**
      * {@inheritDoc}
@@ -67,6 +76,7 @@ public class CommandSchedulerTest extends TestCase {
         mDeviceOptions = new DeviceSelectionOptions();
 
         mScheduler = new CommandScheduler() {
+
             @Override
             ITestInvocation createRunInstance() {
                 return mMockInvocation;
@@ -95,6 +105,11 @@ public class CommandSchedulerTest extends TestCase {
             @Override
             void cleanUp() {
                 // ignore
+            }
+
+            @Override
+            CommandFileParser createCommandFileParser() {
+                return mMockCmdFileParser;
             }
         };
         mScheduler.start();
@@ -172,6 +187,23 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
+        verifyMocks();
+    }
+
+    /**
+     * Test {@link CommandScheduler#removeAllCommands()} for idle case, where command is waiting for
+     * device.
+     */
+    public void testRemoveAllCommands() throws Throwable {
+        String[] args = new String[] {};
+        mMockManager.setNumDevices(0);
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.addCommand(args);
+        assertEquals(1, mScheduler.getAllCommandsSize());
+        mScheduler.removeAllCommands();
+        assertEquals(0, mScheduler.getAllCommandsSize());
         verifyMocks();
     }
 
@@ -431,6 +463,126 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.join();
 
         EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+    }
+
+    /**
+     * Simple success case test for {@link CommandScheduler#addCommandFile(String, java.util.List)}
+     * @throws ConfigurationException
+     */
+    public void testAddCommandFile() throws ConfigurationException {
+        // set number of devices to 0 so we can verify command presence
+        mMockManager.setNumDevices(0);
+        List<String> extraArgs = Arrays.asList("--bar");
+        setCreateConfigExpectations(new String[] {"foo", "--bar"}, 1);
+        mMockConfiguration.validateOptions();
+        final List<CommandLine> cmdFileContent = Arrays.asList(new CommandLine(Arrays.asList("foo")));
+        mMockCmdFileParser = new CommandFileParser() {
+            @Override
+            public List<CommandLine> parseFile(File cmdFile) {
+                return cmdFileContent;
+            }
+        };
+        replayMocks();
+
+        mScheduler.addCommandFile("mycmd.txt", extraArgs);
+        List<CommandTracker> cmds = mScheduler.getCommandTrackers();
+        assertEquals(1, cmds.size());
+        assertEquals("foo", cmds.get(0).getArgs()[0]);
+        assertEquals("--bar", cmds.get(0).getArgs()[1]);
+    }
+
+    /**
+     * Simple success case test for auto reloading a command file
+     *
+     * @throws ConfigurationException
+     */
+    public void testAddCommandFile_reload() throws ConfigurationException {
+        // set number of devices to 0 so we can verify command presence
+        mMockManager.setNumDevices(0);
+        String[] addCommandArgs = new String[]{"fromcommand"};
+        List<String> extraArgs = Arrays.asList("--bar");
+
+        setCreateConfigExpectations(addCommandArgs, 1);
+        String[] cmdFile1Args = new String[] {"fromFile1", "--bar"};
+        setCreateConfigExpectations(cmdFile1Args, 1);
+        String[] cmdFile2Args = new String[] {"fromFile2", "--bar"};
+        setCreateConfigExpectations(cmdFile2Args, 1);
+
+        mMockConfiguration.validateOptions();
+        EasyMock.expectLastCall().times(3);
+
+        final List<CommandLine> cmdFileContent1 = Arrays.asList(new CommandLine(
+                Arrays.asList("fromFile1")));
+        final List<CommandLine> cmdFileContent2 = Arrays.asList(new CommandLine(
+                Arrays.asList("fromFile2")));
+        mMockCmdFileParser = new CommandFileParser() {
+            boolean firstCall = true;
+            @Override
+            public List<CommandLine> parseFile(File cmdFile) {
+                if (firstCall) {
+                    firstCall = false;
+                    return cmdFileContent1;
+                }
+                return cmdFileContent2;
+            }
+        };
+        replayMocks();
+        mScheduler.setCommandFileReload(true);
+        mScheduler.addCommand(addCommandArgs);
+        mScheduler.addCommandFile("mycmd.txt", extraArgs);
+
+        List<CommandTracker> cmds = mScheduler.getCommandTrackers();
+        assertEquals(2, cmds.size());
+        Collections.sort(cmds, new CommandTrackerIdComparator());
+        Assert.assertArrayEquals(addCommandArgs, cmds.get(0).getArgs());
+        Assert.assertArrayEquals(cmdFile1Args, cmds.get(1).getArgs());
+
+        // now reload the command file
+        mScheduler.notifyFileChanged(new File("mycmd.txt"), extraArgs);
+
+        cmds = mScheduler.getCommandTrackers();
+        assertEquals(2, cmds.size());
+        Collections.sort(cmds, new CommandTrackerIdComparator());
+        Assert.assertArrayEquals(addCommandArgs, cmds.get(0).getArgs());
+        Assert.assertArrayEquals(cmdFile2Args, cmds.get(1).getArgs());
+    }
+
+    /**
+     * Verify attempts to add the same commmand file in reload mode are rejected
+     */
+    public void testAddCommandFile_twice() throws ConfigurationException {
+        // set number of devices to 0 so we can verify command presence
+        mMockManager.setNumDevices(0);
+        String[] cmdFile1Args = new String[] {"fromFile1"};
+        setCreateConfigExpectations(cmdFile1Args, 1);
+
+        mMockConfiguration.validateOptions();
+        EasyMock.expectLastCall().times(1);
+
+        final List<CommandLine> cmdFileContent1 = Arrays.asList(new CommandLine(
+                Arrays.asList("fromFile1")));
+        mMockCmdFileParser = new CommandFileParser() {
+            boolean firstCall = true;
+            @Override
+            public List<CommandLine> parseFile(File cmdFile) {
+                return cmdFileContent1;
+            }
+        };
+        replayMocks();
+        mScheduler.setCommandFileReload(true);
+        mScheduler.addCommandFile("mycmd.txt", Collections.<String>emptyList());
+
+        List<CommandTracker> cmds = mScheduler.getCommandTrackers();
+        assertEquals(1, cmds.size());
+        Assert.assertArrayEquals(cmdFile1Args, cmds.get(0).getArgs());
+
+        // now attempt to add the same command file
+        mScheduler.addCommandFile("mycmd.txt", Collections.<String>emptyList());
+
+        // ensure no effect
+        cmds = mScheduler.getCommandTrackers();
+        assertEquals(1, cmds.size());
+        Assert.assertArrayEquals(cmdFile1Args, cmds.get(0).getArgs());
     }
 
     /**

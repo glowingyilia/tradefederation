@@ -30,6 +30,7 @@ import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -101,6 +102,24 @@ public class RemoteManagerTest extends TestCase {
         assertTrue(port != -1);
         mRemoteClient = RemoteClient.connect(port);
         mRemoteClient.sendAddCommand(3, "arg1", "arg2");
+        EasyMock.verify(mMockScheduler);
+    }
+
+    /**
+     * An integration test for client-manager interaction, that will add a command file
+     */
+    public void testAddCommandFile() throws Exception {
+        final String cmdFile = "cmd.txt";
+        List<String> extraArgs = Arrays.asList("foo", "bar");
+        mMockScheduler.addCommandFile(EasyMock.eq(cmdFile), EasyMock.eq(extraArgs));
+
+        EasyMock.replay(mMockScheduler);
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int port = mRemoteMgr.getPort();
+        assertTrue(port != -1);
+        mRemoteClient = RemoteClient.connect(port);
+        mRemoteClient.sendAddCommandFile(cmdFile, extraArgs);
         EasyMock.verify(mMockScheduler);
     }
 
@@ -329,6 +348,25 @@ public class RemoteManagerTest extends TestCase {
         assertTrue(mgrPort != -1);
         mRemoteClient = RemoteClient.connect(mgrPort);
         mRemoteClient.sendStartHandover(port);
+        // disgusting sleep alert! TODO: change to a wait-notify thingy
+        Thread.sleep(100);
+        EasyMock.verify(mMockScheduler);
+    }
+
+    /**
+     * Basic test for a handover init complete op
+     */
+    public void testHandoverInit() throws Exception {
+        // expect
+        mMockScheduler.handoverInitiationComplete();
+
+        EasyMock.replay(mMockScheduler);
+        mRemoteMgr.connect();
+        mRemoteMgr.start();
+        int mgrPort = mRemoteMgr.getPort();
+        assertTrue(mgrPort != -1);
+        mRemoteClient = RemoteClient.connect(mgrPort);
+        mRemoteClient.sendHandoverInitComplete();
         // disgusting sleep alert! TODO: change to a wait-notify thingy
         Thread.sleep(100);
         EasyMock.verify(mMockScheduler);

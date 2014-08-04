@@ -235,6 +235,9 @@ public class RemoteManager extends Thread {
                     case ADD_COMMAND:
                         processAdd((AddCommandOp)rc, result);
                         break;
+                    case ADD_COMMAND_FILE:
+                        processAddCommandFile((AddCommandFileOp)rc, result);
+                        break;
                     case CLOSE:
                         processClose((CloseOp)rc, result);
                         break;
@@ -246,6 +249,9 @@ public class RemoteManager extends Thread {
                         break;
                     case START_HANDOVER:
                         postOp = processStartHandover((StartHandoverOp)rc, result);
+                        break;
+                    case HANDOVER_INIT_COMPLETE:
+                        processHandoverInitComplete((HandoverInitCompleteOp)rc, result);
                         break;
                     case HANDOVER_COMPLETE:
                         postOp = processHandoverComplete((HandoverCompleteOp)rc, result);
@@ -312,6 +318,11 @@ public class RemoteManager extends Thread {
         return t;
     }
 
+    private void processHandoverInitComplete(HandoverInitCompleteOp c, JSONObject result)
+            throws JSONException {
+        mScheduler.handoverInitiationComplete();
+    }
+
     private Thread processHandoverComplete(HandoverCompleteOp c, JSONObject result) throws JSONException {
         // handle the handover as an async operation
         Thread t = new Thread("handover thread") {
@@ -360,6 +371,18 @@ public class RemoteManager extends Thread {
             if (!mScheduler.addCommand(c.getCommandArgs(), c.getTotalTime())) {
                 result.put(RemoteOperation.ERROR, "Failed to add command");
             }
+        } catch (ConfigurationException e) {
+            CLog.e("Failed to add command");
+            CLog.e(e);
+            result.put(RemoteOperation.ERROR, "Config error: " + e.toString());
+        }
+    }
+
+    private void processAddCommandFile(AddCommandFileOp c, JSONObject result) throws JSONException {
+        CLog.logAndDisplay(LogLevel.INFO, "Adding command file '%s %s'", c.getCommandFile(),
+                ArrayUtil.join(" ", c.getExtraArgs()));
+        try {
+            mScheduler.addCommandFile(c.getCommandFile(), c.getExtraArgs());
         } catch (ConfigurationException e) {
             CLog.e("Failed to add command");
             CLog.e(e);

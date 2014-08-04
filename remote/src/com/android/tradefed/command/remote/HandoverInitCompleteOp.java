@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 The Android Open Source Project
+ * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,26 +19,26 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * A remote operation for informing remote TF that handover is now complete.
+ * A remote operation for informing remote TF that handover initiation is complete.
  */
-public class HandoverCompleteOp extends RemoteOperation<Void> {
-    HandoverCompleteOp() {
+public class HandoverInitCompleteOp extends RemoteOperation<Void> {
+    HandoverInitCompleteOp() {
     }
 
     /**
-     * Factory method for creating a {@link HandoverCompleteOp} from JSON data.
+     * Factory method for creating a {@link HandoverInitCompleteOp} from JSON data.
      *
      * @param json the data as a {@link JSONObject}
-     * @return a {@link HandoverCompleteOp}
+     * @return a {@link HandoverInitCompleteOp}
      * @throws JSONException if failed to extract out data
      */
-    static HandoverCompleteOp createFromJson(JSONObject json) throws JSONException {
-        return new HandoverCompleteOp();
+    static HandoverInitCompleteOp createFromJson(JSONObject json) throws JSONException {
+        return new HandoverInitCompleteOp();
     }
 
     @Override
     protected OperationType getType() {
-        return OperationType.HANDOVER_COMPLETE;
+        return OperationType.HANDOVER_INIT_COMPLETE;
     }
 
     @Override

@@ -28,14 +28,15 @@ abstract class RemoteOperation<T> {
     /** represents json key for error message */
     static final String ERROR = "error";
 
-    static final int CURRENT_PROTOCOL_VERSION = 7;
+    static final int CURRENT_PROTOCOL_VERSION = 8;
 
     /**
      * Represents all types of remote operations that can be performed
      */
     enum OperationType {
         ALLOCATE_DEVICE, FREE_DEVICE, CLOSE, ADD_COMMAND, START_HANDOVER, LIST_DEVICES,
-        EXEC_COMMAND, GET_LAST_COMMAND_RESULT, HANDOVER_COMPLETE,
+        EXEC_COMMAND, GET_LAST_COMMAND_RESULT, HANDOVER_COMPLETE, ADD_COMMAND_FILE,
+        HANDOVER_INIT_COMPLETE,
     }
 
     /**
@@ -81,8 +82,14 @@ abstract class RemoteOperation<T> {
                 case GET_LAST_COMMAND_RESULT:
                     rc = GetLastCommandResultOp.createFromJson(jsonData);
                     break;
+                case HANDOVER_INIT_COMPLETE:
+                    rc = HandoverInitCompleteOp.createFromJson(jsonData);
+                    break;
                 case HANDOVER_COMPLETE:
                     rc = HandoverCompleteOp.createFromJson(jsonData);
+                    break;
+                case ADD_COMMAND_FILE:
+                    rc = AddCommandFileOp.createFromJson(jsonData);
                     break;
                 default:
                     throw new RemoteException(String.format("unknown remote command '%s'", data));
