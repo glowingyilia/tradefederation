@@ -141,15 +141,12 @@ class InstrumentationFileTest implements IRemoteTest {
             deleteTestFileFromDevice(mFilePathOnDevice);
             Collection<TestIdentifier> completedTests =
                     testTracker.getCurrentRunResults().getCompletedTests();
-            if (completedTests.size() == 0 && mTests.size() != 0) {
+            if (mTests.removeAll(completedTests) && !mTests.isEmpty()) {
+                // re-run remaining tests from file
+                writeTestsToFileAndRun(mTests, listener);
+            } else if (!mTests.isEmpty()) {
                 CLog.e("all remaining tests failed to run from file, re-running tests serially");
                 reRunTestsSerially(runner, listener);
-            } else {
-                mTests.removeAll(completedTests);
-                if (mTests.size() != 0) {
-                    // re-run remaining tests from file
-                    writeTestsToFileAndRun(mTests, listener);
-                }
             }
         }
     }
