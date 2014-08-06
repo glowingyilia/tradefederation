@@ -87,6 +87,11 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             "intervention.")
     private boolean mRequireBatteryCheck = false;
 
+    @Option(name = "min-sdk-level", description = "Only run this test on devices that support " +
+            "this Android SDK/API level")
+    private Integer mMinSdk = null;
+
+
     // If we have tried to fetch the environment variable ANDROID_SERIAL before.
     private boolean mFetchedEnvVariable = false;
 
@@ -94,6 +99,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     public static final String DEVICE_PRODUCT_PROPERTY = "ro.hardware";
     public static final String DEVICE_VARIANT_PROPERTY = "ro.product.device";
+    public static final String DEVICE_SDK_PROPERTY = "ro.build.version.sdk";
 
     /**
      * Add a serial number to the device selection options.
@@ -348,6 +354,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         if (nullDeviceRequested() != (device instanceof NullDevice)) {
             return false;
         }
+        if (mMinSdk != null && getDeviceSdkLevel(device) < mMinSdk) {
+            return false;
+        }
         if ((mMinBattery != null) || (mMaxBattery != null)) {
             Integer deviceBattery = getBatteryLevel(device);
             if (mRequireBatteryCheck && (deviceBattery == null)) {
@@ -455,6 +464,22 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             handleBatteryException(device, e);
         }
         return null;
+    }
+
+    /**
+     * Get the device's supported API level or -1 if it cannot be retrieved
+     * @param device
+     * @return
+     */
+    private int getDeviceSdkLevel(IDevice device) {
+        int apiLevel = -1;
+        String prop = getProperty(device, DEVICE_SDK_PROPERTY);
+        try {
+            apiLevel = Integer.parseInt(prop);
+        } catch (NumberFormatException nfe) {
+            CLog.w("Failed to parse sdk level %s for device %s", prop, device.getSerialNumber());
+        }
+        return apiLevel;
     }
 
     private void handleBatteryException(IDevice device, Exception e) {

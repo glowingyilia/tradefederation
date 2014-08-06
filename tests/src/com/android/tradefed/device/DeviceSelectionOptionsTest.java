@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.config.ArgsOptionParser;
 
 import junit.framework.TestCase;
 
@@ -329,5 +330,47 @@ public class DeviceSelectionOptionsTest extends TestCase {
         assertTrue(options.matches(mMockDevice));
         options.setMinBatteryLevel(25);
         assertTrue(options.matches(mMockDevice));
+    }
+
+    /**
+     * Test that min sdk checking works for negative case
+     */
+    public void testMatches_minSdkFail() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        ArgsOptionParser p = new ArgsOptionParser(options);
+        p.parse("--min-sdk-level", "15");
+        EasyMock.expect(
+                mMockDevice.getPropertyCacheOrSync(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                .andStubReturn("10");
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertFalse(options.matches(mMockDevice));
+    }
+
+    /**
+     * Test that min sdk checking works for positive case
+     */
+    public void testMatches_minSdkPass() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        ArgsOptionParser p = new ArgsOptionParser(options);
+        p.parse("--min-sdk-level", "10");
+        EasyMock.expect(
+                mMockDevice.getPropertyCacheOrSync(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                .andStubReturn("10");
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertTrue(options.matches(mMockDevice));
+    }
+
+    /**
+     * Test that device is not matched if device api cannot be determined
+     */
+    public void testMatches_minSdkNull() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        ArgsOptionParser p = new ArgsOptionParser(options);
+        p.parse("--min-sdk-level", "10");
+        EasyMock.expect(
+                mMockDevice.getPropertyCacheOrSync(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                .andStubReturn("blargh");
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertFalse(options.matches(mMockDevice));
     }
 }
