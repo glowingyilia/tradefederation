@@ -51,24 +51,6 @@ public class DeviceSelectionOptionsTest extends TestCase {
     }
 
     /**
-     * Test for {@link DeviceSelectionOptions#getProperties()}.
-     */
-    public void testGetProperties() {
-        DeviceSelectionOptions options = new DeviceSelectionOptions();
-        options.addProperty("foo=bar");
-        assertEquals("bar", options.getProperties().get("foo"));
-    }
-
-    /**
-     * Test for {@link DeviceSelectionOptions#getProperties()} with an invalid property.
-     */
-    public void testGetProperties_invalid() {
-        DeviceSelectionOptions options = new DeviceSelectionOptions();
-        options.addProperty("invalid");
-        assertEquals(0, options.getProperties().size());
-    }
-
-    /**
      * Test for {@link DeviceSelectionOptions#getSerials()}
      */
     public void testGetSerials() {
@@ -166,7 +148,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
      */
     public void testMatches_property() {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
-        options.addProperty("prop1=propvalue");
+        options.addProperty("prop1", "propvalue");
 
         EasyMock.expect(mMockDevice.getProperty("prop1")).andReturn("propvalue");
         EasyMock.replay(mMockDevice);
@@ -179,7 +161,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
      */
     public void testMatches_propertyNotMatch() {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
-        options.addProperty("prop1=propvalue");
+        options.addProperty("prop1", "propvalue");
 
         EasyMock.expect(mMockDevice.getProperty("prop1")).andReturn("wrongvalue");
         EasyMock.replay(mMockDevice);
@@ -192,8 +174,8 @@ public class DeviceSelectionOptionsTest extends TestCase {
      */
     public void testMatches_multipleProperty() {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
-        options.addProperty("prop1=propvalue");
-        options.addProperty("prop2=propvalue2");
+        options.addProperty("prop1", "propvalue");
+        options.addProperty("prop2", "propvalue2");
 
         EasyMock.expect(mMockDevice.getProperty("prop1")).andReturn("propvalue");
         EasyMock.expect(mMockDevice.getProperty("prop2")).andReturn("propvalue2");
@@ -207,8 +189,8 @@ public class DeviceSelectionOptionsTest extends TestCase {
      */
     public void testMatches_notMultipleProperty() {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
-        options.addProperty("prop1=propvalue");
-        options.addProperty("prop2=propvalue2");
+        options.addProperty("prop1", "propvalue");
+        options.addProperty("prop2", "propvalue2");
 
         EasyMock.expect(mMockDevice.getProperty("prop1")).andReturn("propvalue");
         EasyMock.expect(mMockDevice.getProperty("prop2")).andReturn("wrongpropvalue");

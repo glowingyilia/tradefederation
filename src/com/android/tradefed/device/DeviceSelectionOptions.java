@@ -17,7 +17,6 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.Log;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.config.Option;
@@ -53,8 +52,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     @Option(name = "property", description =
         "run this test on device with this property value. " +
-        "Expected format <propertyname>=<propertyvalue>.")
-    private Collection<String> mPropertyStrings = new ArrayList<String>();
+        "Expected format --property <propertyname> <propertyvalue>.")
+    private Map<String, String> mPropertyMap = new HashMap<>();
 
     @Option(name = "emulator", shortName = 'e', description =
         "force this test to run on emulator.")
@@ -134,11 +133,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     /**
      * Add a property criteria to the device selection options
-     *
-     * @param propertyKeyValue a property to match. Expected format propertykey=propertyvalue
      */
-    public void addProperty(String propertyKeyValue) {
-        mPropertyStrings.add(propertyKeyValue);
+    public void addProperty(String propertyKey, String propValue) {
+        mPropertyMap.put(propertyKey, propValue);
     }
 
     /**
@@ -280,17 +277,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     @Override
     public Map<String, String> getProperties() {
-        Map<String, String> propertyMap = new HashMap<String, String>(mPropertyStrings.size());
-        for (String propertyKeyValue : mPropertyStrings) {
-            String[] keyValuePair =  propertyKeyValue.split("=");
-            if (keyValuePair.length == 2) {
-                propertyMap.put(keyValuePair[0], keyValuePair[1]);
-            } else {
-                Log.e(LOG_TAG, String.format("Unrecognized property key value pair: '%s'",
-                        propertyKeyValue));
-            }
-        }
-        return propertyMap;
+        return mPropertyMap;
     }
 
     private Collection<String> copyCollection(Collection<String> original) {
