@@ -104,7 +104,16 @@ public class PackageManagerOTATests extends DeviceTestCase {
      * @return {@link String} of absolute file path
      */
     public File getTestAppFilePath(String fileName) {
+        // need to check both data/app/apkFileName and
+        // data/app/apkFileName/apkFileName
         File file = FileUtil.getFileForPath(mTestAppRepositoryPath, fileName);
+        if (file.exists()) {
+            return file;
+        }
+
+        int index = fileName.lastIndexOf('.');
+        String dir = fileName.substring(0, index);
+        file = FileUtil.getFileForPath(mTestAppRepositoryPath, dir, fileName);
         CLog.d("Test path : %s", file.getAbsolutePath());
         return file;
     }
