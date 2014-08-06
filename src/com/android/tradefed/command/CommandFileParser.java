@@ -44,7 +44,7 @@ import java.util.regex.Pattern;
  *   ...
  * </pre>
  */
-public class CommandFileParser {
+class CommandFileParser {
 
     /**
      * A pattern that matches valid macro usages and captures the name of the macro.
