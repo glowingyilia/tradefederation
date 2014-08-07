@@ -15,14 +15,16 @@
  */
 package com.android.tradefed.device;
 
-import com.android.tradefed.config.ArgsOptionParser;
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.device.DeviceUtilStatsMonitor.ITimeProvider;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceUtilStatsMonitor.UtilizationDesc;
+import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Simple unit tests for {@link DeviceUtilStatsMonitor}
@@ -30,182 +32,128 @@ import org.easymock.EasyMock;
 public class DeviceUtilStatsMonitorTest extends TestCase {
 
     private IDeviceManager mMockDeviceManager;
-    private ITimeProvider mMockTime;
+    private DeviceUtilStatsMonitor mDeviceUtilMonitor;
 
     @Override
     public void setUp() {
         mMockDeviceManager = EasyMock.createNiceMock(IDeviceManager.class);
-        mMockTime = EasyMock.createNiceMock(ITimeProvider.class);
+        mDeviceUtilMonitor = new DeviceUtilStatsMonitor() {
+            @Override
+            IDeviceManager getDeviceManager() {
+                return mMockDeviceManager;
+            }
+        };
+        mDeviceUtilMonitor.setDeviceLister(new DeviceLister() {
+            @Override
+            public List<DeviceDescriptor> listDevices() {
+                return mMockDeviceManager.listAllDevices();
+            }
+        });
     }
 
     public void testEmpty() {
-        EasyMock.replay(mMockTime, mMockDeviceManager);
-        assertEquals(0, createUtilMonitor().getUtilizationStats().mTotalUtil);
+        EasyMock.replay(mMockDeviceManager);
+        assertEquals(0, mDeviceUtilMonitor.getUtilizationStats().mTotalUtil);
     }
 
     /**
      * Test case where device has been available but never allocated
      */
     public void testOnlyAvailable() {
-        // use a time of 0 for starttime, and available starttime
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(0L).times(2);
-        // use time of 10 for current time when getUtil call happens
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(10L);
-        EasyMock.replay(mMockTime, mMockDeviceManager);
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList(
+                DeviceAllocationState.Available));
+        EasyMock.replay(mMockDeviceManager);
 
-        DeviceUtilStatsMonitor s = createUtilMonitor();
-        final String serial = "serial";
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Unknown,
-                DeviceAllocationState.Available);
-
-        UtilizationDesc desc = s.getUtilizationStats();
+        mDeviceUtilMonitor.getSamplingTask().run();
+        UtilizationDesc desc = mDeviceUtilMonitor.getUtilizationStats();
         assertEquals(0, desc.mTotalUtil);
         assertEquals(1, desc.mDeviceUtil.size());
-        assertEquals(0L, (long)desc.mDeviceUtil.get(serial));
-    }
-
-    private DeviceUtilStatsMonitor createUtilMonitor() {
-        return new DeviceUtilStatsMonitor(mMockTime) {
-            @Override
-            IDeviceManager getDeviceManager() {
-                return mMockDeviceManager;
-            }
-        };
+        assertEquals(0L, (long)desc.mDeviceUtil.get("serial0"));
     }
 
     /**
      * Test case where device has been allocated but never available
      */
     public void testOnlyAllocated() {
-        // use a time of 0 for starttime, and available starttime
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(0L).times(2);
-        // use time of 10 for current time when getUtil call happens
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(10L);
-        EasyMock.replay(mMockTime, mMockDeviceManager);
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList(
+                DeviceAllocationState.Allocated));
+        EasyMock.replay(mMockDeviceManager);
 
-        DeviceUtilStatsMonitor s = createUtilMonitor();
-        final String serial = "serial";
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Unknown,
-                DeviceAllocationState.Allocated);
-
-        UtilizationDesc desc = s.getUtilizationStats();
+        mDeviceUtilMonitor.getSamplingTask().run();
+        UtilizationDesc desc = mDeviceUtilMonitor.getUtilizationStats();
         assertEquals(100L, desc.mTotalUtil);
         assertEquals(1, desc.mDeviceUtil.size());
-        assertEquals(100L, (long)desc.mDeviceUtil.get(serial));
+        assertEquals(100L, (long)desc.mDeviceUtil.get("serial0"));
     }
 
     /**
-     * Test case where device has been allocated for half the time
+     * Test case where samples exceed max
      */
-    public void testHalfAllocated() {
-        // use a time of 0 for starttime, and available starttime
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(0L).times(2);
-        // use time of 5 for current time when available end, and alloc start happens
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(5L).times(2);
-        // use time of 10 when getUtil time happens
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(10L);
-        EasyMock.replay(mMockTime, mMockDeviceManager);
+    public void testExceededSamples() {
+        mDeviceUtilMonitor.setMaxSamples(2);
+        // first return allocated, then return samples with device missing
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList(
+                DeviceAllocationState.Allocated));
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList(DeviceAllocationState.Available));
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList(DeviceAllocationState.Available));
+        EasyMock.replay(mMockDeviceManager);
 
-        DeviceUtilStatsMonitor s = createUtilMonitor();
-        final String serial = "serial";
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Unknown,
-                DeviceAllocationState.Available);
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Available,
-                DeviceAllocationState.Allocated);
-
-        UtilizationDesc desc = s.getUtilizationStats();
-        assertEquals(50L, desc.mTotalUtil);
-        assertEquals(1, desc.mDeviceUtil.size());
-        assertEquals(50L, (long)desc.mDeviceUtil.get(serial));
+        mDeviceUtilMonitor.getSamplingTask().run();
+        // only 1 sample - allocated
+        assertEquals(100L, mDeviceUtilMonitor.getUtilizationStats().mTotalUtil);
+        mDeviceUtilMonitor.getSamplingTask().run();
+        // 1 out of 2
+        assertEquals(50L, mDeviceUtilMonitor.getUtilizationStats().mTotalUtil);
+        mDeviceUtilMonitor.getSamplingTask().run();
+        // 0 out of 2
+        assertEquals(0L, mDeviceUtilMonitor.getUtilizationStats().mTotalUtil);
     }
 
     /**
-     * Ensure records from older than window are discarded.
-     * <p/>
-     * Simulate by recording available record entirely before window, and allocation start before
-     * window. therefore expect utilization 100%
+     * Test case where device disappears. Ensure util numbers are calculated until > max samples
+     * have been collected with it missing
      */
-    public void testCleanRecords() {
-        long fakeCurrentTime = DeviceUtilStatsMonitor.WINDOW_MS + 100;
-        // this will be available start and starttime- use time of 0
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(0L).times(2);
-        // this is available end and alloc start
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(50L).times(2);
-        // for all other calls use current time which is > window
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andStubReturn(fakeCurrentTime);
+    public void testMissingDevice() {
+        mDeviceUtilMonitor.setMaxSamples(2);
+        // first return allocated, then return samples with device missing
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList(
+                DeviceAllocationState.Allocated));
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList());
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList());
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(buildDeviceList());
+        EasyMock.replay(mMockDeviceManager);
 
-        EasyMock.replay(mMockTime, mMockDeviceManager);
+        // only 1 sample - allocated
+        mDeviceUtilMonitor.getSamplingTask().run();
+        assertEquals(100L, mDeviceUtilMonitor.getUtilizationStats().mTotalUtil);
 
-        DeviceUtilStatsMonitor s = createUtilMonitor();
-        final String serial = "serial";
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Unknown,
-                DeviceAllocationState.Available);
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Available,
-                DeviceAllocationState.Allocated);
+        // 1 out of 2
+        mDeviceUtilMonitor.getSamplingTask().run();
+        assertEquals(50L, mDeviceUtilMonitor.getUtilizationStats().mTotalUtil);
 
-        UtilizationDesc desc = s.getUtilizationStats();
-        assertEquals(100L, desc.mTotalUtil);
-        assertEquals(1, desc.mDeviceUtil.size());
-        assertEquals(100L, (long)desc.mDeviceUtil.get(serial));
+        // 0 out of 2
+        mDeviceUtilMonitor.getSamplingTask().run();
+        assertEquals(0L, mDeviceUtilMonitor.getUtilizationStats().mTotalUtil);
+
+        // now removed
+        mDeviceUtilMonitor.getSamplingTask().run();
+        assertEquals(0L, mDeviceUtilMonitor.getUtilizationStats().mDeviceUtil.size());
+
+    }
+
+    private List<DeviceDescriptor> buildDeviceList(DeviceAllocationState... states) {
+        List<DeviceDescriptor> deviceList = new ArrayList<>(states.length);
+        for (int i =0; i < states.length; i++) {
+            DeviceDescriptor device = createDeviceDesc("serial" + i, states[i]);
+            deviceList.add(device);
+        }
+        return deviceList;
     }
 
     /**
-     * Ensures null device data is dropped when --collect-null-device==IGNORE
-     * @throws ConfigurationException
+     * Helper method to create a {@link DeviceDescriptor} using only serial and state.
      */
-    public void testNullDevice_ignored() throws ConfigurationException {
-        // this will be available start and starttime- use time of 0
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(0L).times(2);
-        // this is available end and alloc start
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(50L).times(2);
-        // for all other calls use 100
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andStubReturn(100L);
-
-        EasyMock.expect(mMockDeviceManager.isNullDevice(EasyMock.<String>anyObject()))
-                .andStubReturn(Boolean.TRUE);
-        EasyMock.replay(mMockTime, mMockDeviceManager);
-
-        DeviceUtilStatsMonitor s = createUtilMonitor();
-        new ArgsOptionParser(s).parse("--collect-null-device", "IGNORE");
-        final String serial = "serial";
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Unknown,
-                DeviceAllocationState.Available);
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Available,
-                DeviceAllocationState.Allocated);
-        UtilizationDesc desc = s.getUtilizationStats();
-        assertEquals(0, desc.mTotalUtil);
-        assertEquals(0, desc.mDeviceUtil.size());
-    }
-
-    /**
-     * Ensures null device data treatment when --collect-null-device==INCLUDE_IF_USED
-     * @throws ConfigurationException
-     */
-    public void testNullDevice_whenUsed() throws ConfigurationException {
-        // this will be available start and starttime- use time of 0
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(0L).times(2);
-        // this is available end and alloc start
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andReturn(50L).times(3);
-        // for all other calls use 100
-        EasyMock.expect(mMockTime.getCurrentTimeMillis()).andStubReturn(100L);
-
-        EasyMock.expect(mMockDeviceManager.isNullDevice(EasyMock.<String>anyObject()))
-                .andStubReturn(Boolean.TRUE);
-        EasyMock.replay(mMockTime, mMockDeviceManager);
-
-        DeviceUtilStatsMonitor s = createUtilMonitor();
-        new ArgsOptionParser(s).parse("--collect-null-device", "INCLUDE_IF_USED");
-        final String serial = "serial";
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Unknown,
-                DeviceAllocationState.Available);
-        UtilizationDesc desc = s.getUtilizationStats();
-        assertEquals(0, desc.mTotalUtil);
-        assertEquals(0, desc.mDeviceUtil.size());
-
-        s.notifyDeviceStateChange(serial, DeviceAllocationState.Available,
-                DeviceAllocationState.Allocated);
-        desc = s.getUtilizationStats();
-        assertEquals(50, desc.mTotalUtil);
-        assertEquals(1, desc.mDeviceUtil.size());
+    private DeviceDescriptor createDeviceDesc(String serial, DeviceAllocationState state) {
+        return new DeviceDescriptor(serial, false, state, null, null, null, null, null);
     }
 }

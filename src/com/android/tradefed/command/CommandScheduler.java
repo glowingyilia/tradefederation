@@ -802,19 +802,21 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         List<DeviceDescriptor> deviceDescs = getDeviceManager().listAllDevices();
 
         for (DeviceDescriptor deviceDesc : deviceDescs) {
-            String device = deviceDesc.getSerial();
-            String[] argsWithDevice = Arrays.copyOf(args, args.length + 2);
-            argsWithDevice[argsWithDevice.length - 2] = "-s";
-            argsWithDevice[argsWithDevice.length - 1] = device;
-            CommandTracker cmdTracker = createCommandTracker(argsWithDevice, cmdFilePath);
-            cmdTracker.incrementExecTime(totalExecTime);
-            IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                    cmdTracker.getArgs());
-            CLog.logAndDisplay(LogLevel.INFO, "Scheduling '%s' on '%s'", cmdTracker.getArgs()[0],
-                    device);
-            config.getDeviceRequirements().setSerial(device);
-            ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
-            addExecCommandToQueue(execCmd, 0);
+            if (!deviceDesc.isStubDevice()) {
+                String device = deviceDesc.getSerial();
+                String[] argsWithDevice = Arrays.copyOf(args, args.length + 2);
+                argsWithDevice[argsWithDevice.length - 2] = "-s";
+                argsWithDevice[argsWithDevice.length - 1] = device;
+                CommandTracker cmdTracker = createCommandTracker(argsWithDevice, cmdFilePath);
+                cmdTracker.incrementExecTime(totalExecTime);
+                IConfiguration config = getConfigFactory().createConfigurationFromArgs(
+                        cmdTracker.getArgs());
+                CLog.logAndDisplay(LogLevel.INFO, "Scheduling '%s' on '%s'", cmdTracker.getArgs()[0],
+                        device);
+                config.getDeviceRequirements().setSerial(device);
+                ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
+                addExecCommandToQueue(execCmd, 0);
+            }
         }
     }
 

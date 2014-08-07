@@ -747,11 +747,6 @@ public class DeviceManager implements IDeviceManager {
         IDeviceSelection selector = getDeviceSelectionOptions();
         for (IManagedTestDevice d : mManagedDeviceList) {
             IDevice idevice = d.getIDevice();
-            if (idevice instanceof StubDevice
-                    && d.getAllocationState() != DeviceAllocationState.Allocated) {
-                // don't add placeholder devices
-                continue;
-            }
             serialStates.add(new DeviceDescriptor(idevice.getSerialNumber(),
                     idevice instanceof StubDevice,
                     d.getAllocationState(),

@@ -16,25 +16,28 @@
 
 package com.android.tradefed.device;
 
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.CircularByteArray;
 
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.LinkedList;
-import java.util.ListIterator;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * A {@link IDeviceMonitor} that calculates device utilization stats.
  * <p/>
- * Currently measures allocation time % out of allocation + avail time, over a 24 hour window.
- * <p/>
- * If used, {@link #getUtilizationStats()} must be called periodically to clear accumulated memory.
+ * Currently measures simple moving average of allocation time % over a 24 hour window.
  */
 public class DeviceUtilStatsMonitor implements IDeviceMonitor {
+
+    static final int DEFAULT_MAX_SAMPLES = 24 * 60;
+
+    private static final int mInitialDelayMs = 100;
 
     /**
      * Enum for configuring treatment of stub devices when calculating average host utilization
@@ -61,31 +64,6 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
 
     private boolean mNullDeviceAllocated = false;
     private boolean mEmulatorAllocated = false;
-    /**
-     * A record of the start and end time a device spent in one of the measured states (either
-     * available or allocated).
-     */
-    private class StateRecord {
-        long mStartTime = -1;
-        long mEndTime = -1;
-
-        StateRecord() {
-            mStartTime = mTimeProvider.getCurrentTimeMillis();
-        }
-
-        void setEnd() {
-            mEndTime = mTimeProvider.getCurrentTimeMillis();
-        }
-    }
-
-    /**
-     * Holds the total accounting of time spent in available and allocated state, over the
-     * {@link #WINDOW_MS}
-     */
-    private static class DeviceStateRecords {
-        LinkedList<StateRecord> mAvailableRecords = new LinkedList<>();
-        LinkedList<StateRecord> mAllocatedRecords = new LinkedList<>();
-    }
 
     /**
      * Container for utilization stats.
@@ -122,139 +100,128 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
         }
     }
 
-    /**
-     * interface for retrieving current time. Used so unit test can mock
-     */
-    static interface ITimeProvider {
-        long getCurrentTimeMillis();
-    }
+    private class DeviceUtilRecord {
+        // store samples of device util, where 0 = avail, 1 = allocated
+        // TODO: save memory by using CircularBitArray
+        private CircularByteArray mData;
+        private int mConsecutiveMissedSamples = 0;
 
-    static class SystemTimeProvider implements ITimeProvider {
-        @Override
-        public long getCurrentTimeMillis() {
-            return System.currentTimeMillis();
+        DeviceUtilRecord() {
+            mData = new CircularByteArray(mMaxSamples);
+        }
+
+        public void addSample(DeviceAllocationState state) {
+            if (DeviceAllocationState.Allocated.equals(state)) {
+                mData.add((byte)1);
+            } else {
+                mData.add((byte)0);
+            }
+            mConsecutiveMissedSamples = 0;
+        }
+
+        public long getNumAllocations() {
+            return mData.getSum();
+        }
+
+        public long getTotalSamples() {
+            return mData.size();
+        }
+
+        /**
+         * Record sample for missing device.
+         *
+         * @param serial device serial number
+         * @return true if sample was added, false if device has been missing for more than max
+         * samples
+         */
+        public boolean addMissingSample(String serial) {
+            mConsecutiveMissedSamples++;
+            if (mConsecutiveMissedSamples > mMaxSamples) {
+                return false;
+            }
+            mData.add((byte)0);
+            return true;
         }
     }
 
-    // use 24 hour window
-    final static long WINDOW_MS = 24L * 60L * 60L * 1000L;
+    private class SamplingTask extends TimerTask {
+        @Override
+        public void run() {
+            CLog.d("Collecting utilization");
+            // track devices that we have records for, but are not reported by device lister
+            Map<String, DeviceUtilRecord> goneDevices = new HashMap<>(mDeviceUtilMap);
 
-    /** a map of device serial to state records */
-    private Map<String, DeviceStateRecords> mDeviceUtilMap = new Hashtable<>();
+            for (DeviceDescriptor deviceDesc : mDeviceLister.listDevices()) {
+                DeviceUtilRecord record = getDeviceRecord(deviceDesc.getSerial());
+                record.addSample(deviceDesc.getState());
+                goneDevices.remove(deviceDesc.getSerial());
+            }
 
-    private final ITimeProvider mTimeProvider;
-    /** stores the startup time of this stats object */
-    private final long mStartTime;
-
-    DeviceUtilStatsMonitor(ITimeProvider p) {
-        mTimeProvider = p;
-        mStartTime = p.getCurrentTimeMillis();
+            // now record samples for gone devices
+            for (Map.Entry<String, DeviceUtilRecord> goneSerialEntry : goneDevices.entrySet()) {
+                String serial = goneSerialEntry.getKey();
+                if (!goneSerialEntry.getValue().addMissingSample(serial)) {
+                    CLog.d("Forgetting device %s", serial);
+                    mDeviceUtilMap.remove(serial);
+                }
+            }
+        }
     }
 
-    public DeviceUtilStatsMonitor() {
-        this(new SystemTimeProvider());
-    }
+    private int mSamplePeriodMs = 60 * 1000;
+
+    // by default, use 24 hour window - calculated by number of measurement interval (1 min) in
+    // this window
+    private int mMaxSamples = DEFAULT_MAX_SAMPLES;
+
+    /** a map of device serial to device records */
+    private Map<String, DeviceUtilRecord> mDeviceUtilMap = new Hashtable<>();
+
+    private DeviceLister mDeviceLister;
+
+    private Timer mTimer;
+    SamplingTask mSamplingTask = new SamplingTask();
 
     /**
      * Get the device utilization up to the last 24 hours
      */
     public synchronized UtilizationDesc getUtilizationStats() {
         CLog.d("Calculating device util");
-        long currentTime = mTimeProvider.getCurrentTimeMillis();
-        cleanAllRecords(currentTime);
 
-        long totalAvailTime = 0;
-        long totalAllocTime = 0;
-        long windowStartTime = currentTime - WINDOW_MS;
-        if (windowStartTime < mStartTime) {
-            // this class has been running less than window time - use start time as start of
-            // window
-            windowStartTime = mStartTime;
-        }
-        Map<String, Integer> deviceUtilMap = new HashMap<>(mDeviceUtilMap.size());
-        Map<String, DeviceStateRecords> mapCopy = new HashMap<>(mDeviceUtilMap);
-        for (Map.Entry<String, DeviceStateRecords> deviceRecordEntry : mapCopy.entrySet()) {
-            if (shouldTrackDevice(deviceRecordEntry)) {
-                long availTime = countTime(windowStartTime, currentTime,
-                        deviceRecordEntry.getValue().mAvailableRecords);
-                long allocTime = countTime(windowStartTime, currentTime,
-                        deviceRecordEntry.getValue().mAllocatedRecords);
-                totalAvailTime += availTime;
-                totalAllocTime += allocTime;
-                deviceUtilMap.put(deviceRecordEntry.getKey(), getUtil(availTime, allocTime));
+        long totalAllocSamples = 0;
+        long totalSamples = 0;
+        Map<String, Integer> deviceUtilMap = new HashMap<>();
+        for (Map.Entry<String, DeviceUtilRecord> deviceRecordEntry : mDeviceUtilMap.entrySet()) {
+            if (shouldTrackDevice(deviceRecordEntry.getKey())) {
+                long allocSamples = deviceRecordEntry.getValue().getNumAllocations();
+                long numSamples = deviceRecordEntry.getValue().getTotalSamples();
+                totalAllocSamples += allocSamples;
+                totalSamples += numSamples;
+                deviceUtilMap.put(deviceRecordEntry.getKey(), getUtil(allocSamples, numSamples));
             }
         }
-        return new UtilizationDesc(getUtil(totalAvailTime, totalAllocTime), deviceUtilMap);
-    }
-
-    /**
-     * Return the total time in ms spent in state in window
-     */
-    private long countTime(long windowStartTime, long currentTime, LinkedList<StateRecord> records) {
-        long totalTime = 0;
-        for (StateRecord r : records) {
-            long startTime = r.mStartTime;
-            // started before window - truncate to window start time
-            if (startTime < windowStartTime) {
-                startTime = windowStartTime;
-            }
-            long endTime = r.mEndTime;
-            // hasn't ended yet - there should only be one of these. Truncate to current time
-            if (endTime < 0) {
-                endTime = currentTime;
-            }
-            if (endTime < startTime) {
-                CLog.w("endtime %d is less than start time %d", endTime, startTime);
-                continue;
-            }
-            totalTime += (endTime - startTime);
-        }
-        return totalTime;
+        return new UtilizationDesc(getUtil(totalAllocSamples, totalSamples), deviceUtilMap);
     }
 
     /**
      * Get device utilization as a percent
      */
-    private int getUtil(long availTime, long allocTime) {
-        long totalTime = availTime + allocTime;
-        if (totalTime <= 0) {
+    private static int getUtil(long allocSamples, long numSamples) {
+        if (numSamples <= 0) {
             return 0;
         }
-        return (int)((allocTime * 100) / totalTime);
-    }
-
-    /**
-     * Remove all old records outside the moving average window (currently 24 hours)
-     */
-    private void cleanAllRecords(long currentTime) {
-        long obsoleteTime = currentTime - WINDOW_MS;
-        for (DeviceStateRecords r : mDeviceUtilMap.values()) {
-            cleanRecordList(obsoleteTime, r.mAllocatedRecords);
-            cleanRecordList(obsoleteTime, r.mAvailableRecords);
-        }
-    }
-
-    private void cleanRecordList(long obsoleteTime, LinkedList<StateRecord> records) {
-        ListIterator<StateRecord> li = records.listIterator();
-        while (li.hasNext()) {
-            StateRecord r = li.next();
-            if (r.mEndTime > 0 && r.mEndTime < obsoleteTime) {
-                li.remove();
-            } else {
-                // since records are sorted, just end now
-                return;
-            }
-        }
+        return (int)((allocSamples * 100) / numSamples);
     }
 
     @Override
     public void run() {
-        // ignore
+        mTimer  = new Timer();
+        mTimer.scheduleAtFixedRate(mSamplingTask, mInitialDelayMs, mSamplePeriodMs);
     }
 
     @Override
     public void setDeviceLister(DeviceLister lister) {
-        // ignore
+        mDeviceLister = lister;
     }
 
     /**
@@ -264,62 +231,34 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
     @Override
     public synchronized void notifyDeviceStateChange(String serial, DeviceAllocationState oldState,
             DeviceAllocationState newState) {
-        // record the 'state ended' time
-        DeviceStateRecords stateRecord = getDeviceRecords(serial);
-        if (DeviceAllocationState.Available.equals(oldState)) {
-            recordStateEnd(stateRecord.mAvailableRecords);
-        } else if (DeviceAllocationState.Allocated.equals(oldState)) {
-            recordStateEnd(stateRecord.mAllocatedRecords);
+        if (mNullDeviceAllocated && mEmulatorAllocated) {
+            // optimization, don't enter calculation below unless needed
+            return;
         }
-
-        // record the 'state started' time
-        if (DeviceAllocationState.Available.equals(newState)) {
-            recordStateStart(stateRecord.mAvailableRecords);
-        } else if (DeviceAllocationState.Allocated.equals(newState)) {
+        if (DeviceAllocationState.Allocated.equals(newState)) {
             IDeviceManager dvcMgr = getDeviceManager();
             if (dvcMgr.isNullDevice(serial)) {
                 mNullDeviceAllocated = true;
             } else if (dvcMgr.isEmulator(serial)) {
                 mEmulatorAllocated = true;
             }
-            recordStateStart(stateRecord.mAllocatedRecords);
         }
-    }
-
-    private void recordStateEnd(LinkedList<StateRecord> records) {
-        if (records.isEmpty()) {
-            CLog.e("error, no records exist");
-            return;
-        }
-        StateRecord r = records.getLast();
-        if (r.mEndTime != -1) {
-            CLog.e("error, last state already marked as ended");
-            return;
-        }
-        r.setEnd();
-    }
-
-    private void recordStateStart(LinkedList<StateRecord> records) {
-        // TODO: do some correctness checks
-        StateRecord r = new StateRecord();
-        records.add(r);
     }
 
     /**
-     * Get the device state records for given serial, creating if necessary.
+     * Get the device util records for given serial, creating if necessary.
      */
-    private DeviceStateRecords getDeviceRecords(String serial) {
-        DeviceStateRecords r = mDeviceUtilMap.get(serial);
+    private DeviceUtilRecord getDeviceRecord(String serial) {
+        DeviceUtilRecord r = mDeviceUtilMap.get(serial);
         if (r == null) {
-            r = new DeviceStateRecords();
+            r = new DeviceUtilRecord();
             mDeviceUtilMap.put(serial, r);
         }
         return r;
     }
 
-    private boolean shouldTrackDevice(Entry<String, DeviceStateRecords> deviceRecordEntry) {
+    private boolean shouldTrackDevice(String serial) {
         IDeviceManager dvcMgr = getDeviceManager();
-        String serial = deviceRecordEntry.getKey();
         if (dvcMgr.isNullDevice(serial)) {
             switch (mCollectNullDevice) {
                 case ALWAYS_INCLUDE:
@@ -344,5 +283,13 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
 
     IDeviceManager getDeviceManager() {
         return GlobalConfiguration.getDeviceManagerInstance();
+    }
+
+    TimerTask getSamplingTask() {
+        return mSamplingTask;
+    }
+
+    void setMaxSamples(int maxSamples) {
+        mMaxSamples = maxSamples;
     }
 }

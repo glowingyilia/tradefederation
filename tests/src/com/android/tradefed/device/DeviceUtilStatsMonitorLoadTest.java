@@ -16,11 +16,15 @@
 
 package com.android.tradefed.device;
 
-import com.android.tradefed.device.DeviceUtilStatsMonitor.ITimeProvider;
-import com.android.tradefed.device.DeviceUtilStatsMonitor.UtilizationDesc;
-import com.android.tradefed.util.TimeUtil;
+import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
 
 import junit.framework.TestCase;
+
+import org.easymock.EasyMock;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Load test for {@link DeviceUtilStatsMonitor} Used to ensure memory used by monitor under heavy
@@ -29,52 +33,60 @@ import junit.framework.TestCase;
 public class DeviceUtilStatsMonitorLoadTest extends TestCase {
 
     private static final int NUM_DEVICES = 100;
-    private static final long ALLOC_TIME_MS = 60 * 1000;
+
+    private IDeviceManager mMockDeviceManager;
+    private DeviceUtilStatsMonitor mDeviceUtilMonitor;
+
+    @Override
+    public void setUp() {
+        mMockDeviceManager = EasyMock.createNiceMock(IDeviceManager.class);
+        mDeviceUtilMonitor = new DeviceUtilStatsMonitor() {
+            @Override
+            IDeviceManager getDeviceManager() {
+                return mMockDeviceManager;
+            }
+        };
+        mDeviceUtilMonitor.setDeviceLister(new DeviceLister() {
+            @Override
+            public List<DeviceDescriptor> listDevices() {
+                return mMockDeviceManager.listAllDevices();
+            }
+        });
+    }
 
     /**
-     * Simulate a heavy load by generating constant allocation events of ALLOC_TIME_MS length for
+     * Simulate a heavy load by generating constant allocation events length for
      * all NUM_DEVICES devices.
      * <p/>
      * Intended to be run under a profiler.
+     * @throws InterruptedException
      */
-    public void testManyRecords() {
-        MockTimeProvider timeProvider = new MockTimeProvider();
-        DeviceUtilStatsMonitor monitor = new DeviceUtilStatsMonitor(timeProvider);
-        for (int i = 0; i < NUM_DEVICES; i++) {
-            monitor.notifyDeviceStateChange(Integer.toString(i), DeviceAllocationState.Unknown,
-                    DeviceAllocationState.Available);
+    public void testManyRecords() throws InterruptedException {
+        List<DeviceDescriptor> deviceList = new ArrayList<>(NUM_DEVICES);
+        for (int i =0; i <NUM_DEVICES; i++) {
+            DeviceDescriptor device = createDeviceDesc("serial" + i, DeviceAllocationState.Allocated);
+            deviceList.add(device);
         }
-        while (timeProvider.mCurrentTime < DeviceUtilStatsMonitor.WINDOW_MS) {
-            for (int i = 0; i < NUM_DEVICES; i++) {
-                monitor.notifyDeviceStateChange(Integer.toString(i),
-                        DeviceAllocationState.Available, DeviceAllocationState.Allocated);
-            }
-            timeProvider.incrementTime();
-            for (int i = 0; i < NUM_DEVICES; i++) {
-                monitor.notifyDeviceStateChange(Integer.toString(i),
-                        DeviceAllocationState.Allocated, DeviceAllocationState.Available);
-            }
+        EasyMock.expect(mMockDeviceManager.listAllDevices()).andStubReturn(deviceList);
+        EasyMock.replay(mMockDeviceManager);
+
+        for (int i = 0; i < DeviceUtilStatsMonitor.DEFAULT_MAX_SAMPLES; i++) {
+            mDeviceUtilMonitor.getSamplingTask().run();
         }
-        long startTime = System.currentTimeMillis();
-        UtilizationDesc d = monitor.getUtilizationStats();
-        System.out.println(TimeUtil.formatElapsedTime(System.currentTimeMillis() - startTime));
+        // This takes ~ 5.7 MB in heap if DeviceUtilStatsMonitor uses a LinkedList<Byte> to
+        // store samples
+        // takes ~ 270K if CircularByteArray is used
+        Thread.sleep(5 * 60 * 1000);
     }
 
-    private static class MockTimeProvider implements ITimeProvider {
-
-        long mCurrentTime = 0;
-
-        void incrementTime() {
-            mCurrentTime += ALLOC_TIME_MS;
-        }
-
-        @Override
-        public long getCurrentTimeMillis() {
-            return mCurrentTime;
-        }
+    /**
+     * Helper method to create a {@link DeviceDescriptor} using only serial and state.
+     */
+    private DeviceDescriptor createDeviceDesc(String serial, DeviceAllocationState state) {
+        return new DeviceDescriptor(serial, false, state, null, null, null, null, null);
     }
 
     public static void main(String[] args) {
-        new DeviceUtilStatsMonitorLoadTest().testManyRecords();
+        //new DeviceUtilStatsMonitorLoadTest().testManyRecords();
     }
 }
