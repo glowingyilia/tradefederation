@@ -32,11 +32,11 @@ import com.android.tradefed.util.CommandStatus;
 public class DeviceWiper implements ITargetPreparer {
 
     @Option(name = "disable", description = "disables the device wiper")
-    private boolean mDisable = false;
+    protected boolean mDisable = false;
 
     @Option(name = "use-erase", description =
             "instruct wiper to use fastboot erase instead of format")
-    private boolean mUseErase = false;
+    protected boolean mUseErase = false;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
