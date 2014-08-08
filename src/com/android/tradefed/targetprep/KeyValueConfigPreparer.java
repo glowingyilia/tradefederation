@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
@@ -28,6 +29,7 @@ import java.util.Map.Entry;
 /**
  * A {@link ITargetPreparer} which creates and pushes a simple key/value config file to the device.
  */
+@OptionClass(alias = "key-value-config")
 public class KeyValueConfigPreparer implements ITargetPreparer {
 
     @Option(name = "path", description = "The path of the config file on the device",
