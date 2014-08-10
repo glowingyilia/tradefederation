@@ -77,7 +77,17 @@ if [ -z "${tf_path}" ]; then
     exit
 fi
 
+# set any host specific options
+# file format for file at $TRADEFED_OPTS_FILE is one line per host with the following format:
+# <hostname>=<options>
+# for example:
+# hostname.domain.com=-Djava.io.tmpdir=/location/on/disk -Danother=false ...
+# hostname2.domain.com=-Djava.io.tmpdir=/different/location -Danother=true ...
+if [ -e "${TRADEFED_OPTS_FILE}" ]; then
+    # pull the line for this host and take everything after the first =
+    export TRADEFED_OPTS=`grep "^$HOSTNAME=" "$TRADEFED_OPTS_FILE" | cut -d '=' -f 2-`
+fi
 
 # Note: must leave ${RDBG_FLAG} unquoted so that it goes away when unset
-java ${RDBG_FLAG} -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow \
+java ${RDBG_FLAG} -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow $TRADEFED_OPTS \
   -cp "${ddmlib_path}:${tf_path}" com.android.tradefed.command.Console "$@"
