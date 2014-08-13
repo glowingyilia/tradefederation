@@ -21,6 +21,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.ddmlib.IDevice;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +43,9 @@ public class KeyValueConfigPreparer implements ITargetPreparer {
     @Option(name = "separator", description = "The separator used between key and value")
     private String mSep = "=";
 
+    @Option(name = "interpolate", description = "Interpolate path variable")
+    private boolean mInterpolate = false;
+
     /**
      * {@inheritDoc}
      * @throws TargetSetupError
@@ -59,6 +63,17 @@ public class KeyValueConfigPreparer implements ITargetPreparer {
             config.append(String.format("%s%s%s\n", entry.getKey(), mSep, entry.getValue()));
         }
 
-        device.pushString(config.toString(), mPath);
+        String content = config.toString();
+
+        if (mInterpolate) {
+            final String externalStorageString = "${EXTERNAL_STORAGE}";
+            if (content.contains(externalStorageString)) {
+                final String externalStoragePath =
+                        device.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+                content = content.replace(externalStorageString, externalStoragePath);
+            }
+        }
+
+        device.pushString(content, mPath);
     }
 }
