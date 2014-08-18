@@ -243,13 +243,13 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
                     return true;
                 }
             } catch (IOException e) {
-                CLog.i("%s failed %s", cmd, e.getMessage());
+                CLog.i("%s on device %s failed %s", cmd, getSerialNumber(), e.getMessage());
             } catch (TimeoutException e) {
-                CLog.i("%s failed: timeout", cmd);
+                CLog.i("%s on device %s failed: timeout", cmd, getSerialNumber());
             } catch (AdbCommandRejectedException e) {
-                CLog.i("%s failed: %s", cmd, e.getMessage());
+                CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
             } catch (ShellCommandUnresponsiveException e) {
-                CLog.i("%s failed: %s", cmd, e.getMessage());
+                CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
             }
             getRunUtil().sleep(CHECK_POLL_TIME);
         }
@@ -279,13 +279,17 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
                     return true;
                 }
             } catch (IOException e) {
-                Log.i(LOG_TAG, String.format("%s failed: %s", cmd, e.getMessage()));
+                Log.i(LOG_TAG, String.format("%s on device %s failed: %s", cmd, getSerialNumber(),
+                        e.getMessage()));
             } catch (TimeoutException e) {
-                Log.i(LOG_TAG, String.format("%s failed: timeout", cmd));
+                Log.i(LOG_TAG,
+                        String.format("%s on device %s failed: timeout", cmd, getSerialNumber()));
             } catch (AdbCommandRejectedException e) {
-                Log.i(LOG_TAG, String.format("%s failed: %s", cmd, e.getMessage()));
+                Log.i(LOG_TAG, String.format("%s on device %s failed: %s", cmd, getSerialNumber(),
+                        e.getMessage()));
             } catch (ShellCommandUnresponsiveException e) {
-                Log.i(LOG_TAG, String.format("%s failed: %s", cmd, e.getMessage()));
+                Log.i(LOG_TAG, String.format("%s on device %s failed: %s", cmd, getSerialNumber(),
+                        e.getMessage()));
             }
             getRunUtil().sleep(CHECK_POLL_TIME);
         }
@@ -335,13 +339,20 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
                         return true;
                     }
                 } catch (IOException e) {
-                    Log.i(LOG_TAG, String.format("%s failed: %s", cmd, e.getMessage()));
+                    Log.i(LOG_TAG,
+                            String.format("%s on device %s failed: %s", cmd, getSerialNumber(),
+                                    e.getMessage()));
                 } catch (TimeoutException e) {
-                    Log.i(LOG_TAG, String.format("%s failed: timeout", cmd));
+                    Log.i(LOG_TAG, String.format("%s on device %s failed: timeout", cmd,
+                            getSerialNumber()));
                 } catch (AdbCommandRejectedException e) {
-                    Log.i(LOG_TAG, String.format("%s failed: %s", cmd, e.getMessage()));
+                    Log.i(LOG_TAG,
+                            String.format("%s on device %s failed: %s", cmd, getSerialNumber(),
+                                    e.getMessage()));
                 } catch (ShellCommandUnresponsiveException e) {
-                    Log.i(LOG_TAG, String.format("%s failed: %s", cmd, e.getMessage()));
+                    Log.i(LOG_TAG,
+                            String.format("%s on device %s failed: %s", cmd, getSerialNumber(),
+                                    e.getMessage()));
                 }
             } else {
                 Log.w(LOG_TAG, String.format("Failed to get external store mount point for %s",
