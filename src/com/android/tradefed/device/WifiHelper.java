@@ -17,7 +17,6 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.MultiLineReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
@@ -60,7 +59,7 @@ public class WifiHelper implements IWifiHelper {
 
     private final ITestDevice mDevice;
 
-    public WifiHelper(ITestDevice device) throws TargetSetupError, DeviceNotAvailableException {
+    public WifiHelper(ITestDevice device) throws DeviceNotAvailableException {
         mDevice = device;
         ensureDeviceSetup();
     }
@@ -74,7 +73,7 @@ public class WifiHelper implements IWifiHelper {
         return RunUtil.getDefault();
     }
 
-    void ensureDeviceSetup() throws TargetSetupError, DeviceNotAvailableException {
+    void ensureDeviceSetup() throws DeviceNotAvailableException {
         final String inst = mDevice.executeShellCommand(CHECK_PACKAGE_CMD);
         if (inst != null) {
             Matcher matcher = PACKAGE_VERSION_PAT.matcher(inst);
@@ -99,11 +98,11 @@ public class WifiHelper implements IWifiHelper {
                 // Installed successfully; good to go.
                 return;
             } else {
-                throw new TargetSetupError(String.format(
+                throw new RuntimeException(String.format(
                         "Unable to install WifiUtil utility: %s", error));
             }
         } catch (IOException e) {
-            throw new TargetSetupError(String.format(
+            throw new RuntimeException(String.format(
                     "Failed to unpack WifiUtil utility: %s", e.getMessage()));
         } finally {
             FileUtil.deleteFile(apkTempFile);

@@ -36,7 +36,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
-import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -1692,33 +1691,29 @@ class TestDevice implements IManagedTestDevice {
     public boolean connectToWifiNetwork(String wifiSsid, String wifiPsk)
             throws DeviceNotAvailableException {
 
-        try {
-            // Clears the last connected wifi network.
-            mWifiSsid = null;
-            mWifiPsk = null;
+        // Clears the last connected wifi network.
+        mWifiSsid = null;
+        mWifiPsk = null;
 
-            IWifiHelper wifi = createWifiHelper();
-            for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
-                CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
-                boolean success = wifi.connectToNetwork(wifiSsid, wifiPsk,
-                        mOptions.getConnCheckUrl());
-                final Map<String, String> wifiInfo = wifi.getWifiInfo();
-                if (success) {
-                    CLog.i("Successfully connected to wifi network %s(%s) on %s",
-                            wifiSsid, wifiInfo.get("bssid"), getSerialNumber());
+        IWifiHelper wifi = createWifiHelper();
+        for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
+            CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
+            boolean success = wifi.connectToNetwork(wifiSsid, wifiPsk,
+                    mOptions.getConnCheckUrl());
+            final Map<String, String> wifiInfo = wifi.getWifiInfo();
+            if (success) {
+                CLog.i("Successfully connected to wifi network %s(%s) on %s",
+                        wifiSsid, wifiInfo.get("bssid"), getSerialNumber());
 
-                    mWifiSsid = wifiSsid;
-                    mWifiPsk = wifiPsk;
+                mWifiSsid = wifiSsid;
+                mWifiPsk = wifiPsk;
 
-                    return true;
-                } else {
-                    CLog.w("Failed to connect to wifi network %s(%s) on %s on attempt %d of %d",
-                            wifiSsid, wifiInfo.get("bssid"), getSerialNumber(), i,
-                            mOptions.getWifiAttempts());
-                }
+                return true;
+            } else {
+                CLog.w("Failed to connect to wifi network %s(%s) on %s on attempt %d of %d",
+                        wifiSsid, wifiInfo.get("bssid"), getSerialNumber(), i,
+                        mOptions.getWifiAttempts());
             }
-        } catch (TargetSetupError e) {
-            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
         }
         return false;
     }
@@ -1728,13 +1723,8 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public boolean checkConnectivity() throws DeviceNotAvailableException {
-        try {
-            final IWifiHelper wifi = createWifiHelper();
-            return wifi.checkConnectivity(mOptions.getConnCheckUrl());
-        } catch (TargetSetupError e) {
-            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
-        }
-        return false;
+        final IWifiHelper wifi = createWifiHelper();
+        return wifi.checkConnectivity(mOptions.getConnCheckUrl());
     }
 
     /**
@@ -1757,7 +1747,7 @@ class TestDevice implements IManagedTestDevice {
         try {
             final IWifiHelper wifi = createWifiHelper();
             return wifi.isWifiEnabled();
-        } catch (TargetSetupError e) {
+        } catch (RuntimeException e) {
             CLog.w("Failed to create WifiHelper: %s", e.getMessage());
             return false;
         }
@@ -1769,11 +1759,9 @@ class TestDevice implements IManagedTestDevice {
      * @param wifiSSID the wifi ssid
      * @return <code>true</code> if device is currently connected to wifiSSID and has network
      *         connectivity. <code>false</code> otherwise
-     * @throws TargetSetupError if error occurred obtaining wifi info
      * @throws DeviceNotAvailableException if connection with device was lost
      */
-    boolean checkWifiConnection(String wifiSSID) throws TargetSetupError,
-            DeviceNotAvailableException {
+    boolean checkWifiConnection(String wifiSSID) throws DeviceNotAvailableException {
         CLog.i("Checking connection with wifi network %s on %s", wifiSSID, getSerialNumber());
         final IWifiHelper wifi = createWifiHelper();
         // getSSID returns SSID as "SSID"
@@ -1805,17 +1793,12 @@ class TestDevice implements IManagedTestDevice {
     @Override
     public boolean disconnectFromWifi() throws DeviceNotAvailableException {
         CLog.i("Disconnecting from wifi on %s", getSerialNumber());
-        try {
-            // Clears the last connected wifi network.
-            mWifiSsid = null;
-            mWifiPsk = null;
+        // Clears the last connected wifi network.
+        mWifiSsid = null;
+        mWifiPsk = null;
 
-            IWifiHelper wifi = createWifiHelper();
-            return wifi.disconnectFromNetwork();
-        } catch (TargetSetupError e) {
-            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
-            return false;
-        }
+        IWifiHelper wifi = createWifiHelper();
+        return wifi.disconnectFromNetwork();
     }
 
     /**
@@ -1823,13 +1806,8 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public String getIpAddress() throws DeviceNotAvailableException {
-        try {
-            IWifiHelper wifi = createWifiHelper();
-            return wifi.getIpAddress();
-        } catch (TargetSetupError e) {
-            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
-            return null;
-        }
+        IWifiHelper wifi = createWifiHelper();
+        return wifi.getIpAddress();
     }
 
     /**
@@ -1837,17 +1815,13 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public boolean enableNetworkMonitor() throws DeviceNotAvailableException {
-        try {
-            mNetworkMonitorEnabled = false;
+        mNetworkMonitorEnabled = false;
 
-            IWifiHelper wifi = createWifiHelper();
-            wifi.stopMonitor();
-            if (wifi.startMonitor(NETWORK_MONITOR_INTERVAL, mOptions.getConnCheckUrl())) {
-                mNetworkMonitorEnabled = true;
-                return true;
-            }
-        } catch (TargetSetupError e) {
-            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
+        IWifiHelper wifi = createWifiHelper();
+        wifi.stopMonitor();
+        if (wifi.startMonitor(NETWORK_MONITOR_INTERVAL, mOptions.getConnCheckUrl())) {
+            mNetworkMonitorEnabled = true;
+            return true;
         }
         return false;
     }
@@ -1857,35 +1831,30 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public boolean disableNetworkMonitor() throws DeviceNotAvailableException {
-        try {
-            mNetworkMonitorEnabled = false;
+        mNetworkMonitorEnabled = false;
 
-            IWifiHelper wifi = createWifiHelper();
-            List<Long> samples = wifi.stopMonitor();
-            if (!samples.isEmpty()) {
-                int failures = 0;
-                long totalLatency = 0;
-                for (Long sample : samples) {
-                    if (sample < 0) {
-                        failures += 1;
-                    } else {
-                        totalLatency += sample;
-                    }
+        IWifiHelper wifi = createWifiHelper();
+        List<Long> samples = wifi.stopMonitor();
+        if (!samples.isEmpty()) {
+            int failures = 0;
+            long totalLatency = 0;
+            for (Long sample : samples) {
+                if (sample < 0) {
+                    failures += 1;
+                } else {
+                    totalLatency += sample;
                 }
-                double failureRate = failures * 100.0 / samples.size();
-                double avgLatency = 0.0;
-                if (failures < samples.size()) {
-                    avgLatency = totalLatency / (samples.size() - failures);
-                }
-                CLog.d("[metric] url=%s, window=%ss, failure_rate=%.2f%%, latency_avg=%.2f",
-                        mOptions.getConnCheckUrl(), samples.size() * NETWORK_MONITOR_INTERVAL / 1000,
-                        failureRate, avgLatency);
             }
-            return true;
-        } catch (TargetSetupError e) {
-            CLog.w("Failed to create WifiHelper: %s", e.getMessage());
+            double failureRate = failures * 100.0 / samples.size();
+            double avgLatency = 0.0;
+            if (failures < samples.size()) {
+                avgLatency = totalLatency / (samples.size() - failures);
+            }
+            CLog.d("[metric] url=%s, window=%ss, failure_rate=%.2f%%, latency_avg=%.2f",
+                    mOptions.getConnCheckUrl(), samples.size() * NETWORK_MONITOR_INTERVAL / 1000,
+                    failureRate, avgLatency);
         }
-        return false;
+        return true;
     }
 
     /**
@@ -1893,7 +1862,7 @@ class TestDevice implements IManagedTestDevice {
      * <p/>
      * Exposed so unit tests can mock
      */
-    IWifiHelper createWifiHelper() throws TargetSetupError, DeviceNotAvailableException {
+    IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
         return new WifiHelper(this);
     }
 
