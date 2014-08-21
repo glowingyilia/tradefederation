@@ -38,38 +38,41 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Run radio outgoing call stress test. The test stresses the voice connection when making
  * outgoing calls, number of failures will be collected and reported.
  */
 public class TelephonyTest implements IRemoteTest, IDeviceTest {
-    private ITestDevice mTestDevice = null;
-    private static String mTestName = "TelephonyTest";
-    private static final String mOutputFile = "/data/data/com.android.phone/files/phoneResults.txt";
-    private static final int TEST_TIMER = 8 * 60 * 60 * 1000; // 8 hours
+    private static final int TEST_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
+
+    private static final String OUTPUT_FILE = "output.txt";
+    private static final Pattern OUTPUT_LINE_REGEX = Pattern.compile("(\\d+) (\\d+)");
 
     // Define metrics for result report
-    private static final String mMetricsName = "PhoneVoiceConnectionStress";
-    private final String[] keys = {"CallActiveFailure", "CallDisconnectionFailure", "HangupFailure",
-            "ServiceStateChange", "SuccessfulCall"};
-    private int[] callStatus = new int[5];
+    private static final String METRICS_NAME = "PhoneVoiceConnectionStress";
+    private static final String SUCCESS_KEY = "SuccessfulCall";
+    private static final String TEST_FAILURE_KEY = "TestFailure";
+    private static final String[] FAILURE_KEYS = {"CallActiveFailure", "CallDisconnectionFailure",
+        "HangupFailure", "ServiceStateChange", TEST_FAILURE_KEY};
     private RadioHelper mRadioHelper;
 
     // Define instrumentation test package and runner.
     private static final String TEST_PACKAGE_NAME = "com.android.phonetests";
     private static final String TEST_RUNNER_NAME = ".PhoneInstrumentationStressTestRunner";
     private static final String TEST_CLASS_NAME =
-        "com.android.phonetests.stress.telephony.TelephonyStress";
-    public static final String TEST_METHOD = "testRadioOnOutgoingCalls";
+        "com.android.phonetests.stress.telephony.TelephonyStress2";
+    public static final String TEST_METHOD = "testOutgoingCalls";
 
     @Option(name="call-duration",
             description="The time of a call to be held in the test (in seconds)")
-    private String mCallDuration = "5";
+    private int mCallDuration = 5;
 
     @Option(name="pause-time",
             description="The idle time between two calls (in seconds)")
-    private String mPauseTime = "2";
+    private int mPauseTime = 2;
 
     @Option(name="phone-number",
             description="The phone number used for outgoing call test")
@@ -77,7 +80,9 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
 
     @Option(name="repeat-count",
             description="The number of calls to make during the test")
-    private String mRepeatCount = "1000";
+    private int mIterations = 1000;
+
+    private ITestDevice mTestDevice = null;
 
     /**
      * Run the telephony outgoing call stress test
@@ -87,7 +92,7 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
     public void run(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         CLog.d("input options: mCallDuration(%s),mPauseTime(%s), mPhoneNumber(%s),"
-                + "mRepeatCount(%s)", mCallDuration, mPauseTime, mPhoneNumber, mRepeatCount);
+                + "mRepeatCount(%s)", mCallDuration, mPauseTime, mPhoneNumber, mIterations);
 
         Assert.assertNotNull(mTestDevice);
         Assert.assertNotNull(mPhoneNumber);
@@ -103,76 +108,87 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
         runner.setClassName(TEST_CLASS_NAME);
         runner.setMethodName(TEST_CLASS_NAME, TEST_METHOD);
 
-        runner.addInstrumentationArg("callduration", mCallDuration);
-        runner.addInstrumentationArg("pausetime", mPauseTime);
         runner.addInstrumentationArg("phonenumber", mPhoneNumber);
-        runner.setMaxTimeToOutputResponse(TEST_TIMER, TimeUnit.MILLISECONDS);
+        runner.addInstrumentationArg("repeatcount", String.format("%d", mIterations));
+        runner.addInstrumentationArg("callduration", String.format("%d", mCallDuration));
+        runner.addInstrumentationArg("pausetime", String.format("%d", mPauseTime));
+        runner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
         // Add bugreport listener for failed test
-        BugreportCollector bugListener = new
-            BugreportCollector(listener, mTestDevice);
-        bugListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);
-        bugListener.setDescriptiveName(mTestName);
+        BugreportCollector bugreportListener = new BugreportCollector(listener, mTestDevice);
+        bugreportListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);
+        bugreportListener.setDescriptiveName(TelephonyTest.class.getSimpleName());
         // Device may reboot during the test, to capture a bugreport after that,
         // wait for 30 seconds for device to be online, otherwise, bugreport will be empty
-        bugListener.setDeviceWaitTime(30);
+        bugreportListener.setDeviceWaitTime(30);
 
         CollectingTestListener collectListener = new CollectingTestListener();
-        int remainingCalls = Integer.parseInt(mRepeatCount);
 
-        while (remainingCalls > 0) {
-            CLog.d("remaining calls: %s", remainingCalls);
-            runner.addInstrumentationArg("repeatcount", String.valueOf(remainingCalls));
-            mTestDevice.runInstrumentationTests(runner, bugListener, collectListener);
+        Map<String, Integer> failures = new HashMap<String, Integer>(4);
+        for (String key : FAILURE_KEYS) {
+            failures.put(key, 0);
+        }
+
+        int currentIteration = 0;
+        while (currentIteration < mIterations) {
+            CLog.d("remaining calls: %s", currentIteration);
+            runner.addInstrumentationArg("iteration", String.format("%d", currentIteration));
+            mTestDevice.runInstrumentationTests(runner, bugreportListener, collectListener);
             if (collectListener.hasFailedTests()) {
-                // the test failed
-                int numCalls = logOutputFile(bugListener);
-                remainingCalls -= numCalls;
-                cleanOutputFiles();
+                currentIteration = processOutputFile(currentIteration, failures) + 1;
             } else {
-                // the test passed
-                remainingCalls = 0;
+                break;
             }
         }
-        reportMetrics(mMetricsName, bugListener);
+        reportMetrics(METRICS_NAME, bugreportListener, failures);
     }
 
     /**
-     * Collect number of successful calls and failure reason
-     *
-     * @param listener
+     * Process the output file, add the failure reason to the file, and return the current
+     * iteration that the call failed on.
      */
-    private int logOutputFile(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        File resFile = null;
-        int calls = 0;
-        resFile = mTestDevice.pullFile(mOutputFile);
-        BufferedReader br = null;
+    private int processOutputFile(int currentIteration, Map<String, Integer> failures)
+            throws DeviceNotAvailableException {
+        final File resFile = mTestDevice.pullFileFromExternal(OUTPUT_FILE);
+        BufferedReader reader = null;
         try {
             if (resFile == null) {
-                // test failed without writing any results
-                // either system crash, or other fails, treat as one failed iteration
-                return 1;
+                CLog.w("Output file did not exist, treating as no calls attempted");
+                failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
+                return currentIteration;
             }
-            br = new BufferedReader(new FileReader(resFile));
-            String line = br.readLine();
+            reader = new BufferedReader(new FileReader(resFile));
+            String line = reader.readLine();
 
-            // The output file should only include one line
             if (line == null) {
-                return 0;
+                CLog.w("Output file was emtpy, treating as no calls attempted");
+                failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
+                return currentIteration;
             }
 
-            // Get number of calls and failure reason;
-            String[] res = line.split(" ");
-            calls = Integer.parseInt(res[0]);
-            int reason = Integer.parseInt(res[1]);
-            callStatus[reason]++;
+            Matcher m = OUTPUT_LINE_REGEX.matcher(line);
+            if (!m.matches()) {
+                CLog.w("Output did not match the expected pattern, treating as no calls attempted");
+                failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
+                return currentIteration;
+            }
+
+            final int failureIteration = Integer.parseInt(m.group(1));
+            final int failureCode = Integer.parseInt(m.group(2));
+            final String key = FAILURE_KEYS[failureCode];
+
+            failures.put(key, failures.get(key) + 1);
+
+            return Math.max(failureIteration, currentIteration);
         } catch (IOException e) {
             CLog.e("IOException while reading outputfile %s", resFile.getAbsolutePath());
+            return currentIteration;
         } finally {
             FileUtil.deleteFile(resFile);
-            StreamUtil.close(br);
+            StreamUtil.close(reader);
+            mTestDevice.executeShellCommand(String.format("rm ${EXTERNAL_STORAGE}/%s",
+                    OUTPUT_FILE));
         }
-        return calls;
     }
 
     /**
@@ -180,26 +196,21 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
      * <p />
      * Exposed for unit testing
      */
-    private void reportMetrics(String metricsName, ITestInvocationListener listener) {
+    private void reportMetrics(String metricsName, ITestInvocationListener listener,
+            Map<String, Integer> failures) {
         Map<String, String> metrics = new HashMap<String, String>();
-        for (int i = 0; i < (keys.length - 1); i++) {
-            callStatus[keys.length - 1] = Integer.parseInt(mRepeatCount) - callStatus[i];
-            metrics.put(keys[i], Integer.toString(callStatus[i]));
+        Integer totalFailures = 0;
+        for (Map.Entry<String, Integer> entry : failures.entrySet()) {
+            final Integer keyFailures = entry.getValue();
+            totalFailures += keyFailures;
+            metrics.put(entry.getKey(), keyFailures.toString());
         }
-        metrics.put(keys[keys.length - 1], Integer.toString(callStatus[keys.length - 1]));
+        metrics.put(SUCCESS_KEY, String.format("%d", mIterations - totalFailures));
 
         // Create an empty testRun to report the parsed runMetrics
         CLog.d("About to report metrics to %s: %s", metricsName, metrics);
         listener.testRunStarted(metricsName, 0);
         listener.testRunEnded(0, metrics);
-    }
-
-    /**
-     * Clean up output files from the last test run
-     */
-    private void cleanOutputFiles() throws DeviceNotAvailableException {
-        CLog.d("Remove output file: %s", mOutputFile);
-        mTestDevice.executeShellCommand(String.format("rm %s", mOutputFile));
     }
 
     @Override
