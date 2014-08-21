@@ -52,6 +52,7 @@ public class DeviceUtilStatsMonitorLoadTest extends TestCase {
                 return mMockDeviceManager.listAllDevices();
             }
         });
+        mDeviceUtilMonitor.calculateMaxSamples();
     }
 
     /**
@@ -70,12 +71,12 @@ public class DeviceUtilStatsMonitorLoadTest extends TestCase {
         EasyMock.expect(mMockDeviceManager.listAllDevices()).andStubReturn(deviceList);
         EasyMock.replay(mMockDeviceManager);
 
-        for (int i = 0; i < DeviceUtilStatsMonitor.DEFAULT_MAX_SAMPLES; i++) {
+        for (int i = 0; i < mDeviceUtilMonitor.getMaxSamples(); i++) {
             mDeviceUtilMonitor.getSamplingTask().run();
         }
-        // This takes ~ 5.7 MB in heap if DeviceUtilStatsMonitor uses a LinkedList<Byte> to
+        // This takes ~ 1.9 MB in heap if DeviceUtilStatsMonitor uses a LinkedList<Byte> to
         // store samples
-        // takes ~ 270K if CircularByteArray is used
+        // takes ~ 65K if CircularByteArray is used
         Thread.sleep(5 * 60 * 1000);
     }
 

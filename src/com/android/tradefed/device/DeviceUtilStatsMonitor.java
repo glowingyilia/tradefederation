@@ -35,9 +35,7 @@ import java.util.TimerTask;
  */
 public class DeviceUtilStatsMonitor implements IDeviceMonitor {
 
-    static final int DEFAULT_MAX_SAMPLES = 24 * 60;
-
-    private static final int mInitialDelayMs = 100;
+    private static final int mInitialDelayMs = 5000;
 
     /**
      * Enum for configuring treatment of stub devices when calculating average host utilization
@@ -61,6 +59,14 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
     @Option(name = "collect-emulator", description =
             "controls if emulator data should be used when calculating avg host utilization")
     private StubDeviceUtil mCollectEmulator = StubDeviceUtil.INCLUDE_IF_USED;
+
+    @Option(name = "sample-window-hours", description =
+            "the moving average window size to use, in hours")
+    private int mSampleWindowHours = 8;
+
+    @Option(name = "sample-interval-secs", description =
+            "the time period between samples, in seconds")
+    private int mSamplingIntervalSec = 60;
 
     private boolean mNullDeviceAllocated = false;
     private boolean mEmulatorAllocated = false;
@@ -168,11 +174,7 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
         }
     }
 
-    private int mSamplePeriodMs = 60 * 1000;
-
-    // by default, use 24 hour window - calculated by number of measurement interval (1 min) in
-    // this window
-    private int mMaxSamples = DEFAULT_MAX_SAMPLES;
+    private int mMaxSamples;
 
     /** a map of device serial to device records */
     private Map<String, DeviceUtilRecord> mDeviceUtilMap = new Hashtable<>();
@@ -180,7 +182,7 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
     private DeviceLister mDeviceLister;
 
     private Timer mTimer;
-    SamplingTask mSamplingTask = new SamplingTask();
+    private SamplingTask mSamplingTask = new SamplingTask();
 
     /**
      * Get the device utilization up to the last 24 hours
@@ -215,8 +217,9 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
 
     @Override
     public void run() {
+        calculateMaxSamples();
         mTimer  = new Timer();
-        mTimer.scheduleAtFixedRate(mSamplingTask, mInitialDelayMs, mSamplePeriodMs);
+        mTimer.scheduleAtFixedRate(mSamplingTask, mInitialDelayMs, mSamplingIntervalSec * 1000);
     }
 
     @Override
@@ -289,7 +292,21 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
         return mSamplingTask;
     }
 
+    // @VisibleForTesting
+    void calculateMaxSamples() {
+        // find max samples to collect by converting sample window to seconds then divide by
+        // sampling interval
+        mMaxSamples = mSampleWindowHours * 60 * 60 / mSamplingIntervalSec;
+        assert(mMaxSamples > 0);
+    }
+
+    // @VisibleForTesting
     void setMaxSamples(int maxSamples) {
         mMaxSamples = maxSamples;
+    }
+
+    // @VisibleForTesting
+    int getMaxSamples() {
+        return mMaxSamples;
     }
 }

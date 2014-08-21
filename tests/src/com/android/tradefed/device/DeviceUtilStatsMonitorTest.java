@@ -49,6 +49,7 @@ public class DeviceUtilStatsMonitorTest extends TestCase {
                 return mMockDeviceManager.listAllDevices();
             }
         });
+        mDeviceUtilMonitor.calculateMaxSamples();
     }
 
     public void testEmpty() {
