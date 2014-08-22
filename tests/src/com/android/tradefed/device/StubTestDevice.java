@@ -312,6 +312,15 @@ public class StubTestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public boolean waitForBootComplete(long timeOut) throws DeviceNotAvailableException {
+      // ignore
+      return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void waitForDeviceOnline() throws DeviceNotAvailableException {
         // ignore
     }

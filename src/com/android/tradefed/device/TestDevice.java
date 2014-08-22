@@ -2876,4 +2876,12 @@ class TestDevice implements IManagedTestDevice {
         long epochInSeconds = date.getTime() / 1000; //ms to s
         executeShellCommand("date " + epochInSeconds);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean waitForBootComplete(long timeOut) throws DeviceNotAvailableException {
+        return mStateMonitor.waitForBootComplete(timeOut);
+    }
 }
