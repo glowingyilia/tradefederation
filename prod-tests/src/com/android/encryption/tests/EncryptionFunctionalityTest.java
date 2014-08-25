@@ -18,11 +18,12 @@ package com.android.encryption.tests;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+
 import junit.framework.Assert;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,12 +53,7 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
         listener.testRunStarted("EncryptionFunc", 0);
-        if (!(mTestDevice.unencryptDevice() && !mTestDevice.isDeviceEncrypted())) {
-            String message = String.format("Failed to unencrypt device %s",
-                    mTestDevice.getSerialNumber());
-            CLog.e(message);
-            throw new DeviceNotAvailableException(message);
-        }
+        mTestDevice.unencryptDevice();
         mTestDevice.waitForDeviceAvailable();
         stageStartTime = System.currentTimeMillis();
         mTestDevice.executeShellCommand("vdc cryptfs enablecrypto inplace password \"abcd\"");
