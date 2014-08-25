@@ -49,6 +49,13 @@ public interface IDeviceStateMonitor {
     public IDevice waitForDeviceOnline();
 
     /**
+     * Blocks until the device's boot complete flag is set
+     *
+     * @param waitTime the amount in ms to wait
+     */
+    public boolean waitForBootComplete(final long waitTime);
+
+    /**
      * Waits for device to be responsive to a basic adb shell command.
      *
      * @param waitTime the time in ms to wait

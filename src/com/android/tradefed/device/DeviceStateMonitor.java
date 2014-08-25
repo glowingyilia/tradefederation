@@ -228,11 +228,10 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
     }
 
     /**
-     * Blocks until the device's boot complete flag is set
-     *
-     * @param waitTime the amount in ms to wait
+     * {@inheritDoc}
      */
-    private boolean waitForBootComplete(final long waitTime) {
+    @Override
+    public boolean waitForBootComplete(final long waitTime) {
         CLog.i("Waiting %d ms for device %s boot complete", waitTime, getSerialNumber());
         long startTime = System.currentTimeMillis();
         final String cmd = "getprop " + BOOTCOMPLETE_PROP;

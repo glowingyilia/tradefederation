@@ -1102,4 +1102,13 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public void setDate(Date date) throws DeviceNotAvailableException;
+
+    /**
+     * Blocks until the device's boot complete flag is set.
+     *
+     * @param timeOut time in msecs to wait for the flag to be set
+     * @return true if device's boot complete flag is set within the timeout
+     * @throws DeviceNotAvailableException
+     */
+    public boolean waitForBootComplete(long timeOut) throws DeviceNotAvailableException;
 }
