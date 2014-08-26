@@ -30,8 +30,12 @@ import java.util.Map;
 /**
  * Runs the encryption func tests.
  * <p>
- * Encrypts the device inplace, and check the password to make sure the device can boot into the
- * system. The time of every stage is measured.
+ * 1 Encrypts the device inplace.
+ * 2 Checks the password and boot into the system
+ * 3 Changes the password
+ * 4 Checks if can still access sdcard(Should not)
+ * 5 Checks the password and boot into the system
+ * The time of every stage is measured.
  * </p>
  */
 public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
@@ -41,7 +45,8 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
     ITestDevice mTestDevice = null;
 
     final String[] STAGE_NAME = {
-            "encryption", "online", "bootcomplete", "decryption", "bootcomplete" };
+            "encryption", "online", "bootcomplete", "decryption",
+            "bootcomplete", "pwchanged", "bootcomplete"};
     Map<String, String> metrics = new HashMap<String, String>();
     int stage = 0;
     long stageEndTime, stageStartTime;
@@ -63,7 +68,6 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
 
             mTestDevice.waitForBootComplete(BOOT_TIMEOUT);
             stageEnd(); // stage 2
-
             mTestDevice.enableAdbRoot();
             mTestDevice.executeShellCommand("vdc cryptfs checkpw \"abcd\"");
             mTestDevice.executeShellCommand("vdc cryptfs restart");
@@ -71,6 +75,22 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
 
             mTestDevice.waitForDeviceAvailable();
             stageEnd(); // stage 4
+
+            mTestDevice.enableAdbRoot();
+            mTestDevice.executeShellCommand("vdc cryptfs changepw password \"dcba\"");
+            mTestDevice.nonBlockingReboot();
+            mTestDevice.waitForBootComplete(BOOT_TIMEOUT);
+            stageEnd(false); // stage 5
+
+            if (!mTestDevice.executeShellCommand("ls /mnt/shell/emulated").trim().isEmpty()) {
+                listener.testRunFailed("Still can access sdcard after password is changed");
+            } else {
+                mTestDevice.enableAdbRoot();
+                mTestDevice.executeShellCommand("vdc cryptfs checkpw \"dcba\"");
+                mTestDevice.executeShellCommand("vdc cryptfs restart");
+                mTestDevice.waitForDeviceAvailable();
+                stageEnd(false); // stage 6
+            }
         } catch (DeviceNotAvailableException e) {
             listener.testRunFailed(String.format("Device not avaible after %s before %s.",
                     STAGE_NAME[stage], STAGE_NAME[stage + 1]));
@@ -80,12 +100,19 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
     }
 
     // measure the time between stages.
-    void stageEnd() {
+    void stageEnd(boolean postTime) {
         stageEndTime = System.currentTimeMillis();
-        metrics.put(String.format("between%sAnd%s", capitalize(STAGE_NAME[stage]),
-                capitalize(STAGE_NAME[stage + 1])), Long.toString(stageEndTime - stageStartTime));
+        if (postTime) {
+            metrics.put(String.format("between%sAnd%s",
+                    capitalize(STAGE_NAME[stage]),capitalize(STAGE_NAME[stage + 1])),
+                    Long.toString(stageEndTime - stageStartTime));
+        }
         stageStartTime = stageEndTime;
         stage++;
+    }
+
+    void stageEnd() {
+        stageEnd(true);
     }
 
     private String capitalize(String line) {
