@@ -44,7 +44,7 @@ import java.util.regex.Pattern;
  *   ...
  * </pre>
  */
-class CommandFileParser {
+public class CommandFileParser {
 
     /**
      * A pattern that matches valid macro usages and captures the name of the macro.
@@ -61,7 +61,7 @@ class CommandFileParser {
     private Collection<String> mIncludedFiles = new HashSet<String>();
 
     @SuppressWarnings("serial")
-    static class CommandLine extends LinkedList<String> {
+    public static class CommandLine extends LinkedList<String> {
         CommandLine() {
             super();
         }

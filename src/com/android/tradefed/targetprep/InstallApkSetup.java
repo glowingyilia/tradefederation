@@ -42,11 +42,11 @@ public class InstallApkSetup implements ITargetPreparer {
         importance = Importance.IF_UNSET)
     private Collection<File> mApkPaths = new ArrayList<File>();
 
-
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
             importance = Importance.IF_UNSET)
     private String mForceAbi = null;
+
     /**
      * {@inheritDoc}
      */
