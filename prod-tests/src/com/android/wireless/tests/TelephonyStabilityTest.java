@@ -23,9 +23,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -36,12 +33,9 @@ import junit.framework.Assert;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -53,79 +47,61 @@ import java.util.regex.Pattern;
  * are verified after device wakeup.
  */
 public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
-    private static final String TEST_NAME = "TelephonyTest";
-    private static final String OUTPUT_FILE = "/data/data/com.android.phone/files/phoneResults.txt";
-    // Define report RU
+    private static final int TEST_TIMEOUT = 9 * 60 * 60 * 1000; // 9 hours
+
     private static final String METRICS_NAME = "telephony_stability";
-    // Define instrumentation test package and runner.
-    private static final String TEST_PACKAGE_NAME = "com.android.phonetests";
-    private static final String TEST_RUNNER_NAME = ".PhoneInstrumentationStressTestRunner";
-    private static final String TEST_CLASS_NAME =
-            "com.android.phonetests.stress.telephony.TelephonyStress";
-    private static final String TEST_METHOD = "testTelephonyStability";
-    private static final int TEST_TIMER = 9 * 60 * 60 * 1000; // 9 hours
-    private static final Pattern ITERATION_PATTERN =
-            Pattern.compile("^iteration (\\d+) out of (\\d+)");
     private static final String VOICE_REGISTRATION_KEY = "voice_registration";
     private static final String VOICE_CONNECTION_KEY = "voice_call";
     private static final String DATA_REGISTRATION_KEY = "data_registration";
     private static final String DATA_CONNECTION_KEY = "data_connection";
+    private static final String TEST_FAILURE_KEY = "test_failure";
 
-    private ITestDevice mTestDevice = null;
-    private RegexTrie<String> mPatternMap = null;
-    Map<String, String> mRunMetrics = new HashMap<String, String>();
-    private int mResIndex = 0;
-    private RadioHelper mRadioHelper;
+    private static final String OUTPUT_FILE = "output.txt";
+    // Output file in format:
+    // iteration voice_registration voice_connection data_registration data_connection
+    private static final Pattern OUTPUT_LINE_REGEX = Pattern.compile(
+            "(\\d+) (\\d+) (\\d+) (\\d+) (\\d+)");
+    private static final RegexTrie<String> OUTPUT_KEY_PATTERNS = new RegexTrie<String>();
+    static {
+        OUTPUT_KEY_PATTERNS.put(VOICE_REGISTRATION_KEY, "^Voice registration: (\\d+)");
+        OUTPUT_KEY_PATTERNS.put(VOICE_CONNECTION_KEY, "^Voice connection: (\\d+)");
+        OUTPUT_KEY_PATTERNS.put(DATA_REGISTRATION_KEY, "^Data registration: (\\d+)");
+        OUTPUT_KEY_PATTERNS.put(DATA_CONNECTION_KEY, "^Data connection: (\\d+)");
+    }
 
-    @Option(name="call-duration",
-            description="The time of a call to be held in the test (in seconds)")
-    private String mCallDuration = "60";
+    // Define instrumentation test package and runner.
+    private static final String TEST_PACKAGE_NAME = "com.android.phonetests";
+    private static final String TEST_RUNNER_NAME = ".PhoneInstrumentationStressTestRunner";
+    private static final String TEST_CLASS_NAME =
+            "com.android.phonetests.stress.telephony.TelephonyStress2";
+    private static final String TEST_METHOD = "testStability";
+
+    private static final String SETTINGS_DB = "/data/data/com.android.providers.settings/databases/"
+            + "settings.db";
+    private static final String LOCKSCREEN_DB = "/data/system/locksettings.db";
 
     @Option(name="phone-number",
             description="The phone number used for outgoing call test")
     private String mPhoneNumber = null;
 
-    @Option(name="iteration",
+    @Option(name="iterations",
             description="The number of calls to make during the test")
-    private int mIteration = 100;
+    private int mIterations = 100;
 
-    @Option(name="idletime",
+    @Option(name="call-duration",
+            description="The time of a call to be held in the test (in seconds)")
+    private long mCallDurationSec = 60;
+
+    @Option(name="suspend-duration",
             description="The time to allow device staty in suspend mode (in seconds)")
-    private int mIdleTime = 120;
+    private long mSuspendDurationSec = 120;
 
-    @Option(name="screen-time-out",
+    @Option(name="screen-timeout",
             description="Set screen timer (in minutes)")
-    private int mScreenTimer = 30;
+    private long mScreenTimeoutMin = 30;
 
-    /**
-     * Configure screen timeout property
-     * @throws DeviceNotAvailableException
-     */
-    private void configDevice() throws DeviceNotAvailableException {
-        int timeOut = mScreenTimer * 60 * 1000;
-        String command = ("sqlite3 /data/data/com.android.providers.settings/databases/settings.db "
-                + "\"UPDATE system SET value=\'" + timeOut + "\' WHERE name=\'screen_off_timeout\';\"");
-        CLog.d("Command to set screen timeout value to %d minutes: %s", mScreenTimer, command);
-        mTestDevice.executeShellCommand(command);
-        // Set device screen_off_timeout as svc power can be set to false in the Wi-Fi test
-        mTestDevice.executeShellCommand("svc power stayon false");
-
-        // reboot to allow the setting to take effect, post setup will be taken care by the reboot
-        mTestDevice.reboot();
-    }
-
-    private void setupTest() {
-        mPatternMap = new RegexTrie<String>();
-        mPatternMap.put(VOICE_REGISTRATION_KEY, "^Voice registration: (\\d+)");
-        mPatternMap.put(VOICE_CONNECTION_KEY, "^Voice connection: (\\d+)");
-        mPatternMap.put(DATA_REGISTRATION_KEY, "^Data registration: (\\d+)");
-        mPatternMap.put(DATA_CONNECTION_KEY, "^Data connection: (\\d+)");
-        String value = "0";
-        mRunMetrics.put(VOICE_REGISTRATION_KEY, value);
-        mRunMetrics.put(VOICE_CONNECTION_KEY, value);
-        mRunMetrics.put(DATA_REGISTRATION_KEY, value);
-        mRunMetrics.put(DATA_CONNECTION_KEY, value);
-    }
+    private ITestDevice mTestDevice = null;
+    private RadioHelper mRadioHelper;
 
     /**
      * Run the telephony stability test  and collect results
@@ -133,14 +109,10 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
     @Override
     public void run(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        CLog.d("input options: mCallDuration(%s), mPhoneNumber(%s), mIteration(%d), "
-                + "mIdleTime(%d), mScreenTimer(%d)", mCallDuration, mPhoneNumber, mIteration,
-                mIdleTime, mScreenTimer);
-
         Assert.assertNotNull(mTestDevice);
         Assert.assertNotNull(mPhoneNumber);
-        configDevice();
-        setupTest();
+
+        setScreenTimeout();
         mRadioHelper = new RadioHelper(mTestDevice);
         if (!mRadioHelper.radioActivation() || !mRadioHelper.waitForDataSetup()) {
             mRadioHelper.getBugreport(listener);
@@ -152,108 +124,155 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
         runner.setClassName(TEST_CLASS_NAME);
         runner.setMethodName(TEST_CLASS_NAME, TEST_METHOD);
 
-        runner.addInstrumentationArg("callduration", mCallDuration);
-        runner.addInstrumentationArg("phonenumber", mPhoneNumber);
-        runner.addInstrumentationArg("idletime", Integer.toString(mIdleTime));
-        runner.setMaxTimeToOutputResponse(TEST_TIMER, TimeUnit.MILLISECONDS);
+        runner.addInstrumentationArg("phone-number", mPhoneNumber);
+        runner.addInstrumentationArg("iterations", Integer.toString(mIterations));
+        runner.addInstrumentationArg("call-duration", Long.toString(mCallDurationSec));
+        runner.addInstrumentationArg("suspend-duration", Long.toString(mSuspendDurationSec));
+        runner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
         // Add bugreport listener for failed test
-        BugreportCollector bugListener = new
-            BugreportCollector(listener, mTestDevice);
-        bugListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);
-        bugListener.setDescriptiveName(TEST_NAME);
+        BugreportCollector bugreportListener = new BugreportCollector(listener, mTestDevice);
+        bugreportListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);
+        bugreportListener.setDescriptiveName(TelephonyStabilityTest.class.getSimpleName());
         // Device may reboot during the test, to capture a bugreport after that,
         // wait for 30 seconds for device to be online, otherwise, bugreport will be empty
-        bugListener.setDeviceWaitTime(30);
+        bugreportListener.setDeviceWaitTime(30);
 
-        int remainingIteration = mIteration;
-        while (remainingIteration > 0) {
-            runner.addInstrumentationArg("iteration", String.valueOf(remainingIteration));
-            mTestDevice.runInstrumentationTests(runner, bugListener);
-            int testRun = logOutputFile(bugListener);
-            remainingIteration -= testRun;
-            CLog.d("remainingIteration: %d", remainingIteration);
-            cleanOutputFiles();
+        Map<String, Integer> metrics = new HashMap<String, Integer>(4);
+        metrics.put(VOICE_REGISTRATION_KEY, 0);
+        metrics.put(VOICE_CONNECTION_KEY, 0);
+        metrics.put(DATA_REGISTRATION_KEY, 0);
+        metrics.put(DATA_CONNECTION_KEY, 0);
+        metrics.put(TEST_FAILURE_KEY, 0);
+
+        int currentIteration = 0;
+        while (currentIteration < mIterations) {
+            runner.addInstrumentationArg("current-iteration", Integer.toString(currentIteration));
+            mTestDevice.runInstrumentationTests(runner, bugreportListener);
+            currentIteration = processOutputFile(currentIteration, metrics) + 1;
         }
-        reportMetrics(bugListener);
+        reportMetrics(bugreportListener, metrics);
     }
 
     /**
-     * Collect results from the previous run
-     * @param listener
+     * Configure screen timeout property and lockscreen
      */
-    private int logOutputFile(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        File resFile = null;
-        InputStreamSource outputSource = null;
-        resFile = mTestDevice.pullFile(OUTPUT_FILE);
-        int testRun = 0;
-        BufferedReader br = null;
+    private void setScreenTimeout() throws DeviceNotAvailableException {
+        String command = String.format("sqlite3 %s \"UPDATE system SET value=\'%s\' "
+                + "WHERE name=\'screen_off_timeout\';\"", SETTINGS_DB,
+                mScreenTimeoutMin * 60 * 1000);
+        mTestDevice.executeShellCommand(command);
+
+        command = String.format("sqlite3 %s \"UPDATE locksettings SET value=\'1\' "
+                + "WHERE name=\'lockscreen.disabled\'\"", LOCKSCREEN_DB);
+        mTestDevice.executeShellCommand(command);
+
+        command = String.format("sqlite3 %s \"UPDATE locksettings SET value=\'0\' "
+                + "WHERE name=\'lockscreen.password_type\'\"", LOCKSCREEN_DB);
+        mTestDevice.executeShellCommand(command);
+
+        command = String.format("sqlite3 %s \"UPDATE locksettings SET value=\'0\' "
+                + "WHERE name=\'lockscreen.password_type_alternate\'\"", LOCKSCREEN_DB);
+        mTestDevice.executeShellCommand(command);
+
+        // Set device screen_off_timeout as svc power can be set to false in the Wi-Fi test
+        mTestDevice.executeShellCommand("svc power stayon false");
+
+        // reboot to allow the setting to take effect, post setup will be taken care by the reboot
+        mTestDevice.reboot();
+    }
+
+    /**
+     * Process the output file, add the failure reason to the file, and return the current
+     * iteration that the call failed on.
+     */
+    private int processOutputFile(int currentIteration, Map<String, Integer> metrics)
+            throws DeviceNotAvailableException {
+        final File resFile = mTestDevice.pullFileFromExternal(OUTPUT_FILE);
+        BufferedReader reader = null;
         try {
             if (resFile == null) {
-                // If the result file is empty, either system crash or there are other fails
-                // (e.g. failed to connect to mobile network after bootup), count as a failed
-                // iteration
-                return 1;
+                CLog.w("Output file did not exist");
+                metrics.put(TEST_FAILURE_KEY, metrics.get(TEST_FAILURE_KEY) + 1);
+                return currentIteration;
             }
-            // Save a copy of the output file
-            CLog.d("Sending %d byte file %s into the logosphere!",
-                   resFile.length(), resFile);
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(resFile));
-            listener.testLog(String.format("result_%d", mResIndex++), LogDataType.BUGREPORT,
-                             outputSource);
-            br = new BufferedReader(new FileReader(resFile));
-            String line = null;
-            while ((line = br.readLine()) != null) {
-                Matcher m = ITERATION_PATTERN.matcher(line);
-                if (m.matches()) {
-                    testRun = Integer.parseInt(m.group(1));
-                    CLog.d("test run: %d", testRun);
-                } else {
-                    List<List<String>> capture = new ArrayList<List<String>>(1);
-                    String key = mPatternMap.retrieve(capture, line);
-                    if (key != null) {
-                        // retrive from the metrics, add the new value and put it back
-                        int value = Integer.parseInt(mRunMetrics.get(key));
-                        value += Integer.parseInt(capture.get(0).get(0));
-                        mRunMetrics.put(key, Integer.toString(value));
-                    }
-                }
+            reader = new BufferedReader(new FileReader(resFile));
+            String line = getLastLine(reader);
+
+            if (line == null) {
+                CLog.w("Output file was emtpy");
+                metrics.put(TEST_FAILURE_KEY, metrics.get(TEST_FAILURE_KEY) + 1);
+                return currentIteration;
             }
+
+            Matcher m = OUTPUT_LINE_REGEX.matcher(line);
+            if (!m.matches()) {
+                CLog.w("Output did not match the expected pattern. Line was \"%s\"", line);
+                metrics.put(TEST_FAILURE_KEY, metrics.get(TEST_FAILURE_KEY) + 1);
+                return currentIteration;
+            }
+
+            final int recordedIteration = Integer.parseInt(m.group(1));
+            metrics.put(VOICE_REGISTRATION_KEY,
+                    metrics.get(VOICE_REGISTRATION_KEY) + Integer.parseInt(m.group(2)));
+            metrics.put(VOICE_CONNECTION_KEY,
+                    metrics.get(VOICE_CONNECTION_KEY) + Integer.parseInt(m.group(2)));
+            metrics.put(DATA_REGISTRATION_KEY,
+                    metrics.get(DATA_REGISTRATION_KEY) + Integer.parseInt(m.group(2)));
+            metrics.put(DATA_CONNECTION_KEY,
+                    metrics.get(DATA_CONNECTION_KEY) + Integer.parseInt(m.group(2)));
+
+            return Math.max(recordedIteration, currentIteration);
         } catch (IOException e) {
             CLog.e("IOException while reading outputfile %s", resFile.getAbsolutePath());
+            return currentIteration;
         } finally {
             FileUtil.deleteFile(resFile);
-            StreamUtil.cancel(outputSource);
-            StreamUtil.close(br);
+            StreamUtil.close(reader);
+            mTestDevice.executeShellCommand(String.format("rm ${EXTERNAL_STORAGE}/%s",
+                    OUTPUT_FILE));
         }
-        return (testRun + 1);
+    }
+
+    /**
+     * Get the last line from a buffered reader.
+     */
+    private String getLastLine(BufferedReader reader) throws IOException {
+        String lastLine = null;
+        String currentLine;
+        while ((currentLine = reader.readLine()) != null) {
+            lastLine = currentLine;
+        }
+        return lastLine;
     }
 
     /**
      * Report run metrics by creating an empty test run to stick them in
-     * <p />
-     * Exposed for unit testing
      */
-    private void reportMetrics(ITestInvocationListener listener) {
+    private void reportMetrics(ITestInvocationListener listener, Map<String, Integer> metrics) {
+        Map<String, String> reportedMetrics = new HashMap<String, String>();
+        for (Map.Entry<String, Integer> entry : metrics.entrySet()) {
+            final Integer keyFailures = entry.getValue();
+            reportedMetrics.put(entry.getKey(), keyFailures.toString());
+        }
+
         // Create an empty testRun to report the parsed runMetrics
-        CLog.d("About to report metrics to %s: %s", METRICS_NAME, mRunMetrics);
+        CLog.d("About to report metrics to %s: %s", METRICS_NAME, reportedMetrics);
         listener.testRunStarted(METRICS_NAME, 0);
-        listener.testRunEnded(0, mRunMetrics);
+        listener.testRunEnded(0, reportedMetrics);
     }
 
     /**
-     * Clean up output files from the last test run
+     * {@inheritDoc}
      */
-    private void cleanOutputFiles() throws DeviceNotAvailableException {
-        CLog.d("Remove output file: %s", OUTPUT_FILE);
-        mTestDevice.executeShellCommand(String.format("rm %s", OUTPUT_FILE));
-    }
-
     @Override
     public void setDevice(ITestDevice testDevice) {
         mTestDevice = testDevice;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public ITestDevice getDevice() {
         return mTestDevice;

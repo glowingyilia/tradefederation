@@ -22,7 +22,6 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
-import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -49,7 +48,8 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
     private static final int TEST_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 
     private static final String OUTPUT_FILE = "output.txt";
-    private static final Pattern OUTPUT_LINE_REGEX = Pattern.compile("(\\d+) (\\d+)");
+    // Output file in format: iteration [failure_reason]
+    private static final Pattern OUTPUT_LINE_REGEX = Pattern.compile("(\\d+)( (\\d+))?");
 
     // Define metrics for result report
     private static final String METRICS_NAME = "PhoneVoiceConnectionStress";
@@ -57,7 +57,6 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
     private static final String TEST_FAILURE_KEY = "TestFailure";
     private static final String[] FAILURE_KEYS = {"CallActiveFailure", "CallDisconnectionFailure",
         "HangupFailure", "ServiceStateChange", TEST_FAILURE_KEY};
-    private RadioHelper mRadioHelper;
 
     // Define instrumentation test package and runner.
     private static final String TEST_PACKAGE_NAME = "com.android.phonetests";
@@ -66,23 +65,24 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
         "com.android.phonetests.stress.telephony.TelephonyStress2";
     public static final String TEST_METHOD = "testOutgoingCalls";
 
-    @Option(name="call-duration",
-            description="The time of a call to be held in the test (in seconds)")
-    private int mCallDuration = 5;
-
-    @Option(name="pause-time",
-            description="The idle time between two calls (in seconds)")
-    private int mPauseTime = 2;
-
     @Option(name="phone-number",
             description="The phone number used for outgoing call test")
     private String mPhoneNumber = null;
 
-    @Option(name="repeat-count",
+    @Option(name="iterations",
             description="The number of calls to make during the test")
     private int mIterations = 1000;
 
+    @Option(name="call-duration",
+            description="The time of a call to be held in the test (in seconds)")
+    private long mCallDurationSec = 5;
+
+    @Option(name="start-pause-duration",
+            description="The time to wait before starting tests (in seconds)")
+    private long mStartPauseDurationSec = 2;
+
     private ITestDevice mTestDevice = null;
+    private RadioHelper mRadioHelper;
 
     /**
      * Run the telephony outgoing call stress test
@@ -91,11 +91,9 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
     @Override
     public void run(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        CLog.d("input options: mCallDuration(%s),mPauseTime(%s), mPhoneNumber(%s),"
-                + "mRepeatCount(%s)", mCallDuration, mPauseTime, mPhoneNumber, mIterations);
-
         Assert.assertNotNull(mTestDevice);
         Assert.assertNotNull(mPhoneNumber);
+
         mRadioHelper = new RadioHelper(mTestDevice);
         // wait for data connection
         if (!mRadioHelper.radioActivation() || !mRadioHelper.waitForDataSetup()) {
@@ -108,10 +106,10 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
         runner.setClassName(TEST_CLASS_NAME);
         runner.setMethodName(TEST_CLASS_NAME, TEST_METHOD);
 
-        runner.addInstrumentationArg("phonenumber", mPhoneNumber);
-        runner.addInstrumentationArg("repeatcount", String.format("%d", mIterations));
-        runner.addInstrumentationArg("callduration", String.format("%d", mCallDuration));
-        runner.addInstrumentationArg("pausetime", String.format("%d", mPauseTime));
+        runner.addInstrumentationArg("phone-number", mPhoneNumber);
+        runner.addInstrumentationArg("iterations", Integer.toString(mIterations));
+        runner.addInstrumentationArg("call-duration", Long.toString(mCallDurationSec));
+        runner.addInstrumentationArg("start-pause-duration", Long.toString(mStartPauseDurationSec));
         runner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
         // Add bugreport listener for failed test
@@ -122,25 +120,19 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
         // wait for 30 seconds for device to be online, otherwise, bugreport will be empty
         bugreportListener.setDeviceWaitTime(30);
 
-        CollectingTestListener collectListener = new CollectingTestListener();
-
-        Map<String, Integer> failures = new HashMap<String, Integer>(4);
+        Map<String, Integer> metrics = new HashMap<String, Integer>(4);
         for (String key : FAILURE_KEYS) {
-            failures.put(key, 0);
+            metrics.put(key, 0);
         }
 
         int currentIteration = 0;
         while (currentIteration < mIterations) {
             CLog.d("remaining calls: %s", currentIteration);
-            runner.addInstrumentationArg("iteration", String.format("%d", currentIteration));
-            mTestDevice.runInstrumentationTests(runner, bugreportListener, collectListener);
-            if (collectListener.hasFailedTests()) {
-                currentIteration = processOutputFile(currentIteration, failures) + 1;
-            } else {
-                break;
-            }
+            runner.addInstrumentationArg("current-iteration", Integer.toString(currentIteration));
+            mTestDevice.runInstrumentationTests(runner, bugreportListener);
+            currentIteration = processOutputFile(currentIteration, metrics) + 1;
         }
-        reportMetrics(METRICS_NAME, bugreportListener, failures);
+        reportMetrics(bugreportListener, metrics);
     }
 
     /**
@@ -153,33 +145,34 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
         BufferedReader reader = null;
         try {
             if (resFile == null) {
-                CLog.w("Output file did not exist, treating as no calls attempted");
+                CLog.w("Output file did not exist");
                 failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
                 return currentIteration;
             }
             reader = new BufferedReader(new FileReader(resFile));
-            String line = reader.readLine();
+            String line = getLastLine(reader);
 
             if (line == null) {
-                CLog.w("Output file was emtpy, treating as no calls attempted");
+                CLog.w("Output file was emtpy");
                 failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
                 return currentIteration;
             }
 
             Matcher m = OUTPUT_LINE_REGEX.matcher(line);
             if (!m.matches()) {
-                CLog.w("Output did not match the expected pattern, treating as no calls attempted");
+                CLog.w("Output did not match the expected pattern. Line was \"%s\"", line);
                 failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
                 return currentIteration;
             }
 
-            final int failureIteration = Integer.parseInt(m.group(1));
-            final int failureCode = Integer.parseInt(m.group(2));
-            final String key = FAILURE_KEYS[failureCode];
+            final int recordedIteration = Integer.parseInt(m.group(1));
+            if (m.group(3) != null) {
+                final int failureCode = Integer.parseInt(m.group(3));
+                final String key = FAILURE_KEYS[failureCode];
+                failures.put(key, failures.get(key) + 1);
+            }
 
-            failures.put(key, failures.get(key) + 1);
-
-            return Math.max(failureIteration, currentIteration);
+            return Math.max(recordedIteration, currentIteration);
         } catch (IOException e) {
             CLog.e("IOException while reading outputfile %s", resFile.getAbsolutePath());
             return currentIteration;
@@ -192,25 +185,34 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Report run metrics by creating an empty test run to stick them in
-     * <p />
-     * Exposed for unit testing
+     * Get the last line from a buffered reader.
      */
-    private void reportMetrics(String metricsName, ITestInvocationListener listener,
-            Map<String, Integer> failures) {
-        Map<String, String> metrics = new HashMap<String, String>();
+    private String getLastLine(BufferedReader reader) throws IOException {
+        String lastLine = null;
+        String currentLine;
+        while ((currentLine = reader.readLine()) != null) {
+            lastLine = currentLine;
+        }
+        return lastLine;
+    }
+
+    /**
+     * Report run metrics by creating an empty test run to stick them in
+     */
+    private void reportMetrics(ITestInvocationListener listener, Map<String, Integer> metrics) {
+        Map<String, String> reportedMetrics = new HashMap<String, String>();
         Integer totalFailures = 0;
-        for (Map.Entry<String, Integer> entry : failures.entrySet()) {
+        for (Map.Entry<String, Integer> entry : metrics.entrySet()) {
             final Integer keyFailures = entry.getValue();
             totalFailures += keyFailures;
-            metrics.put(entry.getKey(), keyFailures.toString());
+            reportedMetrics.put(entry.getKey(), keyFailures.toString());
         }
-        metrics.put(SUCCESS_KEY, String.format("%d", mIterations - totalFailures));
+        reportedMetrics.put(SUCCESS_KEY, String.format("%d", mIterations - totalFailures));
 
         // Create an empty testRun to report the parsed runMetrics
-        CLog.d("About to report metrics to %s: %s", metricsName, metrics);
-        listener.testRunStarted(metricsName, 0);
-        listener.testRunEnded(0, metrics);
+        CLog.d("About to report metrics to %s: %s", METRICS_NAME, reportedMetrics);
+        listener.testRunStarted(METRICS_NAME, 0);
+        listener.testRunEnded(0, reportedMetrics);
     }
 
     @Override
