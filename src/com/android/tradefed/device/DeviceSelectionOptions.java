@@ -426,23 +426,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     }
 
     private String getProperty(IDevice device, String propName) {
-        try {
-            return device.getPropertyCacheOrSync(propName);
-        } catch (TimeoutException e) {
-            handlePropException(device, e);
-        } catch (AdbCommandRejectedException e) {
-            handlePropException(device, e);
-        } catch (IOException e) {
-            handlePropException(device, e);
-        } catch (ShellCommandUnresponsiveException e) {
-            handlePropException(device, e);
-        }
-        return null;
-    }
-
-    private void handlePropException(IDevice device, Exception e) {
-        CLog.w("Failed to query device property for %s: %s", device.getSerialNumber(),
-                e.toString());
+        return device.getProperty(propName);
     }
 
     @Override

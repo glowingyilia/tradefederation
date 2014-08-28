@@ -59,6 +59,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -298,10 +299,11 @@ class TestDevice implements IManagedTestDevice {
      * @param description A simple description of the variable.  First letter should be capitalized.
      * @return A string, possibly {@code null} or empty, containing the value of the given property
      */
-    private String internalGetProperty(String prop, String fastbootVar, String description)
+    private String internalGetProperty(String propName, String fastbootVar, String description)
             throws DeviceNotAvailableException, UnsupportedOperationException {
-        if (getIDevice().arePropertiesSet()) {
-            return getIDevice().getProperty(prop);
+        String propValue = getIDevice().getProperty(propName);
+        if (propValue != null) {
+            return propValue;
         } else if (TestDeviceState.FASTBOOT.equals(getDeviceState()) &&
                 fastbootVar != null) {
             CLog.i("%s for device %s is null, re-querying in fastboot", description,
@@ -310,7 +312,7 @@ class TestDevice implements IManagedTestDevice {
         } else {
             CLog.d("property collection for device %s is null, re-querying for prop %s",
                     getSerialNumber(), description);
-            return getProperty(prop);
+            return getProperty(propName);
         }
     }
 
@@ -325,7 +327,11 @@ class TestDevice implements IManagedTestDevice {
             @Override
             public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
                     ShellCommandUnresponsiveException, InstallException, SyncException {
-                result[0] = getIDevice().getPropertyCacheOrSync(name);
+                try {
+                    result[0] = getIDevice().getSystemProperty(name).get();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new IOException(e);
+                }
                 return true;
             }
 
@@ -339,19 +345,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public String getPropertySync(final String name) throws DeviceNotAvailableException {
-        final String[] result = new String[1];
-        DeviceAction propAction = new DeviceAction() {
-
-            @Override
-            public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
-                    ShellCommandUnresponsiveException, InstallException, SyncException {
-                result[0] = getIDevice().getPropertySync(name);
-                return true;
-            }
-
-        };
-        performDeviceAction("getprop", propAction, MAX_RETRY_ATTEMPTS);
-        return result[0];
+        return getProperty(name);
     }
 
     /**

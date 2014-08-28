@@ -250,10 +250,7 @@ public interface ITestDevice {
     public String getBuildFlavor() throws DeviceNotAvailableException;
 
     /**
-     * Retrieve the given cached property value from the device.
-     * <p/>
-     * Note this method should only be used for read-only properties that won't change after
-     * device comes online. For volatile properties, use {@link #getPropertySync(String)}
+     * Retrieve the given property value from the device.
      *
      * @param name the property name
      * @return the property value or <code>null</code> if it does not exist
@@ -263,14 +260,13 @@ public interface ITestDevice {
 
     /**
      * Retrieve the given property value from the device.
-     * <p/>
-     * Note this method performs a live query against device. Its recommended to use
-     * {@link #getProperty(String)} instead for read-only properties.
      *
      * @param name the property name
      * @return the property value or <code>null</code> if it does not exist
      * @throws DeviceNotAvailableException
+     * @deprecated use {@link getProperty(String)}
      */
+    @Deprecated
     public String getPropertySync(String name) throws DeviceNotAvailableException;
 
     /**

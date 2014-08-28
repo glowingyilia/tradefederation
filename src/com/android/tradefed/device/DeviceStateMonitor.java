@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -237,17 +238,13 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
         final String cmd = "getprop " + BOOTCOMPLETE_PROP;
         while ((System.currentTimeMillis() - startTime) < waitTime) {
             try {
-                String bootFlag = getIDevice().getPropertySync("dev.bootcomplete");
+                String bootFlag = getIDevice().getSystemProperty("dev.bootcomplete").get();
                 if ("1".equals(bootFlag)) {
                     return true;
                 }
-            } catch (IOException e) {
-                CLog.i("%s on device %s failed %s", cmd, getSerialNumber(), e.getMessage());
-            } catch (TimeoutException e) {
-                CLog.i("%s on device %s failed: timeout", cmd, getSerialNumber());
-            } catch (AdbCommandRejectedException e) {
+            } catch (InterruptedException e) {
                 CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
-            } catch (ShellCommandUnresponsiveException e) {
+            } catch (ExecutionException e) {
                 CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
             }
             getRunUtil().sleep(CHECK_POLL_TIME);

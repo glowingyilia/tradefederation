@@ -28,9 +28,11 @@ import com.android.ddmlib.SyncException;
 import com.android.ddmlib.SyncService;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.log.LogReceiver;
+import com.google.common.util.concurrent.SettableFuture;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -429,5 +431,26 @@ public class StubDevice implements IDevice {
     @Override
     public boolean supportsFeature(HardwareFeature arg0) {
         return true;
+    }
+
+    @Override
+    public Future<String> getSystemProperty(String name) {
+        SettableFuture<String> f = SettableFuture.create();
+        f.set(null);
+        return f;
+    }
+
+    @Override
+    public Future<Integer> getBattery() {
+        SettableFuture<Integer> f = SettableFuture.create();
+        f.set(0);
+        return f;
+    }
+
+    @Override
+    public Future<Integer> getBattery(long arg0, TimeUnit arg1) {
+        SettableFuture<Integer> f = SettableFuture.create();
+        f.set(0);
+        return f;
     }
 }
