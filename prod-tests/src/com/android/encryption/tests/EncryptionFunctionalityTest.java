@@ -30,11 +30,13 @@ import java.util.Map;
 /**
  * Runs the encryption func tests.
  * <p>
- * 1 Encrypts the device inplace.
- * 2 Checks the password and boot into the system
- * 3 Changes the password
- * 4 Checks if can still access sdcard(Should not)
- * 5 Checks the password and boot into the system
+ * The steps and the stage number:
+ * 1 Encrypts the device inplace. 0->1->2
+ * 2 Checks the password and boot into the system 2->3->4
+ * 3 Changes the password 4->5
+ * 4 Checks if can still access sdcard(Should not) 5
+ * 5 Checks the password and boot into the system 5->6
+ * 6 Change the password to DEFAULT(no password),make sure it boots into the system directly 6->7
  * The time of every stage is measured.
  * </p>
  */
@@ -46,7 +48,7 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
 
     final String[] STAGE_NAME = {
             "encryption", "online", "bootcomplete", "decryption",
-            "bootcomplete", "pwchanged", "bootcomplete"};
+            "bootcomplete", "pwchanged", "bootcomplete", "nopassword"};
     Map<String, String> metrics = new HashMap<String, String>();
     int stage = 0;
     long stageEndTime, stageStartTime;
@@ -90,6 +92,9 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
                 mTestDevice.executeShellCommand("vdc cryptfs restart");
                 mTestDevice.waitForDeviceAvailable();
                 stageEnd(false); // stage 6
+                mTestDevice.executeShellCommand("vdc cryptfs changepw default");
+                mTestDevice.reboot();
+                stageEnd(false); // stage 7
             }
         } catch (DeviceNotAvailableException e) {
             listener.testRunFailed(String.format("Device not avaible after %s before %s.",
