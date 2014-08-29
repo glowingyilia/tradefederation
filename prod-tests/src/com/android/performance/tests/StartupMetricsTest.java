@@ -139,15 +139,15 @@ public class StartupMetricsTest implements IDeviceTest, IRemoteTest {
     }
 
     /**
-     * Helper method to convert Map&lt;String, Integer&gt; to Map&lt;String, String&gt;.
+     * Helper method to convert a {@link MemInfoItem} to Map&lt;String, String&gt;.
      *
      * @param input the {@link Map} to convert from
      * @return output the converted {@link Map}
      */
-    Map<String, String> convertMap(Map<String, Integer> input) {
+    Map<String, String> convertMap(MemInfoItem item) {
         Map<String, String> output = new HashMap<String, String>();
-        for (Map.Entry<String, Integer> entry : input.entrySet()) {
-            output.put(entry.getKey(), entry.getValue().toString());
+        for (String key : item.keySet()) {
+            output.put(key, item.get(key).toString());
         }
         return output;
     }
