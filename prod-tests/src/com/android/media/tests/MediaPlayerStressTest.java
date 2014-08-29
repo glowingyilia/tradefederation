@@ -20,6 +20,8 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.BugreportCollector;
@@ -61,38 +63,36 @@ public class MediaPlayerStressTest implements IDeviceTest, IRemoteTest {
     private static final String LOG_TAG = "MediaPlayerStress";
 
     ITestDevice mTestDevice = null;
-
-    private static final String METRICS_RUN_NAME = "MediaPlayerStress";
+    @Option(name = "test-class", importance = Importance.ALWAYS)
+    private String mTestClassName =
+            "com.android.mediaframeworktest.stress.MediaPlayerStressTest";
+    @Option(name = "metrics-name", importance = Importance.ALWAYS)
+    private String mMetricsRunName = "MediaPlayerStress";
+    @Option(name = "result-file", importance = Importance.ALWAYS)
+    private String mOutputPath = "PlaybackTestResult.txt";
 
     //Max test timeout - 10 hrs
     private static final int MAX_TEST_TIMEOUT = 10 * 60 * 60 * 1000;
 
     // Constants for running the tests
-    private static final String TEST_CLASS_NAME =
-            "com.android.mediaframeworktest.stress.MediaPlayerStressTest";
     private static final String TEST_PACKAGE_NAME = "com.android.mediaframeworktest";
     private static final String TEST_RUNNER_NAME = ".MediaPlayerStressTestRunner";
-
-    private final String mOutputPath = "PlaybackTestResult.txt";
 
     public RegexTrie<String> mPatternMap = new RegexTrie<String>();
 
     public MediaPlayerStressTest() {
         mPatternMap.put("PlaybackPass", "^Total Complete: (\\d+)");
         mPatternMap.put("PlaybackCrash", "^Total Error: (\\d+)");
-        mPatternMap.put("TrackLagging",
-                "^Total Track Lagging: (\\d+)");
-        mPatternMap.put("BadInterleave",
-                "^Total Bad Interleaving: (\\d+)");
+        mPatternMap.put("TrackLagging", "^Total Track Lagging: (\\d+)");
+        mPatternMap.put("BadInterleave", "^Total Bad Interleaving: (\\d+)");
     }
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
-
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(TEST_PACKAGE_NAME,
                 TEST_RUNNER_NAME, mTestDevice.getIDevice());
-        runner.setClassName(TEST_CLASS_NAME);
+        runner.setClassName(mTestClassName);
         runner.setMaxTimeToOutputResponse(MAX_TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
         BugreportCollector bugListener = new BugreportCollector(listener,
@@ -197,7 +197,7 @@ public class MediaPlayerStressTest implements IDeviceTest, IRemoteTest {
      */
     void reportMetrics(ITestInvocationListener listener, Map<String, String> metrics) {
         Log.d(LOG_TAG, String.format("About to report metrics: %s", metrics));
-        listener.testRunStarted(METRICS_RUN_NAME, 0);
+        listener.testRunStarted(mMetricsRunName, 0);
         listener.testRunEnded(0, metrics);
     }
 
