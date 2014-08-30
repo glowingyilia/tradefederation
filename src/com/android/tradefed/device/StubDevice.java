@@ -433,6 +433,9 @@ public class StubDevice implements IDevice {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Future<String> getSystemProperty(String name) {
         SettableFuture<String> f = SettableFuture.create();
@@ -440,6 +443,9 @@ public class StubDevice implements IDevice {
         return f;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Future<Integer> getBattery() {
         SettableFuture<Integer> f = SettableFuture.create();
@@ -447,10 +453,11 @@ public class StubDevice implements IDevice {
         return f;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public Future<Integer> getBattery(long arg0, TimeUnit arg1) {
-        SettableFuture<Integer> f = SettableFuture.create();
-        f.set(0);
-        return f;
+    public Future<Integer> getBattery(long freshnessTime, TimeUnit timeUnit) {
+        return getBattery();
     }
 }

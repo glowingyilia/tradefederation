@@ -330,7 +330,22 @@ class TestDevice implements IManagedTestDevice {
                 try {
                     result[0] = getIDevice().getSystemProperty(name).get();
                 } catch (InterruptedException | ExecutionException e) {
-                    throw new IOException(e);
+                    // getProperty will stash the original exception inside
+                    // ExecutionException.getCause
+                    // throw the specific original exception if available in case TF ever does
+                    // specific handling for different exceptions
+                    if (e.getCause() instanceof IOException) {
+                        throw (IOException)e.getCause();
+                    } else if (e.getCause() instanceof TimeoutException) {
+                        throw (TimeoutException)e.getCause();
+                    } else if (e.getCause() instanceof AdbCommandRejectedException) {
+                        throw (AdbCommandRejectedException)e.getCause();
+                    } else if (e.getCause() instanceof ShellCommandUnresponsiveException) {
+                        throw (ShellCommandUnresponsiveException)e.getCause();
+                    }
+                    else {
+                        throw new IOException(e);
+                    }
                 }
                 return true;
             }

@@ -19,6 +19,7 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.IRunUtil;
+import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
 
@@ -76,7 +77,9 @@ public class DeviceBatteryLevelCheckerTest extends TestCase {
     }
 
     private void expectBattLevel(Integer level) throws Exception {
-        EasyMock.expect(mFakeDevice.getBatteryLevel()).andReturn(level);
+        SettableFuture<Integer> f = SettableFuture.create();
+        f.set(level);
+        EasyMock.expect(mFakeDevice.getBattery()).andReturn(f);
     }
 
     private void replayDevices() {

@@ -15,27 +15,24 @@
  */
 package com.android.tradefed.device;
 
-import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.ShellCommandUnresponsiveException;
-import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Container for for device selection criteria.
  */
 public class DeviceSelectionOptions implements IDeviceSelection {
-
-    private static final String LOG_TAG = "DeviceSelectionOptions";
 
     @Option(name = "serial", shortName = 's', description =
         "run this test on a specific device with given serial number(s).")
@@ -437,15 +434,14 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     @Override
     public Integer getBatteryLevel(IDevice device) {
         try {
-            return device.getBatteryLevel();
-        } catch (TimeoutException e) {
-            handleBatteryException(device, e);
-        } catch (AdbCommandRejectedException e) {
-            handleBatteryException(device, e);
-        } catch (IOException e) {
-            handleBatteryException(device, e);
-        } catch (ShellCommandUnresponsiveException e) {
-            handleBatteryException(device, e);
+            // use default 5 minutes freshness
+            Future<Integer> batteryFuture = device.getBattery();
+            // don't block on battery level, get cached value
+            return batteryFuture.get(1, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | ExecutionException |
+                java.util.concurrent.TimeoutException e) {
+            CLog.w("Failed to query battery level for %s: %s", device.getSerialNumber(),
+                    e.toString());
         }
         return null;
     }
@@ -464,10 +460,6 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             CLog.w("Failed to parse sdk level %s for device %s", prop, device.getSerialNumber());
         }
         return apiLevel;
-    }
-
-    private void handleBatteryException(IDevice device, Exception e) {
-        CLog.w("Failed to query battery level for %s: %s", device.getSerialNumber(), e.toString());
     }
 
     /**

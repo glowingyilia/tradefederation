@@ -18,7 +18,6 @@ package com.android.tradefed.device;
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
-import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -26,6 +25,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 /**
  * A simple implementation of a {@link IDeviceRecovery} that waits for device to be online and
@@ -149,7 +149,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             return;
         }
         try {
-            Integer level = device.getBatteryLevel();
+            Integer level = device.getBattery().get();
             if (level == null) {
                 // can't read battery level but we are requiring a min, reject
                 // device
@@ -161,13 +161,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                         level, mRequiredMinBattery));
             }
             return;
-        } catch (TimeoutException e) {
-            throw new DeviceNotAvailableException("exception while reading battery level", e);
-        } catch (AdbCommandRejectedException e) {
-            throw new DeviceNotAvailableException("exception while reading battery level", e);
-        } catch (IOException e) {
-            throw new DeviceNotAvailableException("exception while reading battery level", e);
-        } catch (ShellCommandUnresponsiveException e) {
+        } catch (InterruptedException | ExecutionException e) {
             throw new DeviceNotAvailableException("exception while reading battery level", e);
         }
     }

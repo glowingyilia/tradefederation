@@ -17,6 +17,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ArgsOptionParser;
+import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
 
@@ -268,7 +269,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
     public void testMatches_minBatteryPass() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setMinBatteryLevel(25);
-        EasyMock.expect(mMockDevice.getBatteryLevel()).andStubReturn(50);
+        mockBatteryCheck(50);
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
     }
@@ -279,7 +280,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
     public void testMatches_minBatteryFail() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setMinBatteryLevel(75);
-        EasyMock.expect(mMockDevice.getBatteryLevel()).andStubReturn(50);
+        mockBatteryCheck(50);
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
     }
@@ -290,7 +291,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
     public void testMatches_maxBatteryPass() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setMaxBatteryLevel(75);
-        EasyMock.expect(mMockDevice.getBatteryLevel()).andStubReturn(50);
+        mockBatteryCheck(50);
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
     }
@@ -301,7 +302,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
     public void testMatches_maxBatteryFail() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setMaxBatteryLevel(25);
-        EasyMock.expect(mMockDevice.getBatteryLevel()).andStubReturn(50);
+        mockBatteryCheck(50);
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
     }
@@ -312,7 +313,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
     public void testMatches_forceBatteryCheckTrue() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setRequireBatteryCheck(true);
-        EasyMock.expect(mMockDevice.getBatteryLevel()).andStubReturn(null);
+        mockBatteryCheck(null);
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
         options.setMinBatteryLevel(25);
@@ -325,7 +326,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
     public void testMatches_forceBatteryCheckFalse() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setRequireBatteryCheck(false);
-        EasyMock.expect(mMockDevice.getBatteryLevel()).andStubReturn(null);
+        mockBatteryCheck(null);
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
         options.setMinBatteryLevel(25);
@@ -372,5 +373,11 @@ public class DeviceSelectionOptionsTest extends TestCase {
                 .andStubReturn("blargh");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
+    }
+
+    private void mockBatteryCheck(Integer battery) {
+        SettableFuture<Integer> batteryFuture = SettableFuture.create();
+        batteryFuture.set(battery);
+        EasyMock.expect(mMockDevice.getBattery()).andStubReturn(batteryFuture);
     }
 }

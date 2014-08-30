@@ -15,11 +15,8 @@
  */
 package com.android.tradefed.invoker;
 
-import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.ShellCommandUnresponsiveException;
-import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
@@ -61,6 +58,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Default implementation of {@link ITestInvocation}.
@@ -703,17 +702,13 @@ public class TestInvocation implements ITestInvocation {
             return;
         }
         try {
-            CLog.v("%s - %s - %d%%", BATT_TAG, event, device.getBatteryLevel(0));
+            CLog.v("%s - %s - %d%%", BATT_TAG, event,
+                    device.getBattery(0, TimeUnit.MILLISECONDS).get());
             return;
-        } catch (TimeoutException e) {
-            // fall through
-        } catch (AdbCommandRejectedException e) {
-            // fall through
-        } catch (IOException e) {
-            // fall through
-        } catch (ShellCommandUnresponsiveException e) {
+        } catch (InterruptedException | ExecutionException e) {
             // fall through
         }
+
         CLog.v("Failed to get battery level");
     }
 }
