@@ -212,15 +212,17 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
                 return currentIteration;
             }
 
+            CLog.i("Parsed line was \"%s\"", line);
+
             final int recordedIteration = Integer.parseInt(m.group(1));
             metrics.put(VOICE_REGISTRATION_KEY,
                     metrics.get(VOICE_REGISTRATION_KEY) + Integer.parseInt(m.group(2)));
             metrics.put(VOICE_CONNECTION_KEY,
-                    metrics.get(VOICE_CONNECTION_KEY) + Integer.parseInt(m.group(2)));
+                    metrics.get(VOICE_CONNECTION_KEY) + Integer.parseInt(m.group(3)));
             metrics.put(DATA_REGISTRATION_KEY,
-                    metrics.get(DATA_REGISTRATION_KEY) + Integer.parseInt(m.group(2)));
+                    metrics.get(DATA_REGISTRATION_KEY) + Integer.parseInt(m.group(4)));
             metrics.put(DATA_CONNECTION_KEY,
-                    metrics.get(DATA_CONNECTION_KEY) + Integer.parseInt(m.group(2)));
+                    metrics.get(DATA_CONNECTION_KEY) + Integer.parseInt(m.group(5)));
 
             return Math.max(recordedIteration, currentIteration);
         } catch (IOException e) {
