@@ -48,10 +48,6 @@ import java.util.regex.Pattern;
 public class TelephonyTest implements IRemoteTest, IDeviceTest {
     private static final int TEST_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 
-    // Number of iterations to skip taking bugreports for.  This is to avoid taking 1000 bugreports
-    // if there are 1000 failures
-    private static final int BUGREPORT_SKIP_ITERATIONS = 10;
-
     private static final String OUTPUT_FILE = "output.txt";
     // Output file in format: iteration [failure_reason]
     private static final Pattern OUTPUT_LINE_REGEX = Pattern.compile("(\\d+)( (\\d+))?");
@@ -113,49 +109,39 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
 
         runner.addInstrumentationArg("phone-number", mPhoneNumber);
         runner.addInstrumentationArg("iterations", Integer.toString(mIterations));
+        runner.addInstrumentationArg("current-iteration", Integer.toString(0));
         runner.addInstrumentationArg("call-duration", Long.toString(mCallDurationSec));
         runner.addInstrumentationArg("start-pause-duration", Long.toString(mStartPauseDurationSec));
         runner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+
+        mTestDevice.runInstrumentationTests(runner, listener);
 
         Map<String, Integer> metrics = new HashMap<String, Integer>(4);
         for (String key : FAILURE_KEYS) {
             metrics.put(key, 0);
         }
+        int successfulIterations = processOutputFile(metrics);
+        metrics.put(SUCCESS_KEY, successfulIterations);
 
-        int currentIteration = 0;
-        Integer lastBugreportIteration = null;
-        while (currentIteration < mIterations) {
-            CLog.d("remaining calls: %s", currentIteration);
-            runner.addInstrumentationArg("current-iteration", Integer.toString(currentIteration));
-            mTestDevice.runInstrumentationTests(runner, listener);
+        if (successfulIterations < mIterations) {
             mTestDevice.waitForDeviceOnline(30 * 1000);
-            currentIteration = processOutputFile(currentIteration, metrics) + 1;
-
-            // Take a bugreport if at last iteration, if we havent taken a bugreport, or if the
-            // bugreport was taken more than BUGREPORT_SKIP_ITERATIONS ago.
-            boolean shouldTakeReport = (currentIteration >= mIterations ||
-                    lastBugreportIteration == null ||
-                    (currentIteration - lastBugreportIteration) > BUGREPORT_SKIP_ITERATIONS);
-
-            if (shouldTakeReport) {
-                lastBugreportIteration = currentIteration - 1;
-                InputStreamSource bugreport = mTestDevice.getBugreport();
-                try {
-                    listener.testLog(String.format("bugreport_%04d", lastBugreportIteration),
-                            LogDataType.BUGREPORT, bugreport);
-                } finally {
-                    bugreport.cancel();
-                }
+            InputStreamSource bugreport = mTestDevice.getBugreport();
+            try {
+                listener.testLog(String.format("bugreport_%s", successfulIterations),
+                        LogDataType.BUGREPORT, bugreport);
+            } finally {
+                bugreport.cancel();
             }
         }
+
         reportMetrics(listener, metrics);
     }
 
     /**
-     * Process the output file, add the failure reason to the file, and return the current
-     * iteration that the call failed on.
+     * Process the output file, add the failure reason to the file, and return the number of
+     * successful iterations.
      */
-    private int processOutputFile(int currentIteration, Map<String, Integer> failures)
+    private int processOutputFile(Map<String, Integer> failures)
             throws DeviceNotAvailableException {
         final File resFile = mTestDevice.pullFileFromExternal(OUTPUT_FILE);
         BufferedReader reader = null;
@@ -163,7 +149,7 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
             if (resFile == null) {
                 CLog.w("Output file did not exist");
                 failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
-                return currentIteration;
+                return 0;
             }
             reader = new BufferedReader(new FileReader(resFile));
             String line = getLastLine(reader);
@@ -171,14 +157,14 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
             if (line == null) {
                 CLog.w("Output file was emtpy");
                 failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
-                return currentIteration;
+                return 0;
             }
 
             Matcher m = OUTPUT_LINE_REGEX.matcher(line);
             if (!m.matches()) {
                 CLog.w("Output did not match the expected pattern. Line was \"%s\"", line);
                 failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
-                return currentIteration;
+                return 0;
             }
 
             final int recordedIteration = Integer.parseInt(m.group(1));
@@ -186,12 +172,14 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
                 final int failureCode = Integer.parseInt(m.group(3));
                 final String key = FAILURE_KEYS[failureCode];
                 failures.put(key, failures.get(key) + 1);
+                return recordedIteration - 1;
             }
 
-            return Math.max(recordedIteration, currentIteration);
+            return recordedIteration;
         } catch (IOException e) {
             CLog.e("IOException while reading outputfile %s", resFile.getAbsolutePath());
-            return currentIteration;
+            failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
+            return 0;
         } finally {
             FileUtil.deleteFile(resFile);
             StreamUtil.close(reader);
@@ -217,13 +205,9 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
      */
     private void reportMetrics(ITestInvocationListener listener, Map<String, Integer> metrics) {
         Map<String, String> reportedMetrics = new HashMap<String, String>();
-        Integer totalFailures = 0;
         for (Map.Entry<String, Integer> entry : metrics.entrySet()) {
-            final Integer keyFailures = entry.getValue();
-            totalFailures += keyFailures;
-            reportedMetrics.put(entry.getKey(), keyFailures.toString());
+            reportedMetrics.put(entry.getKey(), Integer.toString(entry.getValue()));
         }
-        reportedMetrics.put(SUCCESS_KEY, String.format("%d", mIterations - totalFailures));
 
         // Create an empty testRun to report the parsed runMetrics
         CLog.d("About to report metrics to %s: %s", METRICS_NAME, reportedMetrics);
