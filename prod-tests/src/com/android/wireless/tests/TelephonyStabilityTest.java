@@ -21,8 +21,9 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -48,6 +49,10 @@ import java.util.regex.Pattern;
  */
 public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
     private static final int TEST_TIMEOUT = 9 * 60 * 60 * 1000; // 9 hours
+
+    // Number of iterations to skip taking bugreports for.  This is to avoid taking 1000 bugreports
+    // if there are 1000 failures
+    private static final int BUGREPORT_SKIP_ITERATIONS = 10;
 
     private static final String METRICS_NAME = "telephony_stability";
     private static final String VOICE_REGISTRATION_KEY = "voice_registration";
@@ -107,8 +112,7 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
      * Run the telephony stability test  and collect results
      */
     @Override
-    public void run(ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
+    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
         Assert.assertNotNull(mPhoneNumber);
 
@@ -130,14 +134,6 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
         runner.addInstrumentationArg("suspend-duration", Long.toString(mSuspendDurationSec));
         runner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
-        // Add bugreport listener for failed test
-        BugreportCollector bugreportListener = new BugreportCollector(listener, mTestDevice);
-        bugreportListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);
-        bugreportListener.setDescriptiveName(TelephonyStabilityTest.class.getSimpleName());
-        // Device may reboot during the test, to capture a bugreport after that,
-        // wait for 30 seconds for device to be online, otherwise, bugreport will be empty
-        bugreportListener.setDeviceWaitTime(30);
-
         Map<String, Integer> metrics = new HashMap<String, Integer>(4);
         metrics.put(VOICE_REGISTRATION_KEY, 0);
         metrics.put(VOICE_CONNECTION_KEY, 0);
@@ -146,12 +142,31 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
         metrics.put(TEST_FAILURE_KEY, 0);
 
         int currentIteration = 0;
+        Integer lastBugreportIteration = null;
         while (currentIteration < mIterations) {
             runner.addInstrumentationArg("current-iteration", Integer.toString(currentIteration));
-            mTestDevice.runInstrumentationTests(runner, bugreportListener);
+            mTestDevice.runInstrumentationTests(runner, listener);
+            mTestDevice.waitForDeviceOnline(30 * 1000);
             currentIteration = processOutputFile(currentIteration, metrics) + 1;
+
+            // Take a bugreport if at last iteration, if we havent taken a bugreport, or if the
+            // bugreport was taken more than BUGREPORT_SKIP_ITERATIONS ago.
+            boolean shouldTakeReport = (currentIteration >= mIterations ||
+                    lastBugreportIteration == null ||
+                    (currentIteration - lastBugreportIteration) > BUGREPORT_SKIP_ITERATIONS);
+
+            if (shouldTakeReport) {
+                lastBugreportIteration = currentIteration - 1;
+                InputStreamSource bugreport = mTestDevice.getBugreport();
+                try {
+                    listener.testLog(String.format("bugreport_%04d", lastBugreportIteration),
+                            LogDataType.BUGREPORT, bugreport);
+                } finally {
+                    bugreport.cancel();
+                }
+            }
         }
-        reportMetrics(bugreportListener, metrics);
+        reportMetrics(listener, metrics);
     }
 
     /**
