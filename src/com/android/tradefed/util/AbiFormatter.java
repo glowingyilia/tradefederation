@@ -16,7 +16,6 @@
 
 package com.android.tradefed.util;
 
-import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
@@ -69,21 +68,35 @@ public class AbiFormatter {
     }
 
     /**
-     * Helper method to get the default abi name for the given abi
+     * Helper method to get the default abi name for the given bitness
      * @param device
-     * @param requestedAbi
+     * @param bitness
      * @return the default abi name for the given abi
      * @throws DeviceNotAvailableException
      */
-    public static String getDefaultAbi(ITestDevice device, String requestedAbi)
+    public static String getDefaultAbi(ITestDevice device, String bitness)
             throws DeviceNotAvailableException {
-        String abiList = device.getProperty(PRODUCT_CPU_ABILIST_KEY + requestedAbi);
-        if (abiList != null) {
-            String []abis = abiList.split(",");
-            if (abis.length > 0 && abis[0].length() > 0) {
-                return abis[0];
-            }
+        String []abis = getSupportedAbis(device, bitness);
+        if (abis.length > 0 && abis[0].length() > 0) {
+            return abis[0];
         }
         return null;
+    }
+
+    /**
+     * Helper method to get the list of supported abis for the given bitness
+     * @param device
+     * @param bitness, 32 or 64
+     * @return the supported abi list of that bitness
+     * @throws DeviceNotAvailableException
+     */
+    public static String[] getSupportedAbis(ITestDevice device, String bitness)
+            throws DeviceNotAvailableException {
+        String abiList = device.getProperty(PRODUCT_CPU_ABILIST_KEY + bitness);
+        if (abiList != null) {
+            String []abis = abiList.split(",");
+            return abis;
+        }
+        return new String[0];
     }
 }
