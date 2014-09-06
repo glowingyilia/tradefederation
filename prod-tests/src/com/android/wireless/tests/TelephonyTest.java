@@ -171,11 +171,11 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
             if (m.group(3) != null) {
                 final int failureCode = Integer.parseInt(m.group(3));
                 final String key = FAILURE_KEYS[failureCode];
-                failures.put(key, failures.get(key) + 1);
-                return recordedIteration - 1;
+                failures.put(key, 1);
+                return recordedIteration;
             }
 
-            return recordedIteration;
+            return recordedIteration + 1;
         } catch (IOException e) {
             CLog.e("IOException while reading outputfile %s", resFile.getAbsolutePath());
             failures.put(TEST_FAILURE_KEY, failures.get(TEST_FAILURE_KEY) + 1);
