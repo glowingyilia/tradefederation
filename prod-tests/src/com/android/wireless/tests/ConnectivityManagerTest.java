@@ -51,9 +51,11 @@ public class ConnectivityManagerTest implements IRemoteTest, IDeviceTest {
 
     private RadioHelper mRadioHelper;
 
-    @Option(name="ssid",
-            description="The ssid used for wi-fi connection.")
+    @Option(name="ssid", description="The ssid used for wifi connection.")
     private String mSsid = null;
+
+    @Option(name="password", description="The password used for wifi connection.")
+    private String mPassword = null;
 
     @Option(name="method", description="Test method to run")
     private String mTestMethodName = null;
@@ -97,6 +99,9 @@ public class ConnectivityManagerTest implements IRemoteTest, IDeviceTest {
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.addInstrumentationArg("ssid", mSsid);
+        if (mPassword != null) {
+            runner.addInstrumentationArg("password", mPassword);
+        }
         runner.setMaxTimeToOutputResponse(TEST_TIMER, TimeUnit.MILLISECONDS);
         if (mTestMethodName != null) {
             runner.setMethodName(TEST_CLASS_NAME, mTestMethodName);
