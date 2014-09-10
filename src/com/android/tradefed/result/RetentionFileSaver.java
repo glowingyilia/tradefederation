@@ -30,8 +30,8 @@ import java.util.Date;
  */
 public class RetentionFileSaver {
 
-    static final String RETENTION_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss zzz";
-    static final String RETENTION_FILE_NAME = ".retention";
+    public static final String RETENTION_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss zzz";
+    public static final String RETENTION_FILE_NAME = ".retention";
 
     /**
      * Creates a .retention file in given dir with timestamp == current + logRetentionDays
