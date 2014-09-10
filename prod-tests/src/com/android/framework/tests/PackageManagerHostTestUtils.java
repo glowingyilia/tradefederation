@@ -682,7 +682,7 @@ public class PackageManagerHostTestUtils extends Assert {
 
     public String getAbi(String pkgName) throws DeviceNotAvailableException {
         String out = mDevice.executeShellCommand(String.format("dumpsys package %s", pkgName));
-        Matcher m = Pattern.compile("requiredCpuAbi=(.+)").matcher(out);
+        Matcher m = Pattern.compile("primaryCpuAbi=(.+)").matcher(out);
         assertTrue(m.find());
 
         String abi = m.group(1);
