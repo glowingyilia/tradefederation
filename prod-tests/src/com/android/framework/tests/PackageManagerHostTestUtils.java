@@ -205,30 +205,6 @@ public class PackageManagerHostTestUtils extends Assert {
     }
 
     /**
-     * Helper method to install an encrypted apk to the device.
-     *
-     * @param apkFile the {@link File} to install
-     * @param replace set to <code>true</code> if re-install of app should be
-     *            performed
-     * @param algorithm the encryption algorithm used for the encrypted apk
-     * @param iv the initialization vector used for the encrypted apk
-     * @param encryptionKey the encryption key used for the encrypted apk
-     * @param macAlgorithm the mac algorithm used
-     * @param macKey the mac key used
-     * @param macTag the mac tag used
-     * @return
-     * @throws DeviceNotAvailableException
-     */
-    public String installFileEncrypted(final File apkFile, final boolean replace,
-            final String algorithm, final String iv, final String encryptionKey,
-            final String macAlgorithm, final String macKey, final String macTag)
-            throws DeviceNotAvailableException {
-        return mDevice.installPackage(apkFile, replace, "-l", "--algo", algorithm, "--iv", iv,
-                "--key", encryptionKey, "--macalgo", macAlgorithm,
-                "--mackey", macKey, "--tag", macTag);
-    }
-
-    /**
      * Helper method to determine if file exists on the device containing a
      * given string.
      *
@@ -398,73 +374,6 @@ public class PackageManagerHostTestUtils extends Assert {
 
         // grep for package to make sure it is installed
         assertTrue(doesPackageExist(pkgName));
-    }
-
-    /**
-     * Helper method for installing an encrypted apk and then verifies the
-     * package exists.
-     * <p/>
-     * Assumes adb is running as root in device under test.
-     *
-     * @param apkFile the {@link File} of the apk to install
-     * @param pkgName the name of the package
-     * @param overwrite <code>true</code> if the app should be overwritten,
-     *            <code>false</code> otherwise
-     * @param algorithm the encryption algorithm used for the encrypted apk
-     * @param iv the initialization vector used for the encrypted apk
-     * @param encryptionKey the encryption key used for the encrypted apk
-     * @param macAlgorithm the mac algorithm used
-     * @param macKey the mac key used
-     * @param macTag the mac tag used
-     * @throws DeviceNotAvailableException
-     */
-    public void installEncryptedAppAndVerifyExists(File apkFile, String pkgName, boolean overwrite,
-            final String algorithm, final String iv, final String encryptionKey,
-            final String macAlgorithm, final String macKey, final String macTag)
-            throws DeviceNotAvailableException {
-        // Start with a clean slate if we're not overwriting
-        if (!overwrite) {
-            // cleanup test app just in case it already exists
-            mDevice.uninstallPackage(pkgName);
-            // grep for package to make sure its not installed
-            assertFalse(doesPackageExist(pkgName));
-        }
-        String result = installFileEncrypted(apkFile, overwrite, algorithm, iv, encryptionKey,
-                macAlgorithm, macKey, macTag);
-        assertEquals(null, result);
-        waitForPackageManager();
-
-        // grep for package to make sure it is installed
-        assertTrue(doesPackageExist(pkgName));
-    }
-
-    /**
-     * Helper method to ensure that the encrypted apk and asec file are stored
-     * in the correct location.
-     * <p/>
-     * Assumes adb is running as root in device under test.
-     *
-     * @param packageName the name of the package
-     * @param externalStorage {@link boolean} whether the file is stored to
-     *            external sd card.
-     * @return true if the app is indeed encrypted, false otherwise.
-     * @throws DeviceNotAvailableException
-     */
-    public boolean appExistsAsEncrypted(String packageName, boolean externalStorage)
-            throws DeviceNotAvailableException {
-        // getIsExternalStorageEmulated()
-        if (externalStorage) {
-            if (doesRemoteFileExistContainingString(JB_APP_PRIVATE_PATH, packageName) &&
-                    doesRemoteFileExistContainingString(SDCARD_APP_PATH, packageName)) {
-                return true;
-            }
-        } else {
-            if (doesRemoteFileExistContainingString(JB_APP_PRIVATE_PATH, packageName) &&
-                    doesRemoteFileExistContainingString(JB_ASEC_PRIVATE_PATH, packageName)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
