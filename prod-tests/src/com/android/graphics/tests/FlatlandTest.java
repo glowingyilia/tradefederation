@@ -18,6 +18,7 @@ package com.android.graphics.tests;
 
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -31,6 +32,7 @@ import junit.framework.Assert;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Test Runner for graphics Flatland Benchmark test.
@@ -67,6 +69,8 @@ import java.util.Map;
  * </ul>
  */
 public class FlatlandTest implements IDeviceTest, IRemoteTest {
+
+    private static final long SHELL_TIMEOUT = 30*60*1000;
     private static final String COMMAND = "flatland|#ABI32#|";
     private static final String FIRST_LINE = "cmdline:";
     private static final String TITLE = "Scenario";
@@ -125,8 +129,10 @@ public class FlatlandTest implements IDeviceTest, IRemoteTest {
         }
         standardListener.testRunStarted(mRuKey, 1);
         long start = System.currentTimeMillis();
-        String result = mTestDevice.executeShellCommand(
-                AbiFormatter.formatCmdForAbi(cmd.toString(), mForceAbi));
+        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        mTestDevice.executeShellCommand(AbiFormatter.formatCmdForAbi(cmd.toString(), mForceAbi),
+                receiver, SHELL_TIMEOUT, TimeUnit.MILLISECONDS, 2);
+        String result = receiver.getOutput();
         if (result == null) {
             CLog.v("no test results returned. Test failed?");
             return;
