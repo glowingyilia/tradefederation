@@ -28,13 +28,33 @@ public class LogcatReceiver {
     static final String LOGCAT_CMD = "logcat -v threadtime";
     private static final String LOGCAT_DESC = "logcat";
 
-    public LogcatReceiver(ITestDevice device, long maxFileSize, int logStartDelay) {
+    /**
+     * Creates an instance with any specified logcat command
+     * @param device the device to start logcat on
+     * @param logcatCmd the logcat command to run (including 'logcat' part), see details on
+     *        available options in logcat help message
+     * @param maxFileSize maximum file size, earlier lines will be discarded once size is reached
+     * @param logStartDelay the delay to wait after the device becomes online
+     */
+    public LogcatReceiver(ITestDevice device, String logcatCmd,
+            long maxFileSize, int logStartDelay) {
+
         mReceiver = new LargeOutputReceiver(LOGCAT_DESC, device.getSerialNumber(),
                 maxFileSize);
         // FIXME: remove mLogStartDelay. Currently delay starting logcat, as starting
         // immediately after a device comes online has caused adb instability
-        mDeviceAction = new BackgroundDeviceAction(LOGCAT_CMD, LOGCAT_DESC, device,
+        mDeviceAction = new BackgroundDeviceAction(logcatCmd, LOGCAT_DESC, device,
                 mReceiver, logStartDelay);
+    }
+
+    /**
+     * Creates an instance with default logcat 'threadtime' format
+     * @param device the device to start logcat on
+     * @param maxFileSize maximum file size, earlier lines will be discarded once size is reached
+     * @param logStartDelay the delay to wait after the device becomes online
+     */
+    public LogcatReceiver(ITestDevice device, long maxFileSize, int logStartDelay) {
+        this(device, LOGCAT_CMD, maxFileSize, logStartDelay);
     }
 
     public void start() {
