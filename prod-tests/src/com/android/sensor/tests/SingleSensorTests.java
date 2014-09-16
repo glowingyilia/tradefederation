@@ -41,6 +41,9 @@ public class SingleSensorTests extends InstrumentationTest {
             + "files will be pulled, uploaded, and deleted from the device.")
     private String mOutputPrefix = "single_sensor_";
 
+    @Option(name = "screen-off", description = "Whether to run the tests with the screen off")
+    private boolean mScreenOff = false;
+
     /**
      * Run the instrumentation tests, pull the test generated files, and clean up.
      */
@@ -49,7 +52,9 @@ public class SingleSensorTests extends InstrumentationTest {
         Assert.assertNotNull(getDevice());
 
         try {
-            turnScreenOff();
+            if (mScreenOff) {
+                turnScreenOff();
+            }
             super.run(listener);
             pullFiles(listener);
         } finally {
