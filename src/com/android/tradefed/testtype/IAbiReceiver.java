@@ -20,5 +20,5 @@ package com.android.tradefed.testtype;
  */
 public interface IAbiReceiver {
 
-    void setAbi(IAbi abi);
+    public void setAbi(IAbi abi);
 }

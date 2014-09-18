@@ -23,11 +23,11 @@ public interface IAbi {
     /**
      * @return The name of the ABI.
      */
-    String getName();
+    public String getName();
 
     /**
      * @return The bitness of the ABI (eg. 32, 64).
      */
-    String getBitness();
+    public String getBitness();
 
 }
