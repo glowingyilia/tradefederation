@@ -121,7 +121,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         synchronized(sShouldCheckFlashLock) {
             // Make a minimal attempt to avoid having things get into an inconsistent state
             if (sConcurrentFlashLock != null && mConcurrentFlashLimit != null) {
-                int curLimit = (int) mConcurrentFlashLimit;
+                int curLimit = mConcurrentFlashLimit;
                 int curAvail = sConcurrentFlashLock.availablePermits();
                 if (curLimit != curAvail) {
                     throw new IllegalStateException(String.format("setConcurrentFlashSettings may " +
@@ -214,6 +214,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         if (device.enableAdbRoot()) {
             device.setDate(null);
         }
+        checkBuild(device, deviceBuild);
         postEncryptDevice(device, flasher);
         // only want logcat captured for current build, delete any accumulated log data
         device.clearLogcat();
@@ -227,6 +228,29 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                     device.getSerialNumber(), deviceBuild.getDeviceBuildId()));
         }
         device.postBootSetup();
+    }
+
+    /**
+     * Verifies the expected build matches the actual build on device after flashing
+     * @throws DeviceNotAvailableException
+     */
+    private void checkBuild(ITestDevice device, IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException {
+        checkBuildAttribute(deviceBuild.getBuildId(), device.getBuildId());
+        checkBuildAttribute(deviceBuild.getBuildFlavor(), device.getBuildFlavor());
+        // TODO: check bootloader and baseband versions too
+    }
+
+    private void checkBuildAttribute(String expectedBuildAttr, String actualBuildAttr)
+            throws DeviceNotAvailableException {
+        if (expectedBuildAttr == null || actualBuildAttr == null ||
+                !expectedBuildAttr.equals(actualBuildAttr)) {
+            // throw DNAE - assume device hardware problem - we think flash was successful but
+            // device is not running right bits
+            throw new DeviceNotAvailableException(
+                    String.format("Unexpected build after flashing. Expected %s, actual %s",
+                            expectedBuildAttr, actualBuildAttr));
+        }
     }
 
     /**

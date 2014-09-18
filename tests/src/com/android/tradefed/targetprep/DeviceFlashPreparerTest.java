@@ -23,7 +23,6 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
-import com.android.tradefed.targetprep.IDeviceFlasher;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
@@ -57,6 +56,7 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
         mMockBuildInfo = new DeviceBuildInfo("0", "", "");
+        mMockBuildInfo.setBuildFlavor("flavor");
         mDeviceFlashPreparer = new DeviceFlashPreparer() {
             @Override
             protected IDeviceFlasher createFlasher(ITestDevice device) {
@@ -105,6 +105,8 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockDevice.waitForDeviceOnline();
         EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
         mMockDevice.setDate(null);
+        EasyMock.expect(mMockDevice.getBuildId()).andReturn(mMockBuildInfo.getBuildId());
+        EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         mMockDevice.clearLogcat();
@@ -138,6 +140,8 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockDevice.waitForDeviceOnline();
         EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
         mMockDevice.setDate(null);
+        EasyMock.expect(mMockDevice.getBuildId()).andReturn(mMockBuildInfo.getBuildId());
+        EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         mMockDevice.clearLogcat();
